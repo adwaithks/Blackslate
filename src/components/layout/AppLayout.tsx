@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { IoAdd } from "react-icons/io5";
 import { LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
-import { invoke } from "@tauri-apps/api/core";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { TerminalView } from "@/components/terminal/TerminalView";
 import { cwdToAbsolute, useSessionStore } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
+import { getHomeDir } from "@/hooks/usePty";
 import {
 	modDigitKey,
 	modLetter,
@@ -24,14 +24,12 @@ export function AppLayout() {
 	const { increaseFontSize, decreaseFontSize } = useSettingsStore();
 
 	useEffect(() => {
-		invoke<string>("get_home_dir")
-			.then(setHomeDir)
-			.catch(() => setHomeDir(""));
+		getHomeDir().then(setHomeDir).catch(() => setHomeDir(""));
 	}, []);
 
 	const headerPwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
 
-	const buildShortcuts = useCallback(() => {
+	const buildShortcuts = () => {
 		const session = useSessionStore.getState();
 		const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
 			const n = i + 1;
@@ -78,7 +76,7 @@ export function AppLayout() {
 				run: () => decreaseFontSize(),
 			},
 		];
-	}, [increaseFontSize, decreaseFontSize]);
+	};
 
 	useAppShortcuts(buildShortcuts);
 

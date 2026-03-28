@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -42,7 +42,6 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 	const fitAddonRef = useRef<FitAddon | null>(null);
 	const fontSize = useSettingsStore((s) => s.fontSize);
 
-	// ── xterm initialisation (once per mount) ──────────────────────────────
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -109,10 +108,9 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		};
 	}, []);
 
-	// ── PTY connection ─────────────────────────────────────────────────────
 	const { sendResize } = usePty({ terminal, sessionId });
 
-	// ── Git info — refresh whenever cwd changes ────────────────────────────
+	// ── Git info + project stack — refresh whenever cwd changes ───────────
 	const cwd = useSessionStore(
 		(s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~",
 	);
@@ -131,41 +129,52 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 			.catch(() => setProjectStack(sessionId, []));
 	}, [cwd, sessionId, setProjectStack]);
 
+	// ── Shared fit helper — used by font, resize, and activation effects ──
+	const fitAndResize = useCallback(() => {
+		fitAddonRef.current?.fit();
+		if (terminal) sendResize(terminal.cols, terminal.rows);
+	}, [terminal, sendResize]);
+
 	// ── Font size — update terminal and refit when the user zooms ─────────
 	useEffect(() => {
 		if (!terminal) return;
 		terminal.options.fontSize = fontSize;
-		requestAnimationFrame(() => {
-			fitAddonRef.current?.fit();
-			sendResize(terminal.cols, terminal.rows);
-		});
-	}, [fontSize, terminal, sendResize]);
+		requestAnimationFrame(fitAndResize);
+	}, [fontSize, terminal, fitAndResize]);
 
 	// ── Resize observer ────────────────────────────────────────────────────
+	// fit() runs immediately to keep the terminal crisp; pty_resize is
+	// debounced to avoid flooding the IPC channel during continuous drag.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || !terminal) return;
+		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 		const observer = new ResizeObserver(() => {
 			fitAddonRef.current?.fit();
-			sendResize(terminal.cols, terminal.rows);
+			if (debounceTimer !== null) clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(
+				() => sendResize(terminal.cols, terminal.rows),
+				80,
+			);
 		});
 
 		observer.observe(container);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			if (debounceTimer !== null) clearTimeout(debounceTimer);
+		};
 	}, [terminal, sendResize]);
 
 	// ── Activation ─────────────────────────────────────────────────────────
-	// When this pane becomes the active session (e.g. user clicks another tab),
-	// re-fit in case the container size changed while hidden, then focus.
+	// Re-fit in case the container size changed while hidden, then focus.
 	useEffect(() => {
 		if (!isActive || !terminal) return;
 		requestAnimationFrame(() => {
-			fitAddonRef.current?.fit();
-			sendResize(terminal.cols, terminal.rows);
+			fitAndResize();
 			terminal.focus();
 		});
-	}, [isActive, terminal, sendResize]);
+	}, [isActive, terminal, fitAndResize]);
 
 	return (
 		<div

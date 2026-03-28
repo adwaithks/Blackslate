@@ -4,18 +4,32 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import { useSessionStore } from "@/store/sessions";
 
-// Resolved once via Rust and cached for the process lifetime.
-let homeDirCache: string | null = null;
-async function getHomeDir(): Promise<string> {
-	if (!homeDirCache) homeDirCache = await invoke<string>("get_home_dir");
-	return homeDirCache;
+// ---------------------------------------------------------------------------
+// Home dir — fetched once, shared across all callers.
+// ---------------------------------------------------------------------------
+
+// Promise-cached so concurrent callers share the single Tauri round-trip.
+let homeDirPromise: Promise<string> | null = null;
+export function getHomeDir(): Promise<string> {
+	if (!homeDirPromise) homeDirPromise = invoke<string>("get_home_dir");
+	return homeDirPromise;
 }
+
+// ---------------------------------------------------------------------------
+// PTY data decoding — module-level to avoid per-chunk allocation.
+// ---------------------------------------------------------------------------
+
+const TEXT_DECODER = new TextDecoder();
+const TEXT_ENCODER = new TextEncoder();
 
 // OSC 7 format: ESC ] 7 ; file://[host]/path BEL  or  ESC ] 7 ; ... ESC \
 const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
 
 // CSI SP q (DECSCUSR) — shells set block/underline/bar; strip so xterm `cursorStyle` wins.
 const DECSCUSR_RE = /\x1b\[[0-9;]* ?q/g;
+
+// OSC buffer cap: OSC 7 sequences are short; 2 KB is enough to span any chunk boundary.
+const MAX_OSC_BUF = 2048;
 
 function parseOsc7(chunk: string, homePath: string): string | null {
 	OSC7_RE.lastIndex = 0;
@@ -81,24 +95,31 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				`pty://data/${ptyId}`,
 				(event) => {
 					if (!active) return;
-					const bytes = Uint8Array.from(atob(event.payload), (c) =>
-						c.charCodeAt(0),
-					);
-					const chunk = new TextDecoder().decode(bytes);
+
+					// Decode base64 → bytes without per-chunk allocations.
+					const raw = atob(event.payload);
+					const bytes = new Uint8Array(raw.length);
+					for (let i = 0; i < raw.length; i++)
+						bytes[i] = raw.charCodeAt(i);
+					const chunk = TEXT_DECODER.decode(bytes);
+
 					const withoutCursor = chunk.replace(DECSCUSR_RE, "");
 					term.write(
 						withoutCursor === chunk
 							? bytes
-							: new TextEncoder().encode(withoutCursor),
+							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer.
-					oscBufRef.current += withoutCursor;
-					// Keep the buffer bounded; retain only from the last ESC onwards.
-					const lastEsc = oscBufRef.current.lastIndexOf("\x1b");
-					const cwd = parseOsc7(oscBufRef.current, home);
-					oscBufRef.current =
-						lastEsc !== -1 ? oscBufRef.current.slice(lastEsc) : "";
+					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer,
+					// bounded to MAX_OSC_BUF to prevent unbounded growth on ESC-free output.
+					const combined = oscBufRef.current + withoutCursor;
+					const buf =
+						combined.length > MAX_OSC_BUF
+							? combined.slice(-MAX_OSC_BUF)
+							: combined;
+					const cwd = parseOsc7(buf, home);
+					const lastEsc = buf.lastIndexOf("\x1b");
+					oscBufRef.current = lastEsc !== -1 ? buf.slice(lastEsc) : "";
 					if (cwd !== null) setCwd(sessionId, cwd);
 				},
 			);
@@ -126,21 +147,29 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 			setPtyId(sessionId, ptyId);
 
+			// Track last-known value to skip store writes when nothing changed,
+			// preventing spurious re-renders in subscribed components every poll tick.
+			let lastClaudeActive: boolean | undefined;
 			const pollClaude = async () => {
 				if (!active) return;
 				try {
 					const on = await invoke<boolean>("pty_claude_code_active", {
 						id: ptyId,
 					});
-					setClaudeCodeActive(sessionId, on);
+					if (on !== lastClaudeActive) {
+						lastClaudeActive = on;
+						setClaudeCodeActive(sessionId, on);
+					}
 				} catch {
-					setClaudeCodeActive(sessionId, false);
+					if (lastClaudeActive !== false) {
+						lastClaudeActive = false;
+						setClaudeCodeActive(sessionId, false);
+					}
 				}
 			};
 			await pollClaude();
 			pollTimer = setInterval(pollClaude, 1000);
 
-			// Wire keystrokes → PTY.
 			onDataDisposable = term.onData((data) => {
 				if (!active) return;
 				invoke("pty_write", { id: ptyId, data }).catch((err) =>
@@ -155,7 +184,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 		run().catch((err) => {
 			console.error("[pty] setup error:", err);
-			// Write the error visibly into the terminal so it's obvious if pty_create failed.
 			if (active) {
 				term.writeln(`\r\n\x1b[31m[slate error] ${err}\x1b[0m`);
 			}

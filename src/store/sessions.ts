@@ -75,6 +75,16 @@ function makeSession(): Session {
 	};
 }
 
+/** Apply a single-field patch to one session by id, leaving all others unchanged. */
+function patchSession<K extends keyof Session>(
+	sessions: Session[],
+	id: string,
+	key: K,
+	value: Session[K],
+): Session[] {
+	return sessions.map((x) => (x.id === id ? { ...x, [key]: value } : x));
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -115,39 +125,23 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	},
 
 	setCwd(id, cwd) {
-		set((s) => ({
-			sessions: s.sessions.map((x) => (x.id === id ? { ...x, cwd } : x)),
-		}));
+		set((s) => ({ sessions: patchSession(s.sessions, id, "cwd", cwd) }));
 	},
 
 	setGit(id, git) {
-		set((s) => ({
-			sessions: s.sessions.map((x) => (x.id === id ? { ...x, git } : x)),
-		}));
+		set((s) => ({ sessions: patchSession(s.sessions, id, "git", git) }));
 	},
 
 	setProjectStack(id, projectStack) {
-		set((s) => ({
-			sessions: s.sessions.map((x) =>
-				x.id === id ? { ...x, projectStack } : x,
-			),
-		}));
+		set((s) => ({ sessions: patchSession(s.sessions, id, "projectStack", projectStack) }));
 	},
 
 	setPtyId(id, ptyId) {
-		set((s) => ({
-			sessions: s.sessions.map((x) =>
-				x.id === id ? { ...x, ptyId } : x,
-			),
-		}));
+		set((s) => ({ sessions: patchSession(s.sessions, id, "ptyId", ptyId) }));
 	},
 
 	setClaudeCodeActive(id, active) {
-		set((s) => ({
-			sessions: s.sessions.map((x) =>
-				x.id === id ? { ...x, claudeCodeActive: active } : x,
-			),
-		}));
+		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeCodeActive", active) }));
 	},
 }));
 
