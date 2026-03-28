@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use tauri::AppHandle;
 
@@ -7,35 +8,36 @@ use super::session::PtySession;
 
 /// Owns all active PTY sessions.
 ///
-/// Wrapped in `Mutex<SessionManager>` inside `AppState` and accessed through
-/// Tauri's managed-state mechanism.  All methods take `&mut self` so callers
-/// must hold the mutex for the duration of the call — keep critical sections
-/// short (no I/O inside the lock).
+/// Uses `RwLock<HashMap<…, Arc<PtySession>>>` so concurrent operations on
+/// different sessions (writes, resizes, agent checks) can proceed in parallel.
+/// Only `create` and `close` briefly take the write lock to mutate the map;
+/// all other operations take the read lock just long enough to clone the `Arc`,
+/// then release it before doing any I/O.
 pub struct SessionManager {
-    sessions: HashMap<String, PtySession>,
+    sessions: RwLock<HashMap<String, Arc<PtySession>>>,
 }
 
 impl SessionManager {
     pub fn new() -> Self {
         SessionManager {
-            sessions: HashMap::new(),
+            sessions: RwLock::new(HashMap::new()),
         }
     }
 
     /// Spawn a new PTY session and register it.
     /// Returns an error if a session with `id` already exists.
-    pub fn create(
-        &mut self,
-        id: String,
-        cols: u16,
-        rows: u16,
-        app: AppHandle,
-    ) -> CommandResult<()> {
-        if self.sessions.contains_key(&id) {
+    pub fn create(&self, id: String, cols: u16, rows: u16, app: AppHandle) -> CommandResult<()> {
+        // Spawn outside the lock — PTY creation can block for a moment.
+        // Re-check for duplicates atomically at insert time.
+        if self.sessions.read().unwrap().contains_key(&id) {
             return Err(format!("session '{id}' already exists"));
         }
-        let session = PtySession::new(id.clone(), cols, rows, app)?;
-        self.sessions.insert(id, session);
+        let session = Arc::new(PtySession::new(id.clone(), cols, rows, app)?);
+        let mut map = self.sessions.write().unwrap();
+        if map.contains_key(&id) {
+            return Err(format!("session '{id}' already exists"));
+        }
+        map.insert(id, session);
         Ok(())
     }
 
@@ -51,24 +53,28 @@ impl SessionManager {
 
     /// Kill the session and remove it from the map.
     /// Silently succeeds if the session doesn't exist (already closed).
-    pub fn close(&mut self, id: &str) {
-        if let Some(session) = self.sessions.remove(id) {
+    pub fn close(&self, id: &str) {
+        if let Some(session) = self.sessions.write().unwrap().remove(id) {
             session.close();
         }
     }
-
-    // -----------------------------------------------------------------------
-    // Internal
-    // -----------------------------------------------------------------------
 
     /// Whether Claude Code (or the `claude` CLI) is running under this PTY's shell.
     pub fn claude_code_active(&self, id: &str) -> CommandResult<bool> {
         Ok(self.get(id)?.claude_code_active())
     }
 
-    fn get(&self, id: &str) -> CommandResult<&PtySession> {
+    // -----------------------------------------------------------------------
+    // Internal
+    // -----------------------------------------------------------------------
+
+    /// Clone the `Arc` for `id`, releasing the read lock before any I/O.
+    fn get(&self, id: &str) -> CommandResult<Arc<PtySession>> {
         self.sessions
+            .read()
+            .unwrap()
             .get(id)
+            .cloned()
             .ok_or_else(|| format!("session '{id}' not found"))
     }
 }

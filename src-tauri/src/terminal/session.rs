@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
@@ -12,10 +13,10 @@ use super::error::{cmd_err, CommandResult};
 use super::events;
 
 pub struct PtySession {
-    pub id: String,
-    /// PID of the shell process (PTY leader). Used for agent / Claude Code detection.
-    pub shell_pid: u32,
-    master: Box<dyn MasterPty + Send>,
+    id: String,
+    shell_pid: u32,
+    // Mutex required: MasterPty is Send but not Sync; wrapping allows Arc<PtySession>: Sync.
+    master: Mutex<Box<dyn MasterPty + Send>>,
     writer: Mutex<Box<dyn Write + Send>>,
     child: Mutex<Box<dyn Child + Send + Sync>>,
     reader_task: JoinHandle<()>,
@@ -27,14 +28,8 @@ impl PtySession {
         eprintln!("[slate][session] creating id={id} shell={shell} cols={cols} rows={rows}");
 
         let pty_system = NativePtySystem::default();
-        let size = PtySize {
-            cols,
-            rows,
-            pixel_width: 0,
-            pixel_height: 0,
-        };
 
-        let pair = pty_system.openpty(size).map_err(|e| {
+        let pair = pty_system.openpty(pty_size(cols, rows)).map_err(|e| {
             eprintln!("[slate][session] openpty failed: {e}");
             cmd_err(e)
         })?;
@@ -56,7 +51,6 @@ impl PtySession {
         let writer = pair.master.take_writer().map_err(cmd_err)?;
 
         let reader_task = spawn_reader(id.clone(), reader, app);
-        eprintln!("[slate][session] reader task started for id={id}");
 
         let shell_pid = child.process_id().unwrap_or(0);
         eprintln!("[slate][session] shell_pid={shell_pid} id={id}");
@@ -64,7 +58,7 @@ impl PtySession {
         Ok(PtySession {
             id,
             shell_pid,
-            master: pair.master,
+            master: Mutex::new(pair.master),
             writer: Mutex::new(writer),
             child: Mutex::new(child),
             reader_task,
@@ -72,48 +66,51 @@ impl PtySession {
     }
 
     pub fn write(&self, data: &[u8]) -> CommandResult<()> {
-        eprintln!(
-            "[slate][session] write {} bytes to id={}",
-            data.len(),
-            self.id
-        );
         self.writer.lock().unwrap().write_all(data).map_err(cmd_err)
     }
 
     pub fn resize(&self, cols: u16, rows: u16) -> CommandResult<()> {
-        eprintln!(
-            "[slate][session] resize id={} cols={cols} rows={rows}",
-            self.id
-        );
         self.master
-            .resize(PtySize {
-                cols,
-                rows,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
+            .lock()
+            .unwrap()
+            .resize(pty_size(cols, rows))
             .map_err(cmd_err)
     }
 
     /// True if a Claude Code / `claude` CLI process appears in this PTY's shell tree.
     pub fn claude_code_active(&self) -> bool {
         #[cfg(unix)]
-        let fg = self
-            .master
-            .process_group_leader()
-            .filter(|&p| p > 0)
-            .map(|p| p as u32);
+        let fg = {
+            let master = self.master.lock().unwrap();
+            master
+                .process_group_leader()
+                .filter(|&p| p > 0)
+                .map(|p| p as u32)
+        };
         #[cfg(not(unix))]
         let fg: Option<u32> = None;
         agent_detect::claude_session_active(self.shell_pid, fg)
     }
 
-    pub fn close(self) {
+    pub fn close(&self) {
         eprintln!("[slate][session] closing id={}", self.id);
         if let Ok(mut child) = self.child.lock() {
             let _ = child.kill();
         }
         self.reader_task.abort();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn pty_size(cols: u16, rows: u16) -> PtySize {
+    PtySize {
+        cols,
+        rows,
+        pixel_width: 0,
+        pixel_height: 0,
     }
 }
 
@@ -207,6 +204,11 @@ _slate_report_cwd
 
 /// Reads PTY output on a blocking thread and emits Tauri events.
 ///
+/// Coalesces consecutive reads into a single emit when chunks arrive quickly,
+/// bounded by 8 KiB or 4 ms — whichever comes first. This prevents IPC
+/// saturation when Claude Code or similar tools flood the PTY with output,
+/// while keeping latency imperceptible for interactive use.
+///
 /// Uses `spawn_blocking` because `portable-pty`'s reader is synchronous I/O
 /// and blocking the async executor would stall all other commands.
 fn spawn_reader(
@@ -217,30 +219,32 @@ fn spawn_reader(
     tokio::task::spawn_blocking(move || {
         eprintln!("[slate][reader] loop start for id={session_id}");
         let mut buf = [0u8; 4096];
-        let mut total_bytes = 0usize;
+        let mut coalesce: Vec<u8> = Vec::with_capacity(16 * 1024);
+        let mut last_emit = Instant::now();
+        const FLUSH_BYTES: usize = 8 * 1024;
+        const FLUSH_INTERVAL: Duration = Duration::from_millis(4);
 
         loop {
             match reader.read(&mut buf) {
                 Ok(0) | Err(_) => {
-                    eprintln!(
-                        "[slate][reader] EOF/error for id={session_id} total_bytes={total_bytes}"
-                    );
+                    // Flush any pending bytes before signalling exit.
+                    if !coalesce.is_empty() {
+                        app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
+                    }
+                    eprintln!("[slate][reader] EOF/error for id={session_id}");
                     break;
                 }
                 Ok(n) => {
-                    total_bytes += n;
-                    let encoded = B64.encode(&buf[..n]);
-                    eprintln!(
-                        "[slate][reader] emit {n} bytes (total={total_bytes}) for id={session_id}"
-                    );
-                    if let Err(e) = app.emit(&events::pty_data(&session_id), encoded) {
-                        eprintln!("[slate][reader] emit error: {e}");
+                    coalesce.extend_from_slice(&buf[..n]);
+                    if coalesce.len() >= FLUSH_BYTES || last_emit.elapsed() >= FLUSH_INTERVAL {
+                        app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
+                        coalesce.clear();
+                        last_emit = Instant::now();
                     }
                 }
             }
         }
 
-        eprintln!("[slate][reader] emitting exit for id={session_id}");
         app.emit(&events::pty_exit(&session_id), ()).ok();
     })
 }

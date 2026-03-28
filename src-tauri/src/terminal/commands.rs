@@ -18,9 +18,9 @@ pub async fn pty_create(
     app: AppHandle,
 ) -> CommandResult<()> {
     eprintln!("[slate][cmd] pty_create id={id} cols={cols} rows={rows}");
-    let result = state.sessions.lock().unwrap().create(id.clone(), cols, rows, app);
+    let result = state.sessions.create(id.clone(), cols, rows, app);
     match &result {
-        Ok(_)  => eprintln!("[slate][cmd] pty_create ok id={id}"),
+        Ok(_) => eprintln!("[slate][cmd] pty_create ok id={id}"),
         Err(e) => eprintln!("[slate][cmd] pty_create err id={id}: {e}"),
     }
     result
@@ -33,7 +33,7 @@ pub async fn pty_write(
     state: State<'_, AppState>,
 ) -> CommandResult<()> {
     // Don't log every keystroke — only log if it errors.
-    let result = state.sessions.lock().unwrap().write(&id, data.as_bytes());
+    let result = state.sessions.write(&id, data.as_bytes());
     if let Err(ref e) = result {
         eprintln!("[slate][cmd] pty_write err id={id}: {e}");
     }
@@ -48,8 +48,30 @@ pub async fn pty_resize(
     state: State<'_, AppState>,
 ) -> CommandResult<()> {
     eprintln!("[slate][cmd] pty_resize id={id} cols={cols} rows={rows}");
-    state.sessions.lock().unwrap().resize(&id, cols, rows)
+    state.sessions.resize(&id, cols, rows)
 }
+
+#[tauri::command]
+pub async fn pty_close(
+    id: String,
+    state: State<'_, AppState>,
+) -> CommandResult<()> {
+    eprintln!("[slate][cmd] pty_close id={id}");
+    state.sessions.close(&id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn pty_claude_code_active(
+    id: String,
+    state: State<'_, AppState>,
+) -> CommandResult<bool> {
+    state.sessions.claude_code_active(&id)
+}
+
+// ---------------------------------------------------------------------------
+// Git info
+// ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize)]
 pub struct GitInfo {
@@ -61,26 +83,17 @@ pub struct GitInfo {
 /// status. Returns `None` when not inside a git repository.
 ///
 /// Branch is read directly from the file (no subprocess, zero overhead).
-/// Dirty status spawns `git status --porcelain` once per cwd change only.
+/// Dirty status spawns `git status --porcelain` asynchronously so the tokio
+/// worker thread is not blocked.
 #[tauri::command]
 pub async fn git_info(cwd: String) -> Option<GitInfo> {
-    let mut path = std::path::PathBuf::from(&cwd);
+    let mut search = super::resolve_path(&cwd);
 
-    // Expand a leading ~ to the real home directory.
-    if path.starts_with("~") {
-        if let Ok(home) = std::env::var("HOME") {
-            let rest = path.strip_prefix("~").unwrap().to_path_buf();
-            path = std::path::PathBuf::from(home).join(rest);
-        }
-    }
-
-    // Walk up the tree looking for a .git directory.
-    let mut search = path.clone();
     loop {
         let head = search.join(".git").join("HEAD");
         if head.is_file() {
             let content = std::fs::read_to_string(&head).ok()?;
-            let content = content.trim();
+            let content = content.trim().to_string();
 
             let branch = if let Some(b) = content.strip_prefix("ref: refs/heads/") {
                 b.to_string()
@@ -90,10 +103,11 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
                 return None;
             };
 
-            // Dirty check: any output from `git status --porcelain` means dirty.
-            let dirty = std::process::Command::new("git")
-                .args(["-C", search.to_str().unwrap_or(""), "status", "--porcelain"])
+            let cwd_str = search.to_string_lossy().into_owned();
+            let dirty = tokio::process::Command::new("git")
+                .args(["-C", &cwd_str, "status", "--porcelain"])
                 .output()
+                .await
                 .map(|o| o.status.success() && !o.stdout.is_empty())
                 .unwrap_or(false);
 
@@ -106,25 +120,12 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
     None
 }
 
+// ---------------------------------------------------------------------------
+// Project stack
+// ---------------------------------------------------------------------------
+
 /// Detect project stacks (Rust, Go, Node, React, Python, …) at the nearest project root.
 #[tauri::command]
 pub async fn project_stack(cwd: String) -> Vec<ProjectStackItem> {
     project_stack_mod::detect(cwd)
-}
-
-#[tauri::command]
-pub async fn pty_close(
-    id: String,
-    state: State<'_, AppState>,
-) -> CommandResult<()> {
-    eprintln!("[slate][cmd] pty_close id={id}");
-    state.sessions.lock().unwrap().close(&id);
-    Ok(())
-}
-
-/// Returns whether Claude Code / the `claude` CLI appears in this PTY session's process tree.
-/// `id` is the PTY id (same as `pty_create`).
-#[tauri::command]
-pub async fn pty_claude_code_active(id: String, state: State<'_, AppState>) -> CommandResult<bool> {
-    state.sessions.lock().unwrap().claude_code_active(&id)
 }

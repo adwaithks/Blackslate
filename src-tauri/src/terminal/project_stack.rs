@@ -18,22 +18,11 @@ pub struct ProjectStackItem {
 
 /// Tauri command entry: resolve cwd, find project root, run all detectors.
 pub fn detect(cwd: String) -> Vec<ProjectStackItem> {
-    let path = resolve_path(&cwd);
+    let path = super::resolve_path(&cwd);
     let Some(root) = find_project_root(&path) else {
         return Vec::new();
     };
     run_all_detectors(&root)
-}
-
-fn resolve_path(cwd: &str) -> PathBuf {
-    let mut path = PathBuf::from(cwd);
-    if path.starts_with("~") {
-        if let Ok(home) = std::env::var("HOME") {
-            let rest = path.strip_prefix("~").unwrap().to_path_buf();
-            path = PathBuf::from(home).join(rest);
-        }
-    }
-    path
 }
 
 fn find_project_root(start: &Path) -> Option<PathBuf> {

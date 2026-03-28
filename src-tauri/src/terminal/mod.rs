@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::path::PathBuf;
 
 mod agent_detect;
 mod error;
@@ -13,18 +13,28 @@ use manager::SessionManager;
 
 /// Global application state managed by Tauri.
 ///
-/// Accessed in command handlers via `State<'_, AppState>`.
-/// The `Mutex` ensures exclusive access when creating or closing sessions.
-/// Individual session operations (write, resize) use their own internal
-/// per-field mutexes so they don't block each other.
+/// `SessionManager` uses internal `RwLock` + `Arc` per session so concurrent
+/// writes/resizes across multiple panes don't serialise through a single lock.
 pub struct AppState {
-    pub sessions: Mutex<SessionManager>,
+    pub sessions: SessionManager,
 }
 
 impl AppState {
     pub fn new() -> Self {
         AppState {
-            sessions: Mutex::new(SessionManager::new()),
+            sessions: SessionManager::new(),
         }
     }
+}
+
+/// Expand a leading `~` to `$HOME`. Shared by `git_info` and `project_stack`.
+pub(crate) fn resolve_path(cwd: &str) -> PathBuf {
+    let mut path = PathBuf::from(cwd);
+    if path.starts_with("~") {
+        if let Ok(home) = std::env::var("HOME") {
+            let rest = path.strip_prefix("~").unwrap().to_path_buf();
+            path = PathBuf::from(home).join(rest);
+        }
+    }
+    path
 }
