@@ -10,13 +10,13 @@ import { useSessionStore, type GitInfo } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
 
 interface TerminalPaneProps {
-  sessionId: string;
-  /**
-   * When true, this pane is the visible session.
-   * Triggers a fit + focus so the terminal is ready to use immediately
-   * after switching from another session.
-   */
-  isActive: boolean;
+	sessionId: string;
+	/**
+	 * When true, this pane is the visible session.
+	 * Triggers a fit + focus so the terminal is ready to use immediately
+	 * after switching from another session.
+	 */
+	isActive: boolean;
 }
 
 /**
@@ -32,133 +32,135 @@ interface TerminalPaneProps {
  * re-fit and focus.
  */
 export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [terminal, setTerminal] = useState<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const fontSize = useSettingsStore((s) => s.fontSize);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [terminal, setTerminal] = useState<Terminal | null>(null);
+	const fitAddonRef = useRef<FitAddon | null>(null);
+	const fontSize = useSettingsStore((s) => s.fontSize);
 
-  // ── xterm initialisation (once per mount) ──────────────────────────────
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+	// ── xterm initialisation (once per mount) ──────────────────────────────
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
 
-    const term = new Terminal({
-      theme: {
-        background: "#00000000", // transparent — lets macOS vibrancy show through
-        foreground: "#d4d4d4",
-        cursor: "#d4d4d4",
-        selectionBackground: "#ffffff40",
-        black: "#1e1e1e",
-        red: "#f44747",
-        green: "#4ec9b0",
-        yellow: "#dcdcaa",
-        blue: "#569cd6",
-        magenta: "#c586c0",
-        cyan: "#9cdcfe",
-        white: "#d4d4d4",
-        brightBlack: "#808080",
-        brightRed: "#f44747",
-        brightGreen: "#4ec9b0",
-        brightYellow: "#dcdcaa",
-        brightBlue: "#569cd6",
-        brightMagenta: "#c586c0",
-        brightCyan: "#9cdcfe",
-        brightWhite: "#ffffff",
-      },
-      fontFamily: '"Geist Mono Variable", "Geist Mono", monospace',
-      fontSize,
-      lineHeight: 1.4,
-      cursorBlink: true,
-      cursorStyle: "block",
-      scrollback: 10_000,
-      allowTransparency: true,
-      smoothScrollDuration: 80,
-    });
+		const term = new Terminal({
+			theme: {
+				background: "#00000000", // transparent — lets macOS vibrancy show through
+				foreground: "#d4d4d4",
+				cursor: "#d4d4d4",
+				selectionBackground: "#ffffff40",
+				black: "#1e1e1e",
+				red: "#f44747",
+				green: "#4ec9b0",
+				yellow: "#dcdcaa",
+				blue: "#569cd6",
+				magenta: "#c586c0",
+				cyan: "#9cdcfe",
+				white: "#d4d4d4",
+				brightBlack: "#808080",
+				brightRed: "#f44747",
+				brightGreen: "#4ec9b0",
+				brightYellow: "#dcdcaa",
+				brightBlue: "#569cd6",
+				brightMagenta: "#c586c0",
+				brightCyan: "#9cdcfe",
+				brightWhite: "#ffffff",
+			},
+			fontFamily: '"Geist Mono Variable", "Geist Mono", monospace',
+			fontSize,
+			lineHeight: 1.4,
+			cursorBlink: true,
+			cursorStyle: "block",
+			scrollback: 10_000,
+			allowTransparency: true,
+			smoothScrollDuration: 80,
+		});
 
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.loadAddon(new WebLinksAddon());
-    term.open(container);
+		const fitAddon = new FitAddon();
+		term.loadAddon(fitAddon);
+		term.loadAddon(new WebLinksAddon());
+		term.open(container);
 
-    // WebGL renderer — GPU accelerated (same as VS Code). Falls back to
-    // canvas/DOM automatically on context loss or if WebGL is unavailable.
-    try {
-      const webgl = new WebglAddon();
-      webgl.onContextLoss(() => webgl.dispose());
-      term.loadAddon(webgl);
-    } catch {
-      // WebGL unavailable — xterm uses its canvas renderer.
-    }
+		// WebGL renderer — GPU accelerated (same as VS Code). Falls back to
+		// canvas/DOM automatically on context loss or if WebGL is unavailable.
+		try {
+			const webgl = new WebglAddon();
+			webgl.onContextLoss(() => webgl.dispose());
+			term.loadAddon(webgl);
+		} catch {
+			// WebGL unavailable — xterm uses its canvas renderer.
+		}
 
-    fitAddon.fit();
-    fitAddonRef.current = fitAddon;
+		fitAddon.fit();
+		fitAddonRef.current = fitAddon;
 
-    // Defer focus so the webview is ready to accept keyboard events.
-    requestAnimationFrame(() => term.focus());
+		// Defer focus so the webview is ready to accept keyboard events.
+		requestAnimationFrame(() => term.focus());
 
-    setTerminal(term);
-    return () => {
-      term.dispose();
-      setTerminal(null);
-      fitAddonRef.current = null;
-    };
-  }, []);
+		setTerminal(term);
+		return () => {
+			term.dispose();
+			setTerminal(null);
+			fitAddonRef.current = null;
+		};
+	}, []);
 
-  // ── PTY connection ─────────────────────────────────────────────────────
-  const { sendResize } = usePty({ terminal, sessionId });
+	// ── PTY connection ─────────────────────────────────────────────────────
+	const { sendResize } = usePty({ terminal, sessionId });
 
-  // ── Git info — refresh whenever cwd changes ────────────────────────────
-  const cwd = useSessionStore((s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~");
-  const setGit = useSessionStore((s) => s.setGit);
+	// ── Git info — refresh whenever cwd changes ────────────────────────────
+	const cwd = useSessionStore(
+		(s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~",
+	);
+	const setGit = useSessionStore((s) => s.setGit);
 
-  useEffect(() => {
-    invoke<GitInfo | null>("git_info", { cwd })
-      .then((git) => setGit(sessionId, git))
-      .catch(() => setGit(sessionId, null));
-  }, [cwd, sessionId, setGit]);
+	useEffect(() => {
+		invoke<GitInfo | null>("git_info", { cwd })
+			.then((git) => setGit(sessionId, git))
+			.catch(() => setGit(sessionId, null));
+	}, [cwd, sessionId, setGit]);
 
-  // ── Font size — update terminal and refit when the user zooms ─────────
-  useEffect(() => {
-    if (!terminal) return;
-    terminal.options.fontSize = fontSize;
-    requestAnimationFrame(() => {
-      fitAddonRef.current?.fit();
-      sendResize(terminal.cols, terminal.rows);
-    });
-  }, [fontSize, terminal, sendResize]);
+	// ── Font size — update terminal and refit when the user zooms ─────────
+	useEffect(() => {
+		if (!terminal) return;
+		terminal.options.fontSize = fontSize;
+		requestAnimationFrame(() => {
+			fitAddonRef.current?.fit();
+			sendResize(terminal.cols, terminal.rows);
+		});
+	}, [fontSize, terminal, sendResize]);
 
-  // ── Resize observer ────────────────────────────────────────────────────
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !terminal) return;
+	// ── Resize observer ────────────────────────────────────────────────────
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container || !terminal) return;
 
-    const observer = new ResizeObserver(() => {
-      fitAddonRef.current?.fit();
-      sendResize(terminal.cols, terminal.rows);
-    });
+		const observer = new ResizeObserver(() => {
+			fitAddonRef.current?.fit();
+			sendResize(terminal.cols, terminal.rows);
+		});
 
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [terminal, sendResize]);
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [terminal, sendResize]);
 
-  // ── Activation ─────────────────────────────────────────────────────────
-  // When this pane becomes the active session (e.g. user clicks another tab),
-  // re-fit in case the container size changed while hidden, then focus.
-  useEffect(() => {
-    if (!isActive || !terminal) return;
-    requestAnimationFrame(() => {
-      fitAddonRef.current?.fit();
-      sendResize(terminal.cols, terminal.rows);
-      terminal.focus();
-    });
-  }, [isActive, terminal, sendResize]);
+	// ── Activation ─────────────────────────────────────────────────────────
+	// When this pane becomes the active session (e.g. user clicks another tab),
+	// re-fit in case the container size changed while hidden, then focus.
+	useEffect(() => {
+		if (!isActive || !terminal) return;
+		requestAnimationFrame(() => {
+			fitAddonRef.current?.fit();
+			sendResize(terminal.cols, terminal.rows);
+			terminal.focus();
+		});
+	}, [isActive, terminal, sendResize]);
 
-  return (
-    <div
-      className="w-full h-full pl-3 pt-2 pb-2 bg-black"
-      onClick={() => terminal?.focus()}
-    >
-      <div ref={containerRef} className="w-full h-full" />
-    </div>
-  );
+	return (
+		<div
+			className="w-full h-full pl-3 pt-2 pb-2 bg-black"
+			onClick={() => terminal?.focus()}
+		>
+			<div ref={containerRef} className="w-full h-full" />
+		</div>
+	);
 }

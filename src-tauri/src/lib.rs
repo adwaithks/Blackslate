@@ -1,7 +1,9 @@
 mod terminal;
 
 use terminal::AppState;
-use terminal::commands::{get_home_dir, git_info, pty_close, pty_create, pty_resize, pty_write};
+use terminal::commands::{
+    get_home_dir, git_info, pty_claude_code_active, pty_close, pty_create, pty_resize, pty_write,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +15,7 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_close,
+            pty_claude_code_active,
             git_info,
             get_home_dir,
         ])

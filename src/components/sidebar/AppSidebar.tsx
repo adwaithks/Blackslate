@@ -1,15 +1,21 @@
-import { GitBranch, X } from "lucide-react";
+import { BiGitBranch } from "react-icons/bi";
+import { IoClose } from "react-icons/io5";
+import { SiClaude } from "react-icons/si";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
+	Sidebar,
+	SidebarContent,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarMenu,
+	SidebarMenuAction,
+	SidebarMenuButton,
+	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useSessionStore, sessionDisplayName, type Session } from "@/store/sessions";
+import {
+	useSessionStore,
+	sessionDisplayName,
+	type Session,
+} from "@/store/sessions";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -17,70 +23,93 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 interface SessionItemProps {
-  session: Session;
-  index: number;
-  isActive: boolean;
-  onActivate: () => void;
-  onClose: () => void;
+	session: Session;
+	index: number;
+	isActive: boolean;
+	onActivate: () => void;
+	onClose: () => void;
 }
 
-function SessionItem({ session, index, isActive, onActivate, onClose }: SessionItemProps) {
-  const dirName = sessionDisplayName(session);
-  const { git } = session;
+function SessionItem({
+	session,
+	index,
+	isActive,
+	onActivate,
+	onClose,
+}: SessionItemProps) {
+	const dirName = sessionDisplayName(session);
+	const { git } = session;
 
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={isActive}
-        onClick={onActivate}
-        className="group/item h-auto py-2 px-2 flex-col items-start gap-2"
-        tooltip={session.cwd}
-      >
-        {/* Row 1: status dot + "#N dirname" — primary */}
-        <div className="flex items-center gap-2 w-full">
-          <span
-            className={cn(
-              "size-1.5 rounded-full shrink-0 transition-colors",
-              isActive ? "bg-emerald-400" : "bg-muted-foreground/25"
-            )}
-          />
-          <span className="font-semibold text-[13px] tracking-tight truncate leading-none">
-            <span className="text-muted-foreground/35 mr-2">#{index + 1}</span>
-            {dirName}
-          </span>
-        </div>
+	return (
+		<SidebarMenuItem>
+			<SidebarMenuButton
+				isActive={isActive}
+				onClick={onActivate}
+				className={cn(
+					"group/item h-auto flex-col items-start gap-2 py-2 px-2",
+					"rounded-md transition-colors",
+					isActive
+						? "data-active:bg-white/14! hover:data-active:bg-white/18!"
+						: "bg-white/6! hover:bg-white/10!",
+				)}
+				tooltip={session.cwd}
+			>
+				{/* Row 1: status dot + "#N dirname" — primary */}
+				<div className="flex w-full min-w-0 items-center gap-2">
+					<span
+						className={cn(
+							"size-1.5 shrink-0 rounded-full transition-colors",
+							isActive ? "bg-green-300" : "bg-white/30",
+						)}
+					/>
+					<span className="min-w-0 flex-1 truncate text-xs leading-none tracking-tight">
+						<span className="mr-2 text-muted-foreground/55">
+							#{index + 1}
+						</span>
+						{dirName}
+					</span>
+					{session.claudeCodeActive && (
+						<span
+							className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-[#D97757]"
+							title="Claude Code running in this session"
+						>
+							<SiClaude className="size-3 shrink-0" aria-hidden />
+							<span className="hidden sm:inline">Code</span>
+						</span>
+					)}
+				</div>
 
-        {/* Row 2: cwd path — secondary */}
-        <span className="pl-[14px] text-[11px] text-muted-foreground/35 truncate w-full leading-none tracking-wide">
-          {session.cwd}
-        </span>
+				{/* Row 2: cwd path — secondary */}
+				<span className="pl-[14px] text-[10px] text-muted-foreground/55 truncate w-full leading-none tracking-wide">
+					{session.cwd}
+				</span>
 
-        {/* Row 3: git branch + dirty dot — only when in a repo */}
-        {git && (
-          <div className="pl-[14px] flex items-center gap-1.5 w-full min-w-0">
-            <GitBranch className="size-2.5 shrink-0 text-muted-foreground/35" />
-            <span className="text-[11px] text-muted-foreground/45 truncate leading-none tracking-wide">
-              {git.branch}
-            </span>
-            {git.dirty && (
-              <span className="size-1.5 rounded-full bg-amber-400/70 shrink-0" />
-            )}
-          </div>
-        )}
-      </SidebarMenuButton>
+				{/* Row 3: git branch + dirty dot — only when in a repo */}
+				{git && (
+					<div className="pl-[14px] flex items-center gap-1.5 w-full min-w-0">
+						<BiGitBranch className="size-2.5 shrink-0 text-muted-foreground/50" />
+						<span className="text-[11px] text-muted-foreground/60 truncate leading-none tracking-wide">
+							{git.branch}
+						</span>
+						{git.dirty && (
+							<span className="size-1.5 rounded-full bg-white/45 shrink-0" />
+						)}
+					</div>
+				)}
+			</SidebarMenuButton>
 
-      <SidebarMenuAction
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        showOnHover
-      >
-        <X className="size-3" />
-        <span className="sr-only">Close session</span>
-      </SidebarMenuAction>
-    </SidebarMenuItem>
-  );
+			<SidebarMenuAction
+				onClick={(e) => {
+					e.stopPropagation();
+					onClose();
+				}}
+				showOnHover
+			>
+				<IoClose className="size-3" />
+				<span className="sr-only">Close session</span>
+			</SidebarMenuAction>
+		</SidebarMenuItem>
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -88,28 +117,31 @@ function SessionItem({ session, index, isActive, onActivate, onClose }: SessionI
 // ---------------------------------------------------------------------------
 
 export function AppSidebar() {
-  const { sessions, activeId, closeSession, activateSession } = useSessionStore();
+	const { sessions, activeId, closeSession, activateSession } =
+		useSessionStore();
 
-  return (
-    <Sidebar collapsible="none">
-      <SidebarContent>
-        <SidebarGroup className="px-2">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {sessions.map((session, index) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  index={index}
-                  isActive={session.id === activeId}
-                  onActivate={() => activateSession(session.id)}
-                  onClose={() => closeSession(session.id)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
+	return (
+		<Sidebar collapsible="offcanvas">
+			<SidebarContent className="mt-8">
+				<SidebarGroup className="px-1.5">
+					<SidebarGroupContent>
+						<SidebarMenu className="gap-1">
+							{sessions.map((session, index) => (
+								<SessionItem
+									key={session.id}
+									session={session}
+									index={index}
+									isActive={session.id === activeId}
+									onActivate={() =>
+										activateSession(session.id)
+									}
+									onClose={() => closeSession(session.id)}
+								/>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+			</SidebarContent>
+		</Sidebar>
+	);
 }

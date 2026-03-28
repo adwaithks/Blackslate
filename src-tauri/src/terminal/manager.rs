@@ -61,6 +61,11 @@ impl SessionManager {
     // Internal
     // -----------------------------------------------------------------------
 
+    /// Whether Claude Code (or the `claude` CLI) is running under this PTY's shell.
+    pub fn claude_code_active(&self, id: &str) -> CommandResult<bool> {
+        Ok(self.get(id)?.claude_code_active())
+    }
+
     fn get(&self, id: &str) -> CommandResult<&PtySession> {
         self.sessions
             .get(id)

@@ -114,3 +114,10 @@ pub async fn pty_close(
     state.sessions.lock().unwrap().close(&id);
     Ok(())
 }
+
+/// Returns whether Claude Code / the `claude` CLI appears in this PTY session's process tree.
+/// `id` is the PTY id (same as `pty_create`).
+#[tauri::command]
+pub async fn pty_claude_code_active(id: String, state: State<'_, AppState>) -> CommandResult<bool> {
+    state.sessions.lock().unwrap().claude_code_active(&id)
+}

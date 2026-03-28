@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+mod agent_detect;
 mod error;
 mod events;
 mod manager;

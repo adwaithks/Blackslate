@@ -1,17 +1,20 @@
 use std::io::{Read, Write};
 use std::sync::Mutex;
 
-use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as B64;
-use portable_pty::{CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem, Child};
+use base64::Engine as _;
+use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
 use tauri::{AppHandle, Emitter};
 use tokio::task::JoinHandle;
 
+use super::agent_detect;
 use super::error::{cmd_err, CommandResult};
 use super::events;
 
 pub struct PtySession {
     pub id: String,
+    /// PID of the shell process (PTY leader). Used for agent / Claude Code detection.
+    pub shell_pid: u32,
     master: Box<dyn MasterPty + Send>,
     writer: Mutex<Box<dyn Write + Send>>,
     child: Mutex<Box<dyn Child + Send + Sync>>,
@@ -24,7 +27,12 @@ impl PtySession {
         eprintln!("[slate][session] creating id={id} shell={shell} cols={cols} rows={rows}");
 
         let pty_system = NativePtySystem::default();
-        let size = PtySize { cols, rows, pixel_width: 0, pixel_height: 0 };
+        let size = PtySize {
+            cols,
+            rows,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
 
         let pair = pty_system.openpty(size).map_err(|e| {
             eprintln!("[slate][session] openpty failed: {e}");
@@ -50,8 +58,12 @@ impl PtySession {
         let reader_task = spawn_reader(id.clone(), reader, app);
         eprintln!("[slate][session] reader task started for id={id}");
 
+        let shell_pid = child.process_id().unwrap_or(0);
+        eprintln!("[slate][session] shell_pid={shell_pid} id={id}");
+
         Ok(PtySession {
             id,
+            shell_pid,
             master: pair.master,
             writer: Mutex::new(writer),
             child: Mutex::new(child),
@@ -60,15 +72,40 @@ impl PtySession {
     }
 
     pub fn write(&self, data: &[u8]) -> CommandResult<()> {
-        eprintln!("[slate][session] write {} bytes to id={}", data.len(), self.id);
+        eprintln!(
+            "[slate][session] write {} bytes to id={}",
+            data.len(),
+            self.id
+        );
         self.writer.lock().unwrap().write_all(data).map_err(cmd_err)
     }
 
     pub fn resize(&self, cols: u16, rows: u16) -> CommandResult<()> {
-        eprintln!("[slate][session] resize id={} cols={cols} rows={rows}", self.id);
+        eprintln!(
+            "[slate][session] resize id={} cols={cols} rows={rows}",
+            self.id
+        );
         self.master
-            .resize(PtySize { cols, rows, pixel_width: 0, pixel_height: 0 })
+            .resize(PtySize {
+                cols,
+                rows,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(cmd_err)
+    }
+
+    /// True if a Claude Code / `claude` CLI process appears in this PTY's shell tree.
+    pub fn claude_code_active(&self) -> bool {
+        #[cfg(unix)]
+        let fg = self
+            .master
+            .process_group_leader()
+            .filter(|&p| p > 0)
+            .map(|p| p as u32);
+        #[cfg(not(unix))]
+        let fg: Option<u32> = None;
+        agent_detect::claude_session_active(self.shell_pid, fg)
     }
 
     pub fn close(self) {

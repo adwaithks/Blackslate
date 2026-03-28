@@ -1,72 +1,119 @@
-import { useEffect } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { IoAdd } from "react-icons/io5";
+import { invoke } from "@tauri-apps/api/core";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { TerminalView } from "@/components/terminal/TerminalView";
-import { useSessionStore } from "@/store/sessions";
+import { cwdToAbsolute, useSessionStore } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
-
+import {
+	modLetter,
+	useAppShortcuts,
+	zoomInKeys,
+	zoomOutKey,
+} from "@/lib/appShortcuts";
 export function AppLayout() {
-  const { sessions, activeId, createSession } = useSessionStore();
-  const activeCwd = sessions.find((s) => s.id === activeId)?.cwd ?? "~";
-  const { increaseFontSize, decreaseFontSize } = useSettingsStore();
+	const { sessions, activeId, createSession } = useSessionStore();
+	const activeCwd = sessions.find((s) => s.id === activeId)?.cwd ?? "~";
+	const [homeDir, setHomeDir] = useState<string>("");
+	const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Cmd+= / Cmd++  →  zoom in     Cmd+-  →  zoom out
-  // Capture phase fires before xterm's listener so preventDefault() stops
-  // the character from being forwarded to the PTY.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!e.metaKey) return;
-      if (e.key === "=" || e.key === "+") {
-        e.preventDefault();
-        e.stopPropagation();
-        increaseFontSize();
-      } else if (e.key === "-") {
-        e.preventDefault();
-        e.stopPropagation();
-        decreaseFontSize();
-      }
-    };
-    window.addEventListener("keydown", handler, { capture: true });
-    return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [increaseFontSize, decreaseFontSize]);
+	const { increaseFontSize, decreaseFontSize } = useSettingsStore();
 
-  return (
-    <SidebarProvider
-      open={true}
-      onOpenChange={() => {}}
-      style={{ "--sidebar-width": "270px" } as React.CSSProperties}
-    >
-      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-        {/* macOS titlebar — the whole strip is a drag region; interactive children
-            (Button) capture pointer events before they bubble so they stay clickable */}
-        <div
-          data-tauri-drag-region
-          className="flex h-[32px] shrink-0 items-center gap-0 border-b border-border"
-        >
-          {/* Dead zone that clears the three traffic-light buttons (~76 px on macOS) */}
-          <div className="w-[76px] shrink-0" />
+	useEffect(() => {
+		invoke<string>("get_home_dir")
+			.then(setHomeDir)
+			.catch(() => setHomeDir(""));
+	}, []);
 
-          <Button variant="ghost" size="sm" onClick={createSession} className="gap-1.5 text-muted-foreground px-2">
-            <Plus className="size-3.5" />
-            New Tab
-          </Button>
+	const headerPwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
 
-          {/* Active session path — participates in drag, no interaction */}
-          <span className="text-xs text-muted-foreground/50 truncate font-mono select-none ml-2 leading-none">
-            {activeCwd}
-          </span>
-        </div>
+	const buildShortcuts = useCallback(() => {
+		const session = useSessionStore.getState();
+		return [
+			{
+				id: "new-tab",
+				when: (e: KeyboardEvent) => modLetter(e, "n"),
+				run: () => session.createSession(),
+			},
+			// ⌘Q is reserved by macOS for Quit (handled before the webview). Use ⌘W like browsers / tabbed UIs.
+			{
+				id: "close-tab",
+				when: (e: KeyboardEvent) => modLetter(e, "w"),
+				run: () => session.closeSession(session.activeId),
+			},
+			{
+				id: "toggle-sidebar",
+				when: (e: KeyboardEvent) => modLetter(e, "b"),
+				run: () => setSidebarOpen((o) => !o),
+			},
+			{
+				id: "zoom-in",
+				when: (e: KeyboardEvent) => zoomInKeys(e),
+				run: () => increaseFontSize(),
+			},
+			{
+				id: "zoom-out",
+				when: (e: KeyboardEvent) => zoomOutKey(e),
+				run: () => decreaseFontSize(),
+			},
+		];
+	}, [increaseFontSize, decreaseFontSize]);
 
-        {/* Main content: sidebar + terminal */}
-        <div className="flex flex-1">
-          <AppSidebar />
-          <main className="flex-1 overflow-hidden">
-            <TerminalView />
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
+	useAppShortcuts(buildShortcuts);
+
+	return (
+		<SidebarProvider
+			open={sidebarOpen}
+			onOpenChange={setSidebarOpen}
+			style={{ "--sidebar-width": "270px" } as React.CSSProperties}
+		>
+			<div className="flex flex-col h-screen w-screen overflow-hidden bg-transparent">
+				{/* macOS titlebar — sidebar column: traffic-light clearance + New Tab (same row as controls); cwd on the right */}
+				<div
+					className="relative z-20 grid h-[32px] shrink-0"
+					style={{
+						gridTemplateColumns: sidebarOpen
+							? "var(--sidebar-width) minmax(0, 1fr)"
+							: "minmax(76px, auto) minmax(0, 1fr)",
+					}}
+				>
+					<div
+						data-tauri-drag-region
+						className="flex min-w-0 items-center justify-end bg-[var(--slate-sidebar-surface)] pl-[76px] pr-2"
+					>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={createSession}
+							className="h-6 shrink-0 p-1 px-2 text-muted-foreground hover:text-foreground"
+						>
+							<IoAdd className="size-3.5 shrink-0" />
+							{sidebarOpen ? "New Tab" : null}
+						</Button>
+					</div>
+					<div
+						data-tauri-drag-region
+						className="flex min-w-0 w-full items-center justify-start bg-[#000000] px-3"
+					>
+						<span
+							title={headerPwd}
+							className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-muted-foreground/50 select-none"
+						>
+							{headerPwd}
+						</span>
+					</div>
+				</div>
+
+				{/* Main content: sidebar + terminal */}
+				<div className="flex flex-1 min-h-0 min-w-0">
+					<AppSidebar />
+					<main className="flex-1 overflow-hidden bg-background min-w-0">
+						<TerminalView />
+					</main>
+				</div>
+			</div>
+		</SidebarProvider>
+	);
 }
