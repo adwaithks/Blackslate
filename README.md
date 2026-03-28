@@ -17,14 +17,11 @@ A macOS terminal that works like every great terminal you've used — fast, mini
 
 <br />
 
+<img src="screenshots/carbon.png" alt="Blackslate — Carbon sidebar" width="100%" />
+
 <img src="screenshots/tokyo.png" alt="Blackslate — Tokyo Night theme" width="100%" />
 
-<table>
-<tr>
-<td width="50%"><img src="screenshots/carbon.png" alt="Carbon sidebar" width="100%" /></td>
-<td width="50%"><img src="screenshots/themesettings.png" alt="Theme settings" width="100%" /></td>
-</tr>
-</table>
+<img src="screenshots/themesettings.png" alt="Blackslate — Theme settings" width="100%" />
 
 <br />
 
@@ -76,21 +73,21 @@ The longer-term goal is bigger: **a full-stack developer workspace that lives in
 
 ### Personalisation
 
-- **Terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord (switchable live)
-- **Sidebar colours** — ten distinct dark palettes designed to pair with each terminal theme
-- **Settings** — accessible via `⌘,` or the macOS app menu
+- **Terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord — switchable live via `⌘,`
+- **Sidebar colours** — ten distinct dark palettes (Void, Carbon, Ember, Aurora, Deep Sea, Toxic, Dusk, Crimson, Rose, Slate) designed to pair with each terminal theme
+- **More customisation coming** — font family, font size, shell path, and additional themes on the roadmap
 
 ### On the Roadmap
 
 | | Feature |
 |---|---|
-| 🔲 | **Agent action timeline** — structured feed of tool calls and file operations |
+| 🔲 | **Agent action timeline** — structured feed of tool calls and file operations as Claude Code works |
 | 🔲 | **Inline diff viewer** — file edits as side-by-side diffs without leaving the terminal |
 | 🔲 | **Integrated code editor** — edit files inside Blackslate; the agent's loop never leaves |
-| 🔲 | **Agent status bar** — thinking / running tool / waiting for input as first-class UI |
+| 🔲 | **Enhanced agent status** — expand the existing Claude indicator into thinking / tool running / waiting states |
 | 🔲 | **Pane splits** — vertical and horizontal splits, multiple terminals in one window |
 | 🔲 | **Session renaming** — double-click to name a session |
-| 🔲 | **Settings panel** — font, font size, colour scheme, shell path |
+| 🔲 | **Extended settings** — font family, shell path, and additional colour schemes |
 
 ---
 
