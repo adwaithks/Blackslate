@@ -17,6 +17,17 @@ A macOS terminal that works like every great terminal you've used — fast, mini
 
 <br />
 
+<img src="screenshots/tokyo.png" alt="Blackslate — Tokyo Night theme" width="100%" />
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/carbon.png" alt="Carbon sidebar" width="100%" /></td>
+<td width="50%"><img src="screenshots/themesettings.png" alt="Theme settings" width="100%" /></td>
+</tr>
+</table>
+
+<br />
+
 </div>
 
 ---
