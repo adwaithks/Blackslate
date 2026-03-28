@@ -24,7 +24,9 @@ export function AppLayout() {
 	const { increaseFontSize, decreaseFontSize } = useSettingsStore();
 
 	useEffect(() => {
-		getHomeDir().then(setHomeDir).catch(() => setHomeDir(""));
+		getHomeDir()
+			.then(setHomeDir)
+			.catch(() => setHomeDir(""));
 	}, []);
 
 	const headerPwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
@@ -106,7 +108,7 @@ export function AppLayout() {
 							onClick={createSession}
 							className="h-6 shrink-0 p-1 px-2 text-muted-foreground hover:text-foreground"
 						>
-							<IoAdd className="size-3.5 shrink-0" />
+							<IoAdd className="size-4 shrink-0" />
 							{sidebarOpen ? "New Tab" : null}
 						</Button>
 						<Button
@@ -122,12 +124,12 @@ export function AppLayout() {
 						>
 							{sidebarOpen ? (
 								<LuPanelLeftClose
-									className="size-3.5 shrink-0"
+									className="size-4 shrink-0"
 									aria-hidden
 								/>
 							) : (
 								<LuPanelLeftOpen
-									className="size-3.5 shrink-0"
+									className="size-4 shrink-0"
 									aria-hidden
 								/>
 							)}

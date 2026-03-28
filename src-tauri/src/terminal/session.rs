@@ -1,7 +1,5 @@
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
 use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
@@ -250,34 +248,18 @@ fn spawn_reader(
     tokio::task::spawn_blocking(move || {
         eprintln!("[slate][reader] loop start for id={session_id}");
         let mut buf = [0u8; 4096];
-        let mut coalesce: Vec<u8> = Vec::with_capacity(16 * 1024);
-        let mut last_emit = Instant::now();
-        const FLUSH_BYTES: usize = 8 * 1024;
-        const FLUSH_INTERVAL: Duration = Duration::from_millis(4);
 
         loop {
             match reader.read(&mut buf) {
                 Ok(0) | Err(_) => {
-                    // Flush any pending bytes before signalling exit.
-                    if !coalesce.is_empty() {
-                        if let Some(ref l) = logger {
-                            l.log_output(&coalesce);
-                        }
-                        app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
-                    }
                     eprintln!("[slate][reader] EOF/error for id={session_id}");
                     break;
                 }
                 Ok(n) => {
-                    coalesce.extend_from_slice(&buf[..n]);
-                    if coalesce.len() >= FLUSH_BYTES || last_emit.elapsed() >= FLUSH_INTERVAL {
-                        if let Some(ref l) = logger {
-                            l.log_output(&coalesce);
-                        }
-                        app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
-                        coalesce.clear();
-                        last_emit = Instant::now();
+                    if let Some(ref l) = logger {
+                        l.log_output(&buf[..n]);
                     }
+                    app.emit(&events::pty_data(&session_id), B64.encode(&buf[..n])).ok();
                 }
             }
         }
