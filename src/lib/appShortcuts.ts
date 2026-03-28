@@ -41,6 +41,13 @@ export function zoomOutKey(e: KeyboardEvent): boolean {
 	return modPrimary(e) && !e.altKey && e.key === "-";
 }
 
+/** ⌘/Ctrl + a main-row digit (1–9), no Shift/Alt. Returns the digit or null. */
+export function modDigitKey(e: KeyboardEvent): number | null {
+	if (!modPrimary(e) || e.altKey || e.shiftKey) return null;
+	if (e.key < "1" || e.key > "9") return null;
+	return e.key.charCodeAt(0) - 48;
+}
+
 // ---------------------------------------------------------------------------
 // Focus — allow shortcuts while xterm is focused (textarea helper)
 // ---------------------------------------------------------------------------

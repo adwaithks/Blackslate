@@ -4,6 +4,7 @@ mod agent_detect;
 mod error;
 mod events;
 mod manager;
+mod project_stack;
 mod session;
 
 pub mod commands;

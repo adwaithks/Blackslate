@@ -6,8 +6,13 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { invoke } from "@tauri-apps/api/core";
 import { usePty } from "@/hooks/usePty";
-import { useSessionStore, type GitInfo } from "@/store/sessions";
+import {
+	useSessionStore,
+	type GitInfo,
+	type ProjectStackItem,
+} from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
+import { getThemeFont } from "@/lib/systemFonts";
 
 interface TerminalPaneProps {
 	sessionId: string;
@@ -65,11 +70,11 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 				brightCyan: "#9cdcfe",
 				brightWhite: "#ffffff",
 			},
-			fontFamily: '"Geist Mono Variable", "Geist Mono", monospace',
+			fontFamily: getThemeFont("--font-mono"),
 			fontSize,
-			lineHeight: 1.4,
+			lineHeight: 1,
 			cursorBlink: true,
-			cursorStyle: "block",
+			cursorStyle: "bar",
 			scrollback: 10_000,
 			allowTransparency: true,
 			smoothScrollDuration: 80,
@@ -112,12 +117,19 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		(s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~",
 	);
 	const setGit = useSessionStore((s) => s.setGit);
+	const setProjectStack = useSessionStore((s) => s.setProjectStack);
 
 	useEffect(() => {
 		invoke<GitInfo | null>("git_info", { cwd })
 			.then((git) => setGit(sessionId, git))
 			.catch(() => setGit(sessionId, null));
 	}, [cwd, sessionId, setGit]);
+
+	useEffect(() => {
+		invoke<ProjectStackItem[]>("project_stack", { cwd })
+			.then((stack) => setProjectStack(sessionId, stack))
+			.catch(() => setProjectStack(sessionId, []));
+	}, [cwd, sessionId, setProjectStack]);
 
 	// ── Font size — update terminal and refit when the user zooms ─────────
 	useEffect(() => {

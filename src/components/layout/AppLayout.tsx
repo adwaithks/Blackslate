@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { IoAdd } from "react-icons/io5";
+import { LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
 import { invoke } from "@tauri-apps/api/core";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { TerminalView } from "@/components/terminal/TerminalView";
 import { cwdToAbsolute, useSessionStore } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
 import {
+	modDigitKey,
 	modLetter,
 	useAppShortcuts,
 	zoomInKeys,
@@ -31,15 +33,32 @@ export function AppLayout() {
 
 	const buildShortcuts = useCallback(() => {
 		const session = useSessionStore.getState();
+		const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
+			const n = i + 1;
+			return {
+				id: `goto-tab-${n}`,
+				when: (e: KeyboardEvent) => modDigitKey(e) === n,
+				run: () => {
+					const s = useSessionStore.getState();
+					const target = s.sessions[n - 1];
+					if (target) s.activateSession(target.id);
+				},
+			};
+		});
 		return [
+			...gotoTabShortcuts,
 			{
 				id: "new-tab",
 				when: (e: KeyboardEvent) => modLetter(e, "n"),
 				run: () => session.createSession(),
 			},
-			// ⌘Q is reserved by macOS for Quit (handled before the webview). Use ⌘W like browsers / tabbed UIs.
 			{
 				id: "close-tab",
+				when: (e: KeyboardEvent) => modLetter(e, "q"),
+				run: () => session.closeSession(session.activeId),
+			},
+			{
+				id: "close-tab-alt",
 				when: (e: KeyboardEvent) => modLetter(e, "w"),
 				run: () => session.closeSession(session.activeId),
 			},
@@ -81,7 +100,7 @@ export function AppLayout() {
 				>
 					<div
 						data-tauri-drag-region
-						className="flex min-w-0 items-center justify-end bg-[var(--slate-sidebar-surface)] pl-[76px] pr-2"
+						className="flex min-w-0 items-center justify-end gap-0.5 bg-[var(--slate-sidebar-surface)] pl-[76px] pr-2"
 					>
 						<Button
 							variant="ghost"
@@ -92,6 +111,29 @@ export function AppLayout() {
 							<IoAdd className="size-3.5 shrink-0" />
 							{sidebarOpen ? "New Tab" : null}
 						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setSidebarOpen((o) => !o)}
+							aria-label={
+								sidebarOpen ? "Hide sidebar" : "Show sidebar"
+							}
+							aria-pressed={sidebarOpen}
+							className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+						>
+							{sidebarOpen ? (
+								<LuPanelLeftClose
+									className="size-3.5 shrink-0"
+									aria-hidden
+								/>
+							) : (
+								<LuPanelLeftOpen
+									className="size-3.5 shrink-0"
+									aria-hidden
+								/>
+							)}
+						</Button>
 					</div>
 					<div
 						data-tauri-drag-region
@@ -99,7 +141,7 @@ export function AppLayout() {
 					>
 						<span
 							title={headerPwd}
-							className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-muted-foreground/50 select-none"
+							className="min-w-0 flex-1 truncate text-xs leading-none text-muted-foreground/50 select-none"
 						>
 							{headerPwd}
 						</span>

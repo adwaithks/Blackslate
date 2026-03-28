@@ -9,6 +9,13 @@ export interface GitInfo {
 	dirty: boolean;
 }
 
+/** One stack line from `project_stack` (Rust) — add fields only with backend changes. */
+export interface ProjectStackItem {
+	id: string;
+	label: string;
+	version: string | null;
+}
+
 export interface Session {
 	id: string;
 	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
@@ -17,6 +24,8 @@ export interface Session {
 	createdAt: number;
 	/** Git info for the current cwd, null when not in a repo. */
 	git: GitInfo | null;
+	/** Detected project stacks (Rust, Go, Node, …) at cwd — empty when unknown/none. */
+	projectStack: ProjectStackItem[];
 	/** PTY backend id (Rust session key), set when the terminal connects. */
 	ptyId: string | null;
 	/** Whether Claude Code / `claude` CLI is running in that PTY (from OS process tree). */
@@ -42,6 +51,7 @@ interface SessionActions {
 	setCwd: (id: string, cwd: string) => void;
 	/** Update the git info for a session (called after cwd changes). */
 	setGit: (id: string, git: GitInfo | null) => void;
+	setProjectStack: (id: string, stack: ProjectStackItem[]) => void;
 	/** Link React session id ↔ PTY id after `pty_create`. */
 	setPtyId: (id: string, ptyId: string | null) => void;
 	setClaudeCodeActive: (id: string, active: boolean) => void;
@@ -59,6 +69,7 @@ function makeSession(): Session {
 		cwd: "~",
 		createdAt: Date.now(),
 		git: null,
+		projectStack: [],
 		ptyId: null,
 		claudeCodeActive: false,
 	};
@@ -112,6 +123,14 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	setGit(id, git) {
 		set((s) => ({
 			sessions: s.sessions.map((x) => (x.id === id ? { ...x, git } : x)),
+		}));
+	},
+
+	setProjectStack(id, projectStack) {
+		set((s) => ({
+			sessions: s.sessions.map((x) =>
+				x.id === id ? { ...x, projectStack } : x,
+			),
 		}));
 	},
 

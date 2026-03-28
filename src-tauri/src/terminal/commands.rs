@@ -1,6 +1,7 @@
 use tauri::{AppHandle, State};
 
 use super::error::CommandResult;
+use super::project_stack::{self as project_stack_mod, ProjectStackItem};
 use super::AppState;
 
 #[tauri::command]
@@ -103,6 +104,12 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
         }
     }
     None
+}
+
+/// Detect project stacks (Rust, Go, Node, React, Python, …) at the nearest project root.
+#[tauri::command]
+pub async fn project_stack(cwd: String) -> Vec<ProjectStackItem> {
+    project_stack_mod::detect(cwd)
 }
 
 #[tauri::command]

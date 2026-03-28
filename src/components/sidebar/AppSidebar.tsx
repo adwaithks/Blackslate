@@ -16,6 +16,10 @@ import {
 	sessionDisplayName,
 	type Session,
 } from "@/store/sessions";
+import {
+	projectStackIcon,
+	sortProjectStack,
+} from "@/lib/projectStack";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -38,7 +42,8 @@ function SessionItem({
 	onClose,
 }: SessionItemProps) {
 	const dirName = sessionDisplayName(session);
-	const { git } = session;
+	const { git, projectStack } = session;
+	const stacks = sortProjectStack(projectStack);
 
 	return (
 		<SidebarMenuItem>
@@ -48,6 +53,8 @@ function SessionItem({
 				className={cn(
 					"group/item h-auto flex-col items-start gap-2 py-2 px-2",
 					"rounded-md transition-colors",
+					/* Beat shadcn `[&_svg]:size-4` on SidebarMenuButton for session rows */
+					"[&_svg]:!size-2.5",
 					isActive
 						? "data-active:bg-white/14! hover:data-active:bg-white/18!"
 						: "bg-white/6! hover:bg-white/10!",
@@ -73,7 +80,7 @@ function SessionItem({
 							className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-[#D97757]"
 							title="Claude Code running in this session"
 						>
-							<SiClaude className="size-3 shrink-0" aria-hidden />
+							<SiClaude className="!size-2.5 shrink-0" aria-hidden />
 							<span className="hidden sm:inline">Code</span>
 						</span>
 					)}
@@ -87,8 +94,8 @@ function SessionItem({
 				{/* Row 3: git branch + dirty dot — only when in a repo */}
 				{git && (
 					<div className="pl-[14px] flex items-center gap-1.5 w-full min-w-0">
-						<BiGitBranch className="size-2.5 shrink-0 text-muted-foreground/50" />
-						<span className="text-[11px] text-muted-foreground/60 truncate leading-none tracking-wide">
+						<BiGitBranch className="!size-2 shrink-0 text-muted-foreground/50" />
+						<span className="text-[10px] text-muted-foreground/60 truncate leading-none tracking-wide">
 							{git.branch}
 						</span>
 						{git.dirty && (
@@ -96,16 +103,48 @@ function SessionItem({
 						)}
 					</div>
 				)}
+
+				{/* Row 4: project stacks (Rust, Go, Node, …) — from `project_stack` */}
+				{stacks.length > 0 && (
+					<div className="pl-[14px] flex flex-wrap items-center gap-x-2 gap-y-1 w-full min-w-0 [&_svg]:!size-2">
+						{stacks.map((s) => {
+							const Icon = projectStackIcon(s.id);
+							const ver = s.version ? ` ${s.version}` : "";
+							return (
+								<span
+									key={s.id}
+									className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 leading-none tracking-wide"
+									title={`${s.label}${ver}`}
+								>
+									<Icon
+										className="!size-2 shrink-0 opacity-80"
+										aria-hidden
+									/>
+									<span className="truncate max-w-36">
+										{s.label}
+										{s.version && (
+											<span className="text-muted-foreground/50">
+												{" "}
+												{s.version}
+											</span>
+										)}
+									</span>
+								</span>
+							);
+						})}
+					</div>
+				)}
 			</SidebarMenuButton>
 
 			<SidebarMenuAction
+				className="[&>svg]:!size-2.5"
 				onClick={(e) => {
 					e.stopPropagation();
 					onClose();
 				}}
 				showOnHover
 			>
-				<IoClose className="size-3" />
+				<IoClose className="!size-2.5" />
 				<span className="sr-only">Close session</span>
 			</SidebarMenuAction>
 		</SidebarMenuItem>

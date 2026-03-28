@@ -14,6 +14,9 @@ async function getHomeDir(): Promise<string> {
 // OSC 7 format: ESC ] 7 ; file://[host]/path BEL  or  ESC ] 7 ; ... ESC \
 const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
 
+// CSI SP q (DECSCUSR) — shells set block/underline/bar; strip so xterm `cursorStyle` wins.
+const DECSCUSR_RE = /\x1b\[[0-9;]* ?q/g;
+
 function parseOsc7(chunk: string, homePath: string): string | null {
 	OSC7_RE.lastIndex = 0;
 	const match = OSC7_RE.exec(chunk);
@@ -81,11 +84,16 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					const bytes = Uint8Array.from(atob(event.payload), (c) =>
 						c.charCodeAt(0),
 					);
-					term.write(bytes);
+					const chunk = new TextDecoder().decode(bytes);
+					const withoutCursor = chunk.replace(DECSCUSR_RE, "");
+					term.write(
+						withoutCursor === chunk
+							? bytes
+							: new TextEncoder().encode(withoutCursor),
+					);
 
 					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer.
-					const chunk = new TextDecoder().decode(bytes);
-					oscBufRef.current += chunk;
+					oscBufRef.current += withoutCursor;
 					// Keep the buffer bounded; retain only from the last ESC onwards.
 					const lastEsc = oscBufRef.current.lastIndexOf("\x1b");
 					const cwd = parseOsc7(oscBufRef.current, home);

@@ -1,38 +1,38 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "slate",
-  "version": "0.1.0",
-  "identifier": "com.ks.slate",
-  "build": {
-    "beforeDevCommand": "bun run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "",
-        "width": 1200,
-        "height": 800,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "devtools": true
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ]
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "slate",
+	"version": "0.1.0",
+	"identifier": "com.ks.slate",
+	"build": {
+		"beforeDevCommand": "bun run dev",
+		"devUrl": "http://localhost:1420",
+		"beforeBuildCommand": "bun run build",
+		"frontendDist": "../dist"
+	},
+	"app": {
+		"windows": [
+			{
+				"title": "",
+				"width": 900,
+				"height": 600,
+				"titleBarStyle": "Overlay",
+				"hiddenTitle": true,
+				"devtools": true
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": "all",
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		]
+	}
 }
