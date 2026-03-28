@@ -36,13 +36,20 @@ const BRAILLE_SPINNER_RE = /[⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]/;
 // e.g. "✳ New coding session" → "New coding session"
 const TITLE_PREFIX_RE = /^[\s✳✻✽✶✢·⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]+/;
 
-// Extracts the Claude model name from the splash screen.
-// Strategy: strip all CSI sequences from the chunk first (they're cursor-movement
-// noise from word-streaming), then anchor on the `·Claude` separator that always
-// follows the model version. Capturing the word before it avoids hardcoding
-// model family names — works for Sonnet, Haiku, Opus, and any future names.
-const STRIP_CSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
-const CLAUDE_MODEL_RE = /([\w.-]+)\s*·\s*Claude/;
+// Strips CSI sequences including private-mode variants (e.g. \x1b[?2026h).
+const STRIP_CSI_RE = /\x1b\[[?!>]?[0-9;]*[A-Za-z]/g;
+
+// Two patterns that surface the active model name, applied to CSI-stripped chunks:
+//
+//  DOT      — splash banner: "Sonnet4.6·ClaudePro"  (U+00B7 · separator)
+//             Fires on first open. Model name has no space e.g. "Sonnet4.6".
+//
+//  CURRENTLY — /model switch confirmation in the autocomplete description line:
+//              "Set the AI model for Claude Code (currently Sonnet 4.6)"
+//             Also fires on first open when the hint is visible.
+//             Model name already has a space e.g. "Sonnet 4.6".
+const CLAUDE_MODEL_DOT_RE = /([A-Za-z][a-zA-Z0-9.]+)\u00B7Claude/;
+const CLAUDE_MODEL_CURRENTLY_RE = /\(currently ([A-Za-z][a-zA-Z]+ \d+\.\d+)\)/;
 
 // OSC 9;4;0 — ConEmu progress reset. Claude Code emits this when a response finishes.
 // It also fires once at startup, so we only act on it when already in 'thinking' state.
@@ -79,7 +86,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 	const setPtyId = useSessionStore((s) => s.setPtyId);
 	const setClaudeCodeActive = useSessionStore((s) => s.setClaudeCodeActive);
 	const setClaudeState = useSessionStore((s) => s.setClaudeState);
-	const setClaudeSessionTitle = useSessionStore((s) => s.setClaudeSessionTitle);
+	const setClaudeSessionTitle = useSessionStore(
+		(s) => s.setClaudeSessionTitle,
+	);
 	const setClaudeModel = useSessionStore((s) => s.setClaudeModel);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
 	// Rolling buffer for OSC sequences that span chunk boundaries.
@@ -114,8 +123,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		let claudeOscActive = false;
 		// Tracks whether Claude is currently processing a response.
 		let isThinking = false;
-		// True once we've extracted the model name for this Claude session.
-		let modelCaptured = false;
 		// Last title written to the store — skips redundant writes on repeated OSC.
 		let lastSessionTitle: string | null = null;
 
@@ -124,7 +131,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		const clearClaudeOscState = () => {
 			claudeOscActive = false;
 			isThinking = false;
-			modelCaptured = false;
 			lastSessionTitle = null;
 			setClaudeState(sessionId, null);
 			setClaudeSessionTitle(sessionId, null);
@@ -169,7 +175,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					const cwd = parseOsc7(buf, home);
 					if (cwd !== null) setCwd(sessionId, cwd);
 					const lastEsc = buf.lastIndexOf("\x1b");
-					oscBufRef.current = lastEsc !== -1 ? buf.slice(lastEsc) : "";
+					oscBufRef.current =
+						lastEsc !== -1 ? buf.slice(lastEsc) : "";
 
 					// Claude state — scan the current chunk only so stale sequences in the
 					// rolling buffer don't re-trigger state transitions after they've fired.
@@ -179,7 +186,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					// inconsistently across Claude Code versions.
 					OSC_TITLE_RE.lastIndex = 0;
 					let titleMatch: RegExpExecArray | null;
-					while ((titleMatch = OSC_TITLE_RE.exec(withoutCursor)) !== null) {
+					while (
+						(titleMatch = OSC_TITLE_RE.exec(withoutCursor)) !== null
+					) {
 						const title = titleMatch[1];
 						if (BRAILLE_SPINNER_RE.test(title)) {
 							// Braille spinner → Claude is definitely active and thinking.
@@ -194,7 +203,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							if (name === "Claude Code") {
 								// Idle app title — mark OSC active but don't set a session name.
 								claudeOscActive = true;
-							} else if (name && claudeOscActive && name !== lastSessionTitle) {
+							} else if (
+								name &&
+								claudeOscActive &&
+								name !== lastSessionTitle
+							) {
 								// AI-generated session name — only store while Claude is active.
 								lastSessionTitle = name;
 								setClaudeSessionTitle(sessionId, name);
@@ -211,22 +224,30 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					}
 
 					// OSC 9;4;0 — fallback: progress reset also signals response done.
-					if (isThinking && OSC9_PROGRESS_RESET_RE.test(withoutCursor)) {
+					if (
+						isThinking &&
+						OSC9_PROGRESS_RESET_RE.test(withoutCursor)
+					) {
 						isThinking = false;
 						setClaudeState(sessionId, "waiting");
 					}
 
-					// Model name — scan once per Claude session. Appears in the splash
-					// screen as e.g. "Sonnet4.6·ClaudePro". Strip CSI sequences first
-					// (word-streaming inserts ESC[1C between "Sonnet" and "4.6"), then
-					// anchor on "·Claude" which follows the version in every known layout.
-					if (claudeOscActive && !modelCaptured) {
+					// Model name — two patterns checked on every chunk:
+					//   CURRENTLY: autocomplete hint "(currently Sonnet 4.6)" — fires on
+					//              first open AND after every /model switch. Most reliable.
+					//   DOT: splash banner "Sonnet4.6·Claude" — fallback for first open.
+					{
 						const stripped = chunk.replace(STRIP_CSI_RE, "");
-						const m = CLAUDE_MODEL_RE.exec(stripped);
+						const mCurrent = CLAUDE_MODEL_CURRENTLY_RE.exec(stripped);
+						const mDot = mCurrent ? null : CLAUDE_MODEL_DOT_RE.exec(stripped);
+						const m = mCurrent ?? mDot;
 						if (m) {
-							modelCaptured = true;
-							// "Sonnet4.6" → "Sonnet 4.6" (insert space between letters and digits)
-							const name = m[1].replace(/([A-Za-z])(\d)/, "$1 $2");
+							// CURRENTLY already has a space e.g. "Sonnet 4.6".
+							// DOT does not e.g. "Sonnet4.6" → insert space before digit.
+							const raw = m[1];
+							const name = mCurrent
+								? raw
+								: raw.replace(/([A-Za-z])(\d)/, "$1 $2");
 							setClaudeModel(sessionId, name);
 						}
 					}
@@ -319,7 +340,16 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			invoke("pty_close", { id: ptyId }).catch(() => {});
 			console.log(`[pty] cleanup — id=${ptyId}`);
 		};
-	}, [terminal, sessionId, setCwd, setPtyId, setClaudeCodeActive, setClaudeState, setClaudeSessionTitle, setClaudeModel]);
+	}, [
+		terminal,
+		sessionId,
+		setCwd,
+		setPtyId,
+		setClaudeCodeActive,
+		setClaudeState,
+		setClaudeSessionTitle,
+		setClaudeModel,
+	]);
 
 	return { sendResize };
 }
