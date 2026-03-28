@@ -36,9 +36,7 @@ export function AppLayout() {
 	}, [sidebarColorValue]);
 
 	useEffect(() => {
-		getHomeDir()
-			.then(setHomeDir)
-			.catch(() => setHomeDir(""));
+		getHomeDir().then(setHomeDir).catch(() => setHomeDir(""));
 	}, []);
 
 	const headerPwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
