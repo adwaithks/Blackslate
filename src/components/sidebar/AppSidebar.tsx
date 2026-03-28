@@ -185,28 +185,29 @@ function SessionItem({
 			<TooltipContent
 				side="right"
 				sideOffset={8}
-				className="flex flex-col items-start gap-1.5 max-w-sm py-2 px-3"
+				arrowClassName="bg-[#2a2a2d]"
+				className="flex max-w-sm flex-col items-start gap-1.5 border border-white/[0.08] bg-[#2a2a2d] px-3 py-2 text-[#eceae6] shadow-lg"
 			>
 				{/* Row 1: session name */}
-				<span className="text-xs font-medium leading-none tracking-tight">
-					<span className="mr-2 opacity-50">#{index + 1}</span>
+				<span className="text-xs font-medium leading-none tracking-tight text-[#f2f0eb]">
+					<span className="mr-2 text-[#eceae6]/45">#{index + 1}</span>
 					{dirName}
 				</span>
 
 				{/* Row 2: full cwd */}
-				<span className="text-[10px] opacity-60 leading-none tracking-wide break-all">
+				<span className="break-all text-[10px] leading-none tracking-wide text-[#d8d6d0]/85">
 					{session.cwd}
 				</span>
 
 				{/* Row 3: git branch */}
 				{git && (
-					<div className="flex items-center gap-1.5">
-						<BiGitBranch className="size-2.5 shrink-0 opacity-50" />
-						<span className="text-[10px] opacity-60 leading-none tracking-wide">
+					<div className="flex items-center gap-1.5 text-[#d8d6d0]/85">
+						<BiGitBranch className="size-2.5 shrink-0 text-[#eceae6]/50" />
+						<span className="text-[10px] leading-none tracking-wide">
 							{git.branch}
 						</span>
 						{git.dirty && (
-							<span className="size-1.5 rounded-full bg-current opacity-45 shrink-0" />
+							<span className="size-1.5 shrink-0 rounded-full bg-[#eceae6]/55" />
 						)}
 					</div>
 				)}
@@ -219,13 +220,13 @@ function SessionItem({
 							return (
 								<span
 									key={s.id}
-									className="inline-flex items-center gap-0.5 text-[10px] opacity-70 leading-none tracking-wide"
+									className="inline-flex items-center gap-0.5 text-[10px] leading-none tracking-wide text-[#d8d6d0]/90"
 								>
-									<Icon className="size-2 shrink-0 opacity-80" aria-hidden />
+									<Icon className="size-2 shrink-0 text-[#eceae6]/70" aria-hidden />
 									<span>
 										{s.label}
 										{s.version && (
-											<span className="opacity-60"> {s.version}</span>
+											<span className="text-[#d8d6d0]/65"> {s.version}</span>
 										)}
 									</span>
 								</span>

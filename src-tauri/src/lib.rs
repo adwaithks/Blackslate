@@ -3,6 +3,7 @@ mod terminal;
 #[cfg(target_os = "macos")]
 mod macos_menu;
 
+use tauri::Emitter;
 use terminal::AppState;
 use terminal::commands::{
     get_home_dir, get_log_dir, git_info, project_stack, pty_claude_code_active, pty_close,
@@ -32,8 +33,12 @@ pub fn run() {
         builder = builder
             .menu(|app| macos_menu::default_menu(app))
             .on_menu_event(|app, event| {
-                if event.id().as_ref() == "blackslate.quit" {
-                    app.exit(0);
+                match event.id().as_ref() {
+                    "blackslate.quit" => app.exit(0),
+                    "blackslate.settings" => {
+                        app.emit("blackslate://open-settings", ()).ok();
+                    }
+                    _ => {}
                 }
             });
     }

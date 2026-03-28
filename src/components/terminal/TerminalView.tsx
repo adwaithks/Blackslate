@@ -12,22 +12,25 @@ import { TerminalPane } from "./TerminalPane";
  * pane becomes active it is already correctly sized; we just focus it.
  */
 export function TerminalView() {
-  const { sessions, activeId } = useSessionStore();
+	const { sessions, activeId } = useSessionStore();
 
-  return (
-    <div className="relative w-full h-full">
-      {sessions.map((session) => {
-        const isActive = session.id === activeId;
-        return (
-          <div
-            key={session.id}
-            className="absolute inset-0"
-            style={{ visibility: isActive ? "visible" : "hidden" }}
-          >
-            <TerminalPane sessionId={session.id} isActive={isActive} />
-          </div>
-        );
-      })}
-    </div>
-  );
+	return (
+		<div className="relative w-full h-full">
+			{sessions.map((session) => {
+				const isActive = session.id === activeId;
+				return (
+					<div
+						key={session.id}
+						className="absolute inset-0"
+						style={{ visibility: isActive ? "visible" : "hidden" }}
+					>
+						<TerminalPane
+							sessionId={session.id}
+							isActive={isActive}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	);
 }

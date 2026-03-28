@@ -15,7 +15,13 @@ body,
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
-	background: transparent;
+}
+
+/* Match shadcn `.dark` --background (oklch(0.145 0 0)); avoids white flash with WKWebView */
+html.dark,
+html.dark body,
+html.dark #root {
+	background-color: oklch(0.145 0 0);
 }
 
 /* Window drag region — WebKit uses -webkit-app-region, not the attribute alone */
@@ -183,7 +189,7 @@ body,
 
 .dark {
 	/* Sidebar shell: a step above pitch black (#000) */
-	--chrome-sidebar-surface: #0000003b;
+	--chrome-sidebar-surface: #1e1e1e19;
 	--background: oklch(0.145 0 0);
 	--foreground: oklch(0.985 0 0);
 	--card: oklch(0.205 0 0);

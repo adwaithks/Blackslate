@@ -16,6 +16,14 @@ pub fn default_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         ..Default::default()
     };
 
+    let settings_item = MenuItem::with_id(
+        app,
+        "blackslate.settings",
+        "Settings…",
+        true,
+        Some("CmdOrCtrl+,"),
+    )?;
+
     let quit_item = MenuItem::with_id(
         app,
         "blackslate.quit",
@@ -48,6 +56,8 @@ pub fn default_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 true,
                 &[
                     &PredefinedMenuItem::about(app, None, Some(about_metadata))?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &settings_item,
                     &PredefinedMenuItem::separator(app)?,
                     &PredefinedMenuItem::services(app, None)?,
                     &PredefinedMenuItem::separator(app)?,

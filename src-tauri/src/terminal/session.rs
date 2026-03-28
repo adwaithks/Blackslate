@@ -163,6 +163,9 @@ fn build_shell_cmd(shell: &str) -> CommandBuilder {
     // Essential: programs use $TERM to decide colour / capability support.
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
+    // macOS BSD ls uses CLICOLOR/CLICOLOR_FORCE to enable -G automatically.
+    cmd.env("CLICOLOR", "1");
+    cmd.env("CLICOLOR_FORCE", "1");
 
     // Inherit the user environment from the Tauri process. When launched via
     // `bun tauri dev` this is the full login environment; when launched as a

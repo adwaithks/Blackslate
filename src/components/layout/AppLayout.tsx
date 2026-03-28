@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { IoAdd } from "react-icons/io5";
-import { LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
+import { LuFolder, LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { TerminalView } from "@/components/terminal/TerminalView";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { cwdToAbsolute, useSessionStore } from "@/store/sessions";
-import { useSettingsStore } from "@/store/settings";
+import { useSettingsStore, SIDEBAR_COLOR_OPTIONS } from "@/store/settings";
 import { getHomeDir } from "@/hooks/usePty";
 import {
 	modDigitKey,
@@ -21,7 +22,18 @@ export function AppLayout() {
 	const [homeDir, setHomeDir] = useState<string>("");
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 
-	const { increaseFontSize, decreaseFontSize } = useSettingsStore();
+	const { increaseFontSize, decreaseFontSize, sidebarColor } = useSettingsStore();
+	const sidebarColorValue =
+		SIDEBAR_COLOR_OPTIONS.find((o) => o.id === sidebarColor)?.value ??
+		SIDEBAR_COLOR_OPTIONS[0].value;
+
+	// Keep CSS custom property in sync with store — used by sidebar + titlebar strip
+	useEffect(() => {
+		document.documentElement.style.setProperty(
+			"--chrome-sidebar-surface",
+			sidebarColorValue,
+		);
+	}, [sidebarColorValue]);
 
 	useEffect(() => {
 		getHomeDir()
@@ -83,12 +95,14 @@ export function AppLayout() {
 	useAppShortcuts(buildShortcuts);
 
 	return (
+		<>
+		<SettingsDialog />
 		<SidebarProvider
 			open={sidebarOpen}
 			onOpenChange={setSidebarOpen}
 			style={{ "--sidebar-width": "270px" } as React.CSSProperties}
 		>
-			<div className="flex flex-col h-screen w-screen overflow-hidden bg-transparent">
+			<div className="flex flex-col h-screen w-screen overflow-hidden">
 				{/* macOS titlebar — sidebar column: traffic-light clearance + New Tab (same row as controls); cwd on the right */}
 				<div
 					className="relative z-20 grid h-[32px] shrink-0"
@@ -106,10 +120,9 @@ export function AppLayout() {
 							variant="ghost"
 							size="sm"
 							onClick={createSession}
-							className="h-6 shrink-0 p-1 px-2 text-muted-foreground hover:text-foreground"
+							className="h-6 shrink-0 px-1 text-muted-foreground rounded-sm"
 						>
-							<IoAdd className="size-4 shrink-0" />
-							{sidebarOpen ? "New Tab" : null}
+							<IoAdd className="size-5 shrink-0" />
 						</Button>
 						<Button
 							type="button"
@@ -120,16 +133,16 @@ export function AppLayout() {
 								sidebarOpen ? "Hide sidebar" : "Show sidebar"
 							}
 							aria-pressed={sidebarOpen}
-							className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+							className="h-6 w-6 shrink-0 px-1 text-muted-foreground hover:text-foreground"
 						>
 							{sidebarOpen ? (
 								<LuPanelLeftClose
-									className="size-4 shrink-0"
+									className="size-4.5 shrink-0"
 									aria-hidden
 								/>
 							) : (
 								<LuPanelLeftOpen
-									className="size-4 shrink-0"
+									className="size-4.5 shrink-0"
 									aria-hidden
 								/>
 							)}
@@ -137,13 +150,19 @@ export function AppLayout() {
 					</div>
 					<div
 						data-tauri-drag-region
-						className="flex min-w-0 w-full items-center justify-start bg-[#000000] px-3"
+						className="flex min-w-0 w-full items-center justify-start bg-black px-3"
 					>
 						<span
 							title={headerPwd}
-							className="min-w-0 truncate text-xs leading-none text-muted-foreground/50 select-none"
+							className="flex  min-w-0 items-center gap-1.5 text-xs leading-none text-muted-foreground/50 select-none"
 						>
-							{headerPwd}
+							<LuFolder
+								className="size-3.5 shrink-0 text-muted-foreground/45"
+								aria-hidden
+							/>
+							<span className="min-w-0 flex-1 truncate">
+								{headerPwd}
+							</span>
 						</span>
 					</div>
 				</div>
@@ -151,11 +170,12 @@ export function AppLayout() {
 				{/* Main content: sidebar + terminal */}
 				<div className="flex flex-1 min-h-0 min-w-0">
 					<AppSidebar />
-					<main className="flex-1 overflow-hidden bg-background min-w-0">
+					<main className="flex-1 overflow-hidden min-w-0">
 						<TerminalView />
 					</main>
 				</div>
 			</div>
 		</SidebarProvider>
+		</>
 	);
 }

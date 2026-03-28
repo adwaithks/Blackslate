@@ -17,6 +17,10 @@ import {
 } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
 import { getThemeFont } from "@/lib/systemFonts";
+import * as terminalThemes from "@/lib/terminalThemes";
+
+/** xterm scrollback / cell layer — not just the outer DOM wrapper */
+const TERMINAL_SURFACE = "#000000";
 
 interface TerminalPaneProps {
 	sessionId: string;
@@ -45,41 +49,24 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 	const [terminal, setTerminal] = useState<Terminal | null>(null);
 	const fitAddonRef = useRef<FitAddon | null>(null);
 	const fontSize = useSettingsStore((s) => s.fontSize);
+	const terminalThemeId = useSettingsStore((s) => s.terminalTheme);
+
+	const resolveTheme = () =>
+		terminalThemes[terminalThemeId]?.(TERMINAL_SURFACE) ??
+		terminalThemes.gruvboxDark(TERMINAL_SURFACE);
 
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
 		const term = new Terminal({
-			theme: {
-				background: "#00000000", // transparent — lets macOS vibrancy show through
-				foreground: "#d4d4d4",
-				cursor: "#d4d4d4",
-				selectionBackground: "#ffffff40",
-				black: "#1e1e1e",
-				red: "#f44747",
-				green: "#4ec9b0",
-				yellow: "#dcdcaa",
-				blue: "#569cd6",
-				magenta: "#c586c0",
-				cyan: "#9cdcfe",
-				white: "#d4d4d4",
-				brightBlack: "#808080",
-				brightRed: "#f44747",
-				brightGreen: "#4ec9b0",
-				brightYellow: "#dcdcaa",
-				brightBlue: "#569cd6",
-				brightMagenta: "#c586c0",
-				brightCyan: "#9cdcfe",
-				brightWhite: "#ffffff",
-			},
+			theme: resolveTheme(),
 			fontFamily: getThemeFont("--font-mono"),
 			fontSize,
-			lineHeight: 1,
+			lineHeight: 1.1,
 			cursorBlink: true,
 			cursorStyle: "bar",
 			scrollback: 10_000,
-			allowTransparency: true,
 			smoothScrollDuration: 80,
 		});
 
@@ -103,7 +90,10 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		term.registerLinkProvider({
 			provideLinks(lineNumber, callback) {
 				const line = term.buffer.active.getLine(lineNumber - 1);
-				if (!line) { callback(undefined); return; }
+				if (!line) {
+					callback(undefined);
+					return;
+				}
 				const text = line.translateToString(true);
 				const re = new RegExp(URL_REGEX_SRC, "g");
 				const links: Parameters<typeof callback>[0] = [];
@@ -118,7 +108,9 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 						},
 						text: url,
 						decorations: { pointerCursor: true, underline: true },
-						activate(_e, uri) { openUrl(uri).catch(console.error); },
+						activate(_e, uri) {
+							openUrl(uri).catch(console.error);
+						},
 					});
 				}
 				callback(links!.length ? links : undefined);
@@ -133,7 +125,11 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		term.onWriteParsed(() => {
 			const active = term.buffer.active;
 			const cursorAbsY = active.baseY + active.cursorY;
-			for (let absY = Math.max(0, cursorAbsY - 3); absY <= cursorAbsY; absY++) {
+			for (
+				let absY = Math.max(0, cursorAbsY - 3);
+				absY <= cursorAbsY;
+				absY++
+			) {
 				if (decoratedLines.has(absY)) continue;
 				const line = active.getLine(absY);
 				if (!line) continue;
@@ -144,7 +140,8 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 				decoratedLines.add(absY);
 				while ((m = re.exec(text)) !== null) {
 					if (!marker) {
-						marker = term.registerMarker(absY - cursorAbsY) ?? undefined;
+						marker =
+							term.registerMarker(absY - cursorAbsY) ?? undefined;
 						if (!marker) break;
 						marker.onDispose(() => decoratedLines.delete(absY));
 					}
@@ -156,7 +153,8 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 						layer: "top",
 					})?.onRender((el) => {
 						el.style.boxSizing = "border-box";
-						el.style.borderBottom = "1px solid rgba(86,156,214,0.7)";
+						el.style.borderBottom =
+							"1px solid rgba(86,156,214,0.7)";
 						el.style.pointerEvents = "none";
 					});
 				}
@@ -211,6 +209,13 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		requestAnimationFrame(fitAndResize);
 	}, [fontSize, terminal, fitAndResize]);
 
+	// ── Terminal theme — live update when the user switches in Settings ────
+	useEffect(() => {
+		if (!terminal) return;
+		terminal.options.theme = resolveTheme();
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [terminalThemeId, terminal]);
+
 	// ── Resize observer ────────────────────────────────────────────────────
 	// fit() runs immediately to keep the terminal crisp; pty_resize is
 	// debounced to avoid flooding the IPC channel during continuous drag.
@@ -247,7 +252,7 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 
 	return (
 		<div
-			className="w-full h-full pl-3 pt-2 pb-2 bg-black"
+			className="w-full h-full bg-black pl-2 pb-2 pt-2"
 			onClick={() => terminal?.focus()}
 		>
 			<div ref={containerRef} className="w-full h-full" />
