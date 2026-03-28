@@ -2,13 +2,43 @@ import { useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
+import { useSessionStore } from "@/store/sessions";
+
+// Resolved once via Rust and cached for the process lifetime.
+let homeDirCache: string | null = null;
+async function getHomeDir(): Promise<string> {
+  if (!homeDirCache) homeDirCache = await invoke<string>("get_home_dir");
+  return homeDirCache;
+}
+
+// OSC 7 format: ESC ] 7 ; file://[host]/path BEL  or  ESC ] 7 ; ... ESC \
+const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
+
+function parseOsc7(chunk: string, homePath: string): string | null {
+  OSC7_RE.lastIndex = 0;
+  const match = OSC7_RE.exec(chunk);
+  if (!match) return null;
+  try {
+    // new URL handles both file:///path and file://hostname/path correctly.
+    const path = decodeURIComponent(new URL(match[1]).pathname);
+    return path.startsWith(homePath)
+      ? "~" + path.slice(homePath.length)
+      : path;
+  } catch {
+    return null;
+  }
+}
 
 interface UsePtyOptions {
   terminal: Terminal | null;
+  sessionId: string;
 }
 
-export function usePty({ terminal }: UsePtyOptions) {
+export function usePty({ terminal, sessionId }: UsePtyOptions) {
+  const setCwd = useSessionStore((s) => s.setCwd);
   const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
+  // Rolling buffer for OSC sequences that span chunk boundaries.
+  const oscBufRef = useRef("");
 
   const sendResize = useCallback((cols: number, rows: number) => {
     resizeFnRef.current(cols, rows);
@@ -34,6 +64,8 @@ export function usePty({ terminal }: UsePtyOptions) {
       const { cols, rows } = term;
       console.log(`[pty] setup start — id=${ptyId} cols=${cols} rows=${rows}`);
 
+      const home = await getHomeDir().catch(() => "");
+
       // Register data listener before creating the session so no output is missed.
       unlistenData = await listen<string>(`pty://data/${ptyId}`, (event) => {
         if (!active) return;
@@ -41,6 +73,15 @@ export function usePty({ terminal }: UsePtyOptions) {
           c.charCodeAt(0)
         );
         term.write(bytes);
+
+        // OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer.
+        const chunk = new TextDecoder().decode(bytes);
+        oscBufRef.current += chunk;
+        // Keep the buffer bounded; retain only from the last ESC onwards.
+        const lastEsc = oscBufRef.current.lastIndexOf("\x1b");
+        const cwd = parseOsc7(oscBufRef.current, home);
+        oscBufRef.current = lastEsc !== -1 ? oscBufRef.current.slice(lastEsc) : "";
+        if (cwd !== null) setCwd(sessionId, cwd);
       });
 
       unlistenExit = await listen<null>(`pty://exit/${ptyId}`, () => {
@@ -88,13 +129,14 @@ export function usePty({ terminal }: UsePtyOptions) {
     return () => {
       active = false;
       resizeFnRef.current = () => {};
+      oscBufRef.current = "";
       onDataDisposable?.dispose();
       unlistenData?.();
       unlistenExit?.();
       invoke("pty_close", { id: ptyId }).catch(() => {});
       console.log(`[pty] cleanup — id=${ptyId}`);
     };
-  }, [terminal]);
+  }, [terminal, sessionId, setCwd]);
 
   return { sendResize };
 }

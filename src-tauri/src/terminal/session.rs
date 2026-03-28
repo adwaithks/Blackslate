@@ -116,7 +116,52 @@ fn build_shell_cmd(shell: &str) -> CommandBuilder {
         cmd.cwd(home);
     }
 
+    // Shell integration: inject OSC 7 cwd reporting so the frontend can
+    // track directory changes in real time without modifying user dotfiles.
+    if shell.ends_with("zsh") {
+        if let Some(zdotdir) = setup_zsh_integration() {
+            cmd.env("ZDOTDIR", zdotdir);
+        }
+    } else if shell.ends_with("bash") {
+        let osc7 = r#"printf '\033]7;file://%s%s\a' "${HOSTNAME:-$(hostname)}" "$PWD""#;
+        let existing = std::env::var("PROMPT_COMMAND").unwrap_or_default();
+        let combined = if existing.is_empty() {
+            osc7.to_string()
+        } else {
+            format!("{existing}; {osc7}")
+        };
+        cmd.env("PROMPT_COMMAND", combined);
+    }
+
     cmd
+}
+
+/// Create a temporary ZDOTDIR containing a `.zshrc` that:
+///   1. Sources the user's real `~/.zshrc`
+///   2. Appends an OSC 7 precmd hook so zsh reports `$PWD` before each prompt
+///
+/// Using ZDOTDIR avoids touching the user's dotfiles.
+fn setup_zsh_integration() -> Option<std::path::PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    let zdotdir = std::env::temp_dir().join("slate_zsh");
+    std::fs::create_dir_all(&zdotdir).ok()?;
+
+    let zshrc = format!(
+        r#"# Slate shell integration (auto-generated)
+# Source the user's real zshrc first.
+[ -f "{home}/.zshrc" ] && source "{home}/.zshrc"
+
+# OSC 7: emit cwd before each prompt so Slate can track directory changes.
+_slate_report_cwd() {{
+    printf '\033]7;file://%s%s\a' "${{HOST:-$(hostname)}}" "$PWD"
+}}
+precmd_functions+=(_slate_report_cwd)
+_slate_report_cwd
+"#
+    );
+
+    std::fs::write(zdotdir.join(".zshrc"), zshrc).ok()?;
+    Some(zdotdir)
 }
 
 // ---------------------------------------------------------------------------

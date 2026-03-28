@@ -4,32 +4,47 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
-import { usePty } from "../../hooks/usePty";
+import { invoke } from "@tauri-apps/api/core";
+import { usePty } from "@/hooks/usePty";
+import { useSessionStore, type GitInfo } from "@/store/sessions";
+import { useSettingsStore } from "@/store/settings";
+
+interface TerminalPaneProps {
+  sessionId: string;
+  /**
+   * When true, this pane is the visible session.
+   * Triggers a fit + focus so the terminal is ready to use immediately
+   * after switching from another session.
+   */
+  isActive: boolean;
+}
 
 /**
- * Mounts a single xterm.js terminal instance and connects it to a PTY
- * session in the Rust backend via the usePty hook.
+ * A single xterm.js terminal instance connected to a PTY session.
  *
- * The component is intentionally dumb — it owns rendering (xterm.js) and
- * delegates all I/O to usePty. Layout decisions belong to the parent.
+ * Intentionally thin — owns rendering (xterm.js) and delegates all I/O to
+ * `usePty`. The parent (TerminalView) controls visibility and session identity.
  *
- * Session identity is managed via React's `key` prop on the parent side,
- * which forces a full remount (new xterm + new PTY) when the session changes.
+ * ## Lifecycle with multiple sessions
+ * All TerminalPane instances remain mounted when switching sessions. The parent
+ * hides inactive panes with `visibility: hidden` so xterm can still measure
+ * dimensions. When a pane becomes active, `isActive` flips to true and we
+ * re-fit and focus.
  */
-export function TerminalPane() {
+export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const fontSize = useSettingsStore((s) => s.fontSize);
 
-  // Initialize xterm.js once on mount.
+  // ── xterm initialisation (once per mount) ──────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const term = new Terminal({
-      // Transparent background so macOS vibrancy/window tinting can show through.
       theme: {
-        background: "#00000000",
+        background: "#00000000", // transparent — lets macOS vibrancy show through
         foreground: "#d4d4d4",
         cursor: "#d4d4d4",
         selectionBackground: "#ffffff40",
@@ -50,46 +65,38 @@ export function TerminalPane() {
         brightCyan: "#9cdcfe",
         brightWhite: "#ffffff",
       },
-      fontFamily: '"JetBrains Mono", "Cascadia Code", "Fira Code", monospace',
-      fontSize: 13,
+      fontFamily: '"Geist Mono Variable", "Geist Mono", monospace',
+      fontSize,
       lineHeight: 1.4,
       cursorBlink: true,
       cursorStyle: "block",
-      scrollback: 10000,
+      scrollback: 10_000,
       allowTransparency: true,
-      // macOS-style smooth scrolling
       smoothScrollDuration: 80,
     });
 
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
-
     term.loadAddon(fitAddon);
-    term.loadAddon(webLinksAddon);
+    term.loadAddon(new WebLinksAddon());
     term.open(container);
 
-    // Attempt WebGL renderer — best performance (GPU-accelerated).
-    // Falls back to canvas/DOM automatically if WebGL is unavailable.
+    // WebGL renderer — GPU accelerated (same as VS Code). Falls back to
+    // canvas/DOM automatically on context loss or if WebGL is unavailable.
     try {
-      const webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => {
-        // GPU context was lost (e.g. GPU reset). Dispose and let xterm fall
-        // back to its software renderer.
-        webglAddon.dispose();
-      });
-      term.loadAddon(webglAddon);
+      const webgl = new WebglAddon();
+      webgl.onContextLoss(() => webgl.dispose());
+      term.loadAddon(webgl);
     } catch {
-      // WebGL not available — xterm will use its built-in canvas renderer.
+      // WebGL unavailable — xterm uses its canvas renderer.
     }
 
     fitAddon.fit();
     fitAddonRef.current = fitAddon;
 
-    // Focus after the current paint so the webview is ready to accept it.
+    // Defer focus so the webview is ready to accept keyboard events.
     requestAnimationFrame(() => term.focus());
 
     setTerminal(term);
-
     return () => {
       term.dispose();
       setTerminal(null);
@@ -97,10 +104,30 @@ export function TerminalPane() {
     };
   }, []);
 
-  // Connect the terminal to the PTY backend.
-  const { sendResize } = usePty({ terminal });
+  // ── PTY connection ─────────────────────────────────────────────────────
+  const { sendResize } = usePty({ terminal, sessionId });
 
-  // Resize the PTY whenever the container changes size.
+  // ── Git info — refresh whenever cwd changes ────────────────────────────
+  const cwd = useSessionStore((s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~");
+  const setGit = useSessionStore((s) => s.setGit);
+
+  useEffect(() => {
+    invoke<GitInfo | null>("git_info", { cwd })
+      .then((git) => setGit(sessionId, git))
+      .catch(() => setGit(sessionId, null));
+  }, [cwd, sessionId, setGit]);
+
+  // ── Font size — update terminal and refit when the user zooms ─────────
+  useEffect(() => {
+    if (!terminal) return;
+    terminal.options.fontSize = fontSize;
+    requestAnimationFrame(() => {
+      fitAddonRef.current?.fit();
+      sendResize(terminal.cols, terminal.rows);
+    });
+  }, [fontSize, terminal, sendResize]);
+
+  // ── Resize observer ────────────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !terminal) return;
@@ -114,12 +141,24 @@ export function TerminalPane() {
     return () => observer.disconnect();
   }, [terminal, sendResize]);
 
+  // ── Activation ─────────────────────────────────────────────────────────
+  // When this pane becomes the active session (e.g. user clicks another tab),
+  // re-fit in case the container size changed while hidden, then focus.
+  useEffect(() => {
+    if (!isActive || !terminal) return;
+    requestAnimationFrame(() => {
+      fitAddonRef.current?.fit();
+      sendResize(terminal.cols, terminal.rows);
+      terminal.focus();
+    });
+  }, [isActive, terminal, sendResize]);
+
   return (
     <div
-      ref={containerRef}
-      className="w-full h-full"
-      // Clicking anywhere on the pane restores keyboard focus to xterm.
+      className="w-full h-full pl-3 pt-2 pb-2 bg-black"
       onClick={() => terminal?.focus()}
-    />
+    >
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
   );
 }

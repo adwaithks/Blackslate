@@ -1,7 +1,7 @@
 mod terminal;
 
 use terminal::AppState;
-use terminal::commands::{pty_close, pty_create, pty_resize, pty_write};
+use terminal::commands::{get_home_dir, git_info, pty_close, pty_create, pty_resize, pty_write};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +13,8 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_close,
+            git_info,
+            get_home_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
