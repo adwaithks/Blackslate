@@ -319,7 +319,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		run().catch((err) => {
 			console.error("[pty] setup error:", err);
 			if (active) {
-				term.writeln(`\r\n\x1b[31m[slate error] ${err}\x1b[0m`);
+				term.writeln(`\r\n\x1b[31m[blackslate error] ${err}\x1b[0m`);
 			}
 		});
 

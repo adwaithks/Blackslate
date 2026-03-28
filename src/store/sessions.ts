@@ -26,7 +26,7 @@ export type ClaudeState = "thinking" | "waiting" | null;
 
 export interface Session {
 	id: string;
-	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
+	/** Current working directory, tilde-normalised (e.g. "~/Projects/Blackslate"). */
 	cwd: string;
 	/** Unix timestamp of when the session was created. */
 	createdAt: number;

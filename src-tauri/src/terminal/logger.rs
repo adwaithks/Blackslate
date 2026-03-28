@@ -1,6 +1,6 @@
 //! Per-session PTY logging.
 //!
-//! Every session writes two files to `~/.slate/logs/`:
+//! Every session writes two files to `~/.blackslate/logs/`:
 //!
 //!   `<ts>-<short-id>.log`  — human-readable: ANSI-stripped output + labelled user input
 //!   `<ts>-<short-id>.raw`  — exact bytes from the PTY master (every escape sequence intact)
@@ -55,7 +55,7 @@ impl SessionLogger {
 
         let mut log = BufWriter::new(log_file);
         // Header — written once so you always know what session a log belongs to.
-        writeln!(log, "# ── Slate session log ─────────────────────────────────────────────").ok()?;
+        writeln!(log, "# ── Blackslate session log ─────────────────────────────────────────────").ok()?;
         writeln!(log, "# session : {session_id}").ok()?;
         writeln!(log, "# shell   : {shell}").ok()?;
         writeln!(log, "# started : {} UTC", human_ts()).ok()?;
@@ -151,7 +151,7 @@ impl SessionLogger {
 
 pub fn log_dir() -> Option<PathBuf> {
     let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".slate").join("logs"))
+    Some(PathBuf::from(home).join(".blackslate").join("logs"))
 }
 
 fn file_prefix(session_id: &str) -> String {

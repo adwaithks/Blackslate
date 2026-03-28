@@ -67,7 +67,7 @@ body,
 	width: 8px;
 }
 [data-slot="sidebar-content"]::-webkit-scrollbar-track {
-	background: var(--slate-sidebar-surface);
+	background: var(--chrome-sidebar-surface);
 }
 [data-slot="sidebar-content"]::-webkit-scrollbar-thumb {
 	background: oklch(0.38 0 0);
@@ -77,16 +77,16 @@ body,
 	background: oklch(0.48 0 0);
 }
 [data-slot="sidebar-content"] {
-	scrollbar-color: oklch(0.38 0 0) var(--slate-sidebar-surface);
+	scrollbar-color: oklch(0.38 0 0) var(--chrome-sidebar-surface);
 	scrollbar-width: thin;
 }
 
-/* Slightly lifted black — sidebar column + scroll body (see .dark --slate-sidebar-surface) */
+/* Slightly lifted black — sidebar column + scroll body (see .dark --chrome-sidebar-surface) */
 [data-slot="sidebar-gap"],
 [data-slot="sidebar-container"],
 [data-slot="sidebar-inner"],
 [data-slot="sidebar-content"] {
-	background-color: var(--slate-sidebar-surface) !important;
+	background-color: var(--chrome-sidebar-surface) !important;
 }
 
 @media (width >= 48rem) {
@@ -183,7 +183,7 @@ body,
 
 .dark {
 	/* Sidebar shell: a step above pitch black (#000) */
-	--slate-sidebar-surface: #0000003b;
+	--chrome-sidebar-surface: #0000003b;
 	--background: oklch(0.145 0 0);
 	--foreground: oklch(0.985 0 0);
 	--card: oklch(0.205 0 0);
@@ -207,7 +207,7 @@ body,
 	--chart-3: oklch(0.439 0 0);
 	--chart-4: oklch(0.371 0 0);
 	--chart-5: oklch(0.269 0 0);
-	--sidebar: var(--slate-sidebar-surface);
+	--sidebar: var(--chrome-sidebar-surface);
 	--sidebar-foreground: oklch(0.985 0 0);
 	--sidebar-primary: oklch(0.488 0.243 264.376);
 	--sidebar-primary-foreground: oklch(0.985 0 0);

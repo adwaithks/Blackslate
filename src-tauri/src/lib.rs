@@ -32,7 +32,7 @@ pub fn run() {
         builder = builder
             .menu(|app| macos_menu::default_menu(app))
             .on_menu_event(|app, event| {
-                if event.id().as_ref() == "slate.quit" {
+                if event.id().as_ref() == "blackslate.quit" {
                     app.exit(0);
                 }
             });

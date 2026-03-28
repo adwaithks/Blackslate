@@ -100,7 +100,7 @@ export function AppLayout() {
 				>
 					<div
 						data-tauri-drag-region
-						className="flex min-w-0 items-center justify-end gap-0.5 bg-[var(--slate-sidebar-surface)] pl-[76px] pr-2"
+						className="flex min-w-0 items-center justify-end gap-0.5 bg-[var(--chrome-sidebar-surface)] pl-[76px] pr-2"
 					>
 						<Button
 							variant="ghost"

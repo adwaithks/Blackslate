@@ -1,8 +1,8 @@
-# Slate
+# Blackslate
 
 **The terminal built for the agentic developer.**
 
-Slate is a macOS terminal that works like any great native terminal — fast, minimal, out of the way. The difference becomes visible the moment Claude Code starts running inside it. Slate detects the agent, reorganises the workspace around it, and surfaces context that would otherwise be buried in scrollback.
+Blackslate is a macOS terminal that works like any great native terminal — fast, minimal, out of the way. The difference becomes visible the moment Claude Code starts running inside it. Blackslate detects the agent, reorganises the workspace around it, and surfaces context that would otherwise be buried in scrollback.
 
 The longer-term vision goes further: a first-class code editor that lives inside the terminal itself, so the read-edit-run loop never requires you to leave the surface where the agent is working.
 
@@ -10,13 +10,13 @@ The longer-term vision goes further: a first-class code editor that lives inside
 
 ---
 
-## Why Slate
+## Why Blackslate
 
-Every existing terminal treats the agent as just another process printing to a pipe. Slate is designed from the ground up around the reality that the terminal is increasingly where agents live and where developers spend most of their time when building with AI.
+Every existing terminal treats the agent as just another process printing to a pipe. Blackslate is designed from the ground up around the reality that the terminal is increasingly where agents live and where developers spend most of their time when building with AI.
 
 The philosophy is deliberate: **don't reinvent the terminal — augment it at the UI/UX layer**. The PTY, shell, and process management are solved problems. What isn't solved is the experience of working *alongside* an agent in that environment — tracking what it's doing, seeing what files it's touching, understanding where it is in a task, and switching fluidly between guiding the agent and writing code yourself.
 
-Slate is that layer.
+Blackslate is that layer.
 
 ---
 
@@ -34,14 +34,14 @@ Slate is that layer.
 
 ### Agent Workspace
 
-- **Claude Code detection** — Slate polls the PTY's foreground process group and walks the shell's process tree to detect when `claude` is running, displayed as a live indicator per session
+- **Claude Code detection** — Blackslate polls the PTY's foreground process group and walks the shell's process tree to detect when `claude` is running, displayed as a live indicator per session
 - **Session sidebar** — directory name, full path, git branch, dirty status, and project stack visible at a glance for every open session
 
 ### On the Roadmap
 
 - **Inline diff viewer** — file edits rendered as side-by-side diffs without leaving the terminal
 - **Agent action timeline** — structured feed of tool calls and file operations as Claude Code works
-- **Integrated code editor** — edit files directly inside Slate; the read-edit-run loop never requires switching to another application
+- **Integrated code editor** — edit files directly inside Blackslate; the read-edit-run loop never requires switching to another application
 - **Agent status bar** — thinking / running tool / waiting for input surfaced as first-class UI
 - **Pane splits** — vertical and horizontal splits, multiple terminals in one window
 
@@ -53,7 +53,7 @@ Slate is that layer.
 
 **Transformation, not decoration.** The UI changes meaningfully when an agent is running. It doesn't just add decorations to a dumb pipe — it reorganises the workspace around the agent's work loop.
 
-**High information density.** Developers aren't afraid of dense interfaces. Slate doesn't over-space or hide context behind extra clicks.
+**High information density.** Developers aren't afraid of dense interfaces. Blackslate doesn't over-space or hide context behind extra clicks.
 
 **Subtle motion only.** Transitions exist to reduce cognitive load, never to draw attention. The terminal itself is never animated.
 
@@ -74,7 +74,7 @@ Slate is that layer.
 | Async runtime | Tokio |
 | Process detection | sysinfo |
 
-The Rust backend is infrastructure only — PTY lifecycle, process detection, git and project metadata. All parsing, state, and UX logic lives in the React frontend. Slate makes no Anthropic API calls; it reads Claude Code's output from the PTY stream.
+The Rust backend is infrastructure only — PTY lifecycle, process detection, git and project metadata. All parsing, state, and UX logic lives in the React frontend. Blackslate makes no Anthropic API calls; it reads Claude Code's output from the PTY stream.
 
 ---
 
@@ -90,8 +90,8 @@ The Rust backend is infrastructure only — PTY lifecycle, process detection, gi
 ### Build from Source
 
 ```bash
-git clone https://github.com/your-org/slate.git
-cd slate
+git clone https://github.com/your-org/blackslate.git
+cd blackslate
 
 bun install          # install frontend dependencies
 bun tauri dev        # development server with hot reload
@@ -108,7 +108,7 @@ bun tauri build      # production .app + .dmg
 ## Project Structure
 
 ```
-slate/
+blackslate/
 ├── src/                          # React frontend
 │   ├── components/
 │   │   ├── layout/               # AppLayout — titlebar, sidebar, main area
@@ -150,13 +150,13 @@ slate/
 
 ## Contributing
 
-Slate is in active early development. Issues and pull requests are welcome.
+Blackslate is in active early development. Issues and pull requests are welcome.
 
 A few hard rules that keep the architecture clean:
 
 - xterm.js owns all terminal rendering — never write terminal output to the React DOM
 - All `TerminalPane` instances must stay mounted; use `visibility: hidden` for inactive sessions
-- No Anthropic API calls from Slate — it reads Claude Code's PTY output, it does not call any AI API itself
+- No Anthropic API calls from Blackslate — it reads Claude Code's PTY output, it does not call any AI API itself
 - Business logic belongs in the frontend; the Rust backend is infrastructure only
 
 ---

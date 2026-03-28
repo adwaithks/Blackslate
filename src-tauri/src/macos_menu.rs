@@ -18,7 +18,7 @@ pub fn default_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
 
     let quit_item = MenuItem::with_id(
         app,
-        "slate.quit",
+        "blackslate.quit",
         format!("Quit {}", pkg_info.name),
         true,
         Some("CmdOrCtrl+Shift+Q"),

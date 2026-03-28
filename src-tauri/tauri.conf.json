@@ -1,8 +1,8 @@
 {
 	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "slate",
+	"productName": "Blackslate",
 	"version": "0.1.0",
-	"identifier": "com.ks.slate",
+	"identifier": "com.ks.blackslate",
 	"build": {
 		"beforeDevCommand": "bun run dev",
 		"devUrl": "http://localhost:1420",

@@ -26,23 +26,23 @@ pub struct PtySession {
 impl PtySession {
     pub fn new(id: String, cols: u16, rows: u16, app: AppHandle) -> CommandResult<Self> {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        eprintln!("[slate][session] creating id={id} shell={shell} cols={cols} rows={rows}");
+        eprintln!("[blackslate][session] creating id={id} shell={shell} cols={cols} rows={rows}");
 
         let pty_system = NativePtySystem::default();
 
         let pair = pty_system.openpty(pty_size(cols, rows)).map_err(|e| {
-            eprintln!("[slate][session] openpty failed: {e}");
+            eprintln!("[blackslate][session] openpty failed: {e}");
             cmd_err(e)
         })?;
 
         let cmd = build_shell_cmd(&shell);
-        eprintln!("[slate][session] spawning shell...");
+        eprintln!("[blackslate][session] spawning shell...");
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| {
-            eprintln!("[slate][session] spawn_command failed: {e}");
+            eprintln!("[blackslate][session] spawn_command failed: {e}");
             cmd_err(e)
         })?;
-        eprintln!("[slate][session] shell spawned ok");
+        eprintln!("[blackslate][session] shell spawned ok");
 
         // Drop slave after spawn — child holds its own fd reference.
         // Keeping it open would prevent EOF on master when the child exits.
@@ -54,15 +54,15 @@ impl PtySession {
         let logger = SessionLogger::new(&id, &shell).map(Arc::new);
 
         if let Some(ref l) = logger {
-            eprintln!("[slate][session] logging to {}", l.log_path.display());
+            eprintln!("[blackslate][session] logging to {}", l.log_path.display());
         } else {
-            eprintln!("[slate][session] logging unavailable (could not create log dir)");
+            eprintln!("[blackslate][session] logging unavailable (could not create log dir)");
         }
 
         let reader_task = spawn_reader(id.clone(), reader, app, logger.clone());
 
         let shell_pid = child.process_id().unwrap_or(0);
-        eprintln!("[slate][session] shell_pid={shell_pid} id={id}");
+        eprintln!("[blackslate][session] shell_pid={shell_pid} id={id}");
 
         Ok(PtySession {
             id,
@@ -118,7 +118,7 @@ impl PtySession {
     }
 
     pub fn close(&self) {
-        eprintln!("[slate][session] closing id={}", self.id);
+        eprintln!("[blackslate][session] closing id={}", self.id);
         if let Some(ref logger) = self.logger {
             logger.close();
         }
@@ -205,20 +205,20 @@ fn build_shell_cmd(shell: &str) -> CommandBuilder {
 /// Using ZDOTDIR avoids touching the user's dotfiles.
 fn setup_zsh_integration() -> Option<std::path::PathBuf> {
     let home = std::env::var("HOME").ok()?;
-    let zdotdir = std::env::temp_dir().join("slate_zsh");
+    let zdotdir = std::env::temp_dir().join("blackslate_zsh");
     std::fs::create_dir_all(&zdotdir).ok()?;
 
     let zshrc = format!(
-        r#"# Slate shell integration (auto-generated)
+        r#"# Blackslate shell integration (auto-generated)
 # Source the user's real zshrc first.
 [ -f "{home}/.zshrc" ] && source "{home}/.zshrc"
 
-# OSC 7: emit cwd before each prompt so Slate can track directory changes.
-_slate_report_cwd() {{
+# OSC 7: emit cwd before each prompt so Blackslate can track directory changes.
+_blackslate_report_cwd() {{
     printf '\033]7;file://%s%s\a' "${{HOST:-$(hostname)}}" "$PWD"
 }}
-precmd_functions+=(_slate_report_cwd)
-_slate_report_cwd
+precmd_functions+=(_blackslate_report_cwd)
+_blackslate_report_cwd
 "#
     );
 
@@ -246,13 +246,13 @@ fn spawn_reader(
     logger: Option<Arc<SessionLogger>>,
 ) -> JoinHandle<()> {
     tokio::task::spawn_blocking(move || {
-        eprintln!("[slate][reader] loop start for id={session_id}");
+        eprintln!("[blackslate][reader] loop start for id={session_id}");
         let mut buf = [0u8; 4096];
 
         loop {
             match reader.read(&mut buf) {
                 Ok(0) | Err(_) => {
-                    eprintln!("[slate][reader] EOF/error for id={session_id}");
+                    eprintln!("[blackslate][reader] EOF/error for id={session_id}");
                     break;
                 }
                 Ok(n) => {
