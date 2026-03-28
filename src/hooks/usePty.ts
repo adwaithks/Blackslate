@@ -25,6 +25,29 @@ const TEXT_ENCODER = new TextEncoder();
 // OSC 7 format: ESC ] 7 ; file://[host]/path BEL  or  ESC ] 7 ; ... ESC \
 const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
 
+// OSC 0/2 window title — captures the title string.
+const OSC_TITLE_RE = /\x1b\](?:0|2);([^\x07\x1b]*)(?:\x07|\x1b\\)/g;
+
+// Braille spinner chars Claude Code cycles through while thinking/processing.
+// These appear in the OSC 0 window title (⠂ ⠐ etc.), not in visible terminal output.
+const BRAILLE_SPINNER_RE = /[⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]/;
+
+// Strips any leading spinner/icon char + whitespace from a Claude Code OSC 0 title.
+// e.g. "✳ New coding session" → "New coding session"
+const TITLE_PREFIX_RE = /^[\s✳✻✽✶✢·⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]+/;
+
+// Extracts the Claude model name from the splash screen.
+// Strategy: strip all CSI sequences from the chunk first (they're cursor-movement
+// noise from word-streaming), then anchor on the `·Claude` separator that always
+// follows the model version. Capturing the word before it avoids hardcoding
+// model family names — works for Sonnet, Haiku, Opus, and any future names.
+const STRIP_CSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
+const CLAUDE_MODEL_RE = /([\w.-]+)\s*·\s*Claude/;
+
+// OSC 9;4;0 — ConEmu progress reset. Claude Code emits this when a response finishes.
+// It also fires once at startup, so we only act on it when already in 'thinking' state.
+const OSC9_PROGRESS_RESET_RE = /\x1b\]9;4;0;?(?:\x07|\x1b\\)/;
+
 // CSI SP q (DECSCUSR) — shells set block/underline/bar; strip so xterm `cursorStyle` wins.
 const DECSCUSR_RE = /\x1b\[[0-9;]* ?q/g;
 
@@ -55,6 +78,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 	const setCwd = useSessionStore((s) => s.setCwd);
 	const setPtyId = useSessionStore((s) => s.setPtyId);
 	const setClaudeCodeActive = useSessionStore((s) => s.setClaudeCodeActive);
+	const setClaudeState = useSessionStore((s) => s.setClaudeState);
+	const setClaudeSessionTitle = useSessionStore((s) => s.setClaudeSessionTitle);
+	const setClaudeModel = useSessionStore((s) => s.setClaudeModel);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
 	// Rolling buffer for OSC sequences that span chunk boundaries.
 	const oscBufRef = useRef("");
@@ -80,6 +106,29 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			invoke("pty_resize", { id: ptyId, cols, rows }).catch(
 				console.error,
 			);
+		};
+
+		// Set to true when we've seen Claude-specific OSC signatures (spinner/title).
+		// Guards setClaudeSessionTitle so shell window-title updates don't bleed in.
+		// Cleared when Claude sends an empty title (its explicit exit signal).
+		let claudeOscActive = false;
+		// Tracks whether Claude is currently processing a response.
+		let isThinking = false;
+		// True once we've extracted the model name for this Claude session.
+		let modelCaptured = false;
+		// Last title written to the store — skips redundant writes on repeated OSC.
+		let lastSessionTitle: string | null = null;
+
+		// Resets all stream-parsed Claude state back to "not active".
+		// Called on OSC exit signal, on poll exit, on poll error, and on cleanup.
+		const clearClaudeOscState = () => {
+			claudeOscActive = false;
+			isThinking = false;
+			modelCaptured = false;
+			lastSessionTitle = null;
+			setClaudeState(sessionId, null);
+			setClaudeSessionTitle(sessionId, null);
+			setClaudeModel(sessionId, null);
 		};
 
 		const run = async () => {
@@ -110,17 +159,77 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer,
-					// bounded to MAX_OSC_BUF to prevent unbounded growth on ESC-free output.
+					// OSC 7: cwd — use a rolling buffer because file:// URLs can span chunk
+					// boundaries. All other OSC sequences are short and always arrive complete.
 					const combined = oscBufRef.current + withoutCursor;
 					const buf =
 						combined.length > MAX_OSC_BUF
 							? combined.slice(-MAX_OSC_BUF)
 							: combined;
 					const cwd = parseOsc7(buf, home);
+					if (cwd !== null) setCwd(sessionId, cwd);
 					const lastEsc = buf.lastIndexOf("\x1b");
 					oscBufRef.current = lastEsc !== -1 ? buf.slice(lastEsc) : "";
-					if (cwd !== null) setCwd(sessionId, cwd);
+
+					// Claude state — scan the current chunk only so stale sequences in the
+					// rolling buffer don't re-trigger state transitions after they've fired.
+					//
+					// Primary signal: title switches from braille spinner (thinking) to
+					// non-braille (done). OSC 9;4;0 is a secondary fallback — it fires
+					// inconsistently across Claude Code versions.
+					OSC_TITLE_RE.lastIndex = 0;
+					let titleMatch: RegExpExecArray | null;
+					while ((titleMatch = OSC_TITLE_RE.exec(withoutCursor)) !== null) {
+						const title = titleMatch[1];
+						if (BRAILLE_SPINNER_RE.test(title)) {
+							// Braille spinner → Claude is definitely active and thinking.
+							claudeOscActive = true;
+							if (!isThinking) {
+								isThinking = true;
+								setClaudeState(sessionId, "thinking");
+							}
+						} else if (title.length > 0) {
+							// Non-empty, non-spinner title.
+							const name = title.replace(TITLE_PREFIX_RE, "");
+							if (name === "Claude Code") {
+								// Idle app title — mark OSC active but don't set a session name.
+								claudeOscActive = true;
+							} else if (name && claudeOscActive && name !== lastSessionTitle) {
+								// AI-generated session name — only store while Claude is active.
+								lastSessionTitle = name;
+								setClaudeSessionTitle(sessionId, name);
+							}
+							if (isThinking) {
+								// Title switched from spinner to steady — response done.
+								isThinking = false;
+								setClaudeState(sessionId, "waiting");
+							}
+						} else {
+							// Empty title: Claude's explicit exit signal — clear immediately.
+							if (claudeOscActive) clearClaudeOscState();
+						}
+					}
+
+					// OSC 9;4;0 — fallback: progress reset also signals response done.
+					if (isThinking && OSC9_PROGRESS_RESET_RE.test(withoutCursor)) {
+						isThinking = false;
+						setClaudeState(sessionId, "waiting");
+					}
+
+					// Model name — scan once per Claude session. Appears in the splash
+					// screen as e.g. "Sonnet4.6·ClaudePro". Strip CSI sequences first
+					// (word-streaming inserts ESC[1C between "Sonnet" and "4.6"), then
+					// anchor on "·Claude" which follows the version in every known layout.
+					if (claudeOscActive && !modelCaptured) {
+						const stripped = chunk.replace(STRIP_CSI_RE, "");
+						const m = CLAUDE_MODEL_RE.exec(stripped);
+						if (m) {
+							modelCaptured = true;
+							// "Sonnet4.6" → "Sonnet 4.6" (insert space between letters and digits)
+							const name = m[1].replace(/([A-Za-z])(\d)/, "$1 $2");
+							setClaudeModel(sessionId, name);
+						}
+					}
 				},
 			);
 
@@ -159,11 +268,15 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					if (on !== lastClaudeActive) {
 						lastClaudeActive = on;
 						setClaudeCodeActive(sessionId, on);
+						// Clear stream-parsed state when Claude exits so stale
+						// 'thinking'/'waiting' indicators don't linger.
+						if (!on) clearClaudeOscState();
 					}
 				} catch {
 					if (lastClaudeActive !== false) {
 						lastClaudeActive = false;
 						setClaudeCodeActive(sessionId, false);
+						clearClaudeOscState();
 					}
 				}
 			};
@@ -196,6 +309,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				pollTimer = null;
 			}
 			setClaudeCodeActive(sessionId, false);
+			clearClaudeOscState();
 			setPtyId(sessionId, null);
 			resizeFnRef.current = () => {};
 			oscBufRef.current = "";
@@ -205,7 +319,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			invoke("pty_close", { id: ptyId }).catch(() => {});
 			console.log(`[pty] cleanup — id=${ptyId}`);
 		};
-	}, [terminal, sessionId, setCwd, setPtyId, setClaudeCodeActive]);
+	}, [terminal, sessionId, setCwd, setPtyId, setClaudeCodeActive, setClaudeState, setClaudeSessionTitle, setClaudeModel]);
 
 	return { sendResize };
 }

@@ -64,6 +64,12 @@ impl SessionManager {
         Ok(self.get(id)?.claude_code_active())
     }
 
+    /// Returns `(log_path, raw_path)` for the session, or `None` if not found.
+    pub fn get_paths(&self, id: &str) -> Option<(Option<String>, Option<String>)> {
+        let session = self.get(id).ok()?;
+        Some((session.log_path(), session.raw_path()))
+    }
+
     // -----------------------------------------------------------------------
     // Internal
     // -----------------------------------------------------------------------

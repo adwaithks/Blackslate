@@ -16,6 +16,14 @@ export interface ProjectStackItem {
 	version: string | null;
 }
 
+/**
+ * Fine-grained Claude Code state, parsed from the PTY stream:
+ *   'thinking' — Claude is processing (braille spinner in OSC 0 window title)
+ *   'waiting'  — Claude finished responding (OSC 777 "waiting for your input")
+ *   null       — Claude not active, or state not yet determined
+ */
+export type ClaudeState = "thinking" | "waiting" | null;
+
 export interface Session {
 	id: string;
 	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
@@ -30,6 +38,12 @@ export interface Session {
 	ptyId: string | null;
 	/** Whether Claude Code / `claude` CLI is running in that PTY (from OS process tree). */
 	claudeCodeActive: boolean;
+	/** Fine-grained Claude Code state parsed from the PTY stream. */
+	claudeState: ClaudeState;
+	/** AI-generated session name from Claude Code's OSC 0 window title (e.g. "New coding session"). */
+	claudeSessionTitle: string | null;
+	/** Claude model parsed from the splash screen (e.g. "Sonnet 4.6"). */
+	claudeModel: string | null;
 }
 
 interface SessionState {
@@ -55,6 +69,12 @@ interface SessionActions {
 	/** Link React session id ↔ PTY id after `pty_create`. */
 	setPtyId: (id: string, ptyId: string | null) => void;
 	setClaudeCodeActive: (id: string, active: boolean) => void;
+	/** Update the fine-grained Claude state parsed from the PTY stream. */
+	setClaudeState: (id: string, state: ClaudeState) => void;
+	/** Update the AI-generated session title from Claude Code's window title. */
+	setClaudeSessionTitle: (id: string, title: string | null) => void;
+	/** Update the Claude model parsed from the splash screen. */
+	setClaudeModel: (id: string, model: string | null) => void;
 }
 
 export type SessionStore = SessionState & SessionActions;
@@ -72,6 +92,9 @@ function makeSession(): Session {
 		projectStack: [],
 		ptyId: null,
 		claudeCodeActive: false,
+		claudeState: null,
+		claudeSessionTitle: null,
+		claudeModel: null,
 	};
 }
 
@@ -142,6 +165,18 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
 	setClaudeCodeActive(id, active) {
 		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeCodeActive", active) }));
+	},
+
+	setClaudeState(id, state) {
+		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeState", state) }));
+	},
+
+	setClaudeSessionTitle(id, title) {
+		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeSessionTitle", title) }));
+	},
+
+	setClaudeModel(id, model) {
+		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeModel", model) }));
 	},
 }));
 

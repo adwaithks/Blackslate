@@ -1,5 +1,5 @@
 use std::io::{Read, Write};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::engine::general_purpose::STANDARD as B64;
@@ -11,6 +11,7 @@ use tokio::task::JoinHandle;
 use super::agent_detect;
 use super::error::{cmd_err, CommandResult};
 use super::events;
+use super::logger::SessionLogger;
 
 pub struct PtySession {
     id: String,
@@ -20,6 +21,8 @@ pub struct PtySession {
     writer: Mutex<Box<dyn Write + Send>>,
     child: Mutex<Box<dyn Child + Send + Sync>>,
     reader_task: JoinHandle<()>,
+    /// Shared with the reader task. `None` if the log directory could not be created.
+    logger: Option<Arc<SessionLogger>>,
 }
 
 impl PtySession {
@@ -50,7 +53,15 @@ impl PtySession {
         let reader = pair.master.try_clone_reader().map_err(cmd_err)?;
         let writer = pair.master.take_writer().map_err(cmd_err)?;
 
-        let reader_task = spawn_reader(id.clone(), reader, app);
+        let logger = SessionLogger::new(&id, &shell).map(Arc::new);
+
+        if let Some(ref l) = logger {
+            eprintln!("[slate][session] logging to {}", l.log_path.display());
+        } else {
+            eprintln!("[slate][session] logging unavailable (could not create log dir)");
+        }
+
+        let reader_task = spawn_reader(id.clone(), reader, app, logger.clone());
 
         let shell_pid = child.process_id().unwrap_or(0);
         eprintln!("[slate][session] shell_pid={shell_pid} id={id}");
@@ -62,10 +73,14 @@ impl PtySession {
             writer: Mutex::new(writer),
             child: Mutex::new(child),
             reader_task,
+            logger,
         })
     }
 
     pub fn write(&self, data: &[u8]) -> CommandResult<()> {
+        if let Some(ref logger) = self.logger {
+            logger.log_input(data);
+        }
         self.writer.lock().unwrap().write_all(data).map_err(cmd_err)
     }
 
@@ -92,8 +107,23 @@ impl PtySession {
         agent_detect::claude_session_active(self.shell_pid, fg)
     }
 
+    pub fn log_path(&self) -> Option<String> {
+        self.logger
+            .as_ref()
+            .map(|l| l.log_path.to_string_lossy().into_owned())
+    }
+
+    pub fn raw_path(&self) -> Option<String> {
+        self.logger
+            .as_ref()
+            .map(|l| l.raw_path.to_string_lossy().into_owned())
+    }
+
     pub fn close(&self) {
         eprintln!("[slate][session] closing id={}", self.id);
+        if let Some(ref logger) = self.logger {
+            logger.close();
+        }
         if let Ok(mut child) = self.child.lock() {
             let _ = child.kill();
         }
@@ -215,6 +245,7 @@ fn spawn_reader(
     session_id: String,
     mut reader: Box<dyn Read + Send>,
     app: AppHandle,
+    logger: Option<Arc<SessionLogger>>,
 ) -> JoinHandle<()> {
     tokio::task::spawn_blocking(move || {
         eprintln!("[slate][reader] loop start for id={session_id}");
@@ -229,6 +260,9 @@ fn spawn_reader(
                 Ok(0) | Err(_) => {
                     // Flush any pending bytes before signalling exit.
                     if !coalesce.is_empty() {
+                        if let Some(ref l) = logger {
+                            l.log_output(&coalesce);
+                        }
                         app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
                     }
                     eprintln!("[slate][reader] EOF/error for id={session_id}");
@@ -237,6 +271,9 @@ fn spawn_reader(
                 Ok(n) => {
                     coalesce.extend_from_slice(&buf[..n]);
                     if coalesce.len() >= FLUSH_BYTES || last_emit.elapsed() >= FLUSH_INTERVAL {
+                        if let Some(ref l) = logger {
+                            l.log_output(&coalesce);
+                        }
                         app.emit(&events::pty_data(&session_id), B64.encode(&coalesce)).ok();
                         coalesce.clear();
                         last_emit = Instant::now();

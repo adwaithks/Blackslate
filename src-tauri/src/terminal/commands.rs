@@ -1,6 +1,7 @@
 use tauri::{AppHandle, State};
 
 use super::error::CommandResult;
+use super::logger;
 use super::project_stack::{self as project_stack_mod, ProjectStackItem};
 use super::AppState;
 
@@ -67,6 +68,33 @@ pub async fn pty_claude_code_active(
     state: State<'_, AppState>,
 ) -> CommandResult<bool> {
     state.sessions.claude_code_active(&id)
+}
+
+// ---------------------------------------------------------------------------
+// Logging
+// ---------------------------------------------------------------------------
+
+/// Returns the path to the session log directory (`~/.slate/logs`).
+/// Use this to know where to find `.log` and `.raw` files.
+#[tauri::command]
+pub fn get_log_dir() -> Option<String> {
+    logger::log_dir().map(|p| p.to_string_lossy().into_owned())
+}
+
+/// Returns the log and raw file paths for a given PTY session id.
+/// Both are `None` when logging was unavailable (e.g. permission error).
+#[derive(serde::Serialize)]
+pub struct SessionPaths {
+    pub log: Option<String>,
+    pub raw: Option<String>,
+}
+
+#[tauri::command]
+pub fn pty_session_paths(id: String, state: State<'_, AppState>) -> SessionPaths {
+    match state.sessions.get_paths(&id) {
+        Some((log, raw)) => SessionPaths { log, raw },
+        None => SessionPaths { log: None, raw: None },
+    }
 }
 
 // ---------------------------------------------------------------------------

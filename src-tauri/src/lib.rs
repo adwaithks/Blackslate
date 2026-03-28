@@ -5,8 +5,8 @@ mod macos_menu;
 
 use terminal::AppState;
 use terminal::commands::{
-    get_home_dir, git_info, project_stack, pty_claude_code_active, pty_close, pty_create, pty_resize,
-    pty_write,
+    get_home_dir, get_log_dir, git_info, project_stack, pty_claude_code_active, pty_close,
+    pty_create, pty_resize, pty_session_paths, pty_write,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -23,6 +23,8 @@ pub fn run() {
             git_info,
             project_stack,
             get_home_dir,
+            get_log_dir,
+            pty_session_paths,
         ]);
 
     #[cfg(target_os = "macos")]

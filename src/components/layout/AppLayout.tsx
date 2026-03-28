@@ -139,7 +139,7 @@ export function AppLayout() {
 					>
 						<span
 							title={headerPwd}
-							className="min-w-0 flex-1 truncate text-xs leading-none text-muted-foreground/50 select-none"
+							className="min-w-0 truncate text-xs leading-none text-muted-foreground/50 select-none"
 						>
 							{headerPwd}
 						</span>

@@ -2,9 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+
+// Same regex WebLinksAddon uses — handles trailing punctuation correctly.
+const URL_REGEX_SRC =
+	/(https?|ftp):\/\/[^\s"'<>[\]{}|\\^`]*[^\s"':,.!?{}|\\^~[\]`()<>]/.source;
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { usePty } from "@/hooks/usePty";
 import {
 	useSessionStore,
@@ -81,7 +85,6 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 
 		const fitAddon = new FitAddon();
 		term.loadAddon(fitAddon);
-		term.loadAddon(new WebLinksAddon());
 		term.open(container);
 
 		// WebGL renderer — GPU accelerated (same as VS Code). Falls back to
@@ -93,6 +96,72 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		} catch {
 			// WebGL unavailable — xterm uses its canvas renderer.
 		}
+
+		// ── URL links ─────────────────────────────────────────────────────────
+		// Clickable link provider: hover shows underline + pointer cursor; click
+		// opens in the default browser via Tauri's opener plugin.
+		term.registerLinkProvider({
+			provideLinks(lineNumber, callback) {
+				const line = term.buffer.active.getLine(lineNumber - 1);
+				if (!line) { callback(undefined); return; }
+				const text = line.translateToString(true);
+				const re = new RegExp(URL_REGEX_SRC, "g");
+				const links: Parameters<typeof callback>[0] = [];
+				let m: RegExpExecArray | null;
+				while ((m = re.exec(text)) !== null) {
+					const url = m[0];
+					const x = m.index;
+					links!.push({
+						range: {
+							start: { x: x + 1, y: lineNumber },
+							end: { x: x + url.length, y: lineNumber },
+						},
+						text: url,
+						decorations: { pointerCursor: true, underline: true },
+						activate(_e, uri) { openUrl(uri).catch(console.error); },
+					});
+				}
+				callback(links!.length ? links : undefined);
+			},
+		});
+
+		// Permanent blue underline for URLs using buffer decorations.
+		// onWriteParsed fires after each PTY write is parsed — we scan recently
+		// written lines and add a border-bottom DOM element over each URL.
+		// foregroundColor colours the text via the WebGL renderer.
+		const decoratedLines = new Set<number>();
+		term.onWriteParsed(() => {
+			const active = term.buffer.active;
+			const cursorAbsY = active.baseY + active.cursorY;
+			for (let absY = Math.max(0, cursorAbsY - 3); absY <= cursorAbsY; absY++) {
+				if (decoratedLines.has(absY)) continue;
+				const line = active.getLine(absY);
+				if (!line) continue;
+				const text = line.translateToString(true);
+				const re = new RegExp(URL_REGEX_SRC, "g");
+				let m: RegExpExecArray | null;
+				let marker: ReturnType<typeof term.registerMarker> | undefined;
+				decoratedLines.add(absY);
+				while ((m = re.exec(text)) !== null) {
+					if (!marker) {
+						marker = term.registerMarker(absY - cursorAbsY) ?? undefined;
+						if (!marker) break;
+						marker.onDispose(() => decoratedLines.delete(absY));
+					}
+					term.registerDecoration({
+						marker,
+						x: m.index,
+						width: m[0].length,
+						foregroundColor: "#569cd6",
+						layer: "top",
+					})?.onRender((el) => {
+						el.style.boxSizing = "border-box";
+						el.style.borderBottom = "1px solid rgba(86,156,214,0.7)";
+						el.style.pointerEvents = "none";
+					});
+				}
+			}
+		});
 
 		fitAddon.fit();
 		fitAddonRef.current = fitAddon;
