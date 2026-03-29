@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { IoAdd } from "react-icons/io5";
-import { LuFolder, LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
+import { LuFolder } from "react-icons/lu";
+import { TbLayoutSidebarFilled, TbLayoutSidebarRightFilled } from "react-icons/tb";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { TerminalView } from "@/components/terminal/TerminalView";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { GitPanel } from "@/components/git/GitPanel";
 import { cwdToAbsolute, useSessionStore } from "@/store/sessions";
 import { useSettingsStore, SIDEBAR_COLOR_OPTIONS } from "@/store/settings";
 import { getHomeDir } from "@/hooks/usePty";
@@ -21,6 +23,7 @@ export function AppLayout() {
 	const activeCwd = sessions.find((s) => s.id === activeId)?.cwd ?? "~";
 	const [homeDir, setHomeDir] = useState<string>("");
 	const [sidebarOpen, setSidebarOpen] = useState(true);
+	const [gitPanelOpen, setGitPanelOpen] = useState(false);
 
 	const { increaseFontSize, decreaseFontSize, sidebarColor } = useSettingsStore();
 	const sidebarColorValue =
@@ -134,12 +137,12 @@ export function AppLayout() {
 							className="h-6 w-6 shrink-0 px-1 text-muted-foreground hover:text-foreground"
 						>
 							{sidebarOpen ? (
-								<LuPanelLeftClose
+								<TbLayoutSidebarFilled
 									className="size-4.5 shrink-0"
 									aria-hidden
 								/>
 							) : (
-								<LuPanelLeftOpen
+								<TbLayoutSidebarRightFilled
 									className="size-4.5 shrink-0"
 									aria-hidden
 								/>
@@ -148,11 +151,11 @@ export function AppLayout() {
 					</div>
 					<div
 						data-tauri-drag-region
-						className="flex min-w-0 w-full items-center justify-start bg-black px-3"
+						className="flex min-w-0 w-full items-center justify-between bg-black px-3"
 					>
 						<span
 							title={headerPwd}
-							className="flex  min-w-0 items-center gap-1.5 text-xs leading-none text-muted-foreground/50 select-none"
+							className="flex min-w-0 items-center gap-1.5 text-xs leading-none text-muted-foreground/50 select-none"
 						>
 							<LuFolder
 								className="size-3.5 shrink-0 text-muted-foreground/45"
@@ -162,15 +165,44 @@ export function AppLayout() {
 								{headerPwd}
 							</span>
 						</span>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setGitPanelOpen((o) => !o)}
+							aria-label={gitPanelOpen ? "Hide git panel" : "Show git panel"}
+							aria-pressed={gitPanelOpen}
+							className="h-6 w-6 shrink-0 px-1 text-muted-foreground hover:text-foreground"
+						>
+							{gitPanelOpen ? (
+								<TbLayoutSidebarRightFilled
+									className="size-4.5 shrink-0"
+									aria-hidden
+								/>
+							) : (
+								<TbLayoutSidebarFilled
+									className="size-4.5 shrink-0"
+									aria-hidden
+								/>
+							)}
+						</Button>
 					</div>
 				</div>
 
-				{/* Main content: sidebar + terminal */}
+				{/* Main content: sidebar + terminal + git panel */}
 				<div className="flex flex-1 min-h-0 min-w-0">
 					<AppSidebar />
 					<main className="flex-1 overflow-hidden min-w-0">
 						<TerminalView />
 					</main>
+					<GitPanel
+						open={gitPanelOpen}
+						activeCwd={
+							homeDir
+								? cwdToAbsolute(activeCwd, homeDir)
+								: activeCwd
+						}
+					/>
 				</div>
 			</div>
 		</SidebarProvider>

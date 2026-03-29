@@ -48,43 +48,45 @@ html.dark #root {
 	height: 100% !important;
 }
 
-/* Scrollbars — dark track + visible thumb (WebKit + Firefox) */
-.xterm .xterm-viewport::-webkit-scrollbar {
-	width: 10px;
-}
-.xterm .xterm-viewport::-webkit-scrollbar-track {
-	background: oklch(0.2 0 0);
-}
-.xterm .xterm-viewport::-webkit-scrollbar-thumb {
-	background: oklch(0.42 0 0);
-	border-radius: 5px;
-	border: 2px solid oklch(0.2 0 0);
-}
-.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-	background: oklch(0.52 0 0);
-}
+/* Terminal: hide native scrollbar (trackpad / wheel / keys still scroll scrollback) */
 .xterm .xterm-viewport {
-	scrollbar-color: oklch(0.42 0 0) oklch(0.2 0 0);
-	scrollbar-width: thin;
+	scrollbar-width: none;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+	display: none;
 }
 
-/* Session list sidebar */
-[data-slot="sidebar-content"]::-webkit-scrollbar {
-	width: 8px;
+/* Compact scrollbars app-wide (WKWebView + Firefox). xterm keeps viewport hidden above. */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb) transparent;
 }
+
+*::-webkit-scrollbar {
+	width: var(--scrollbar-size);
+	height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--scrollbar-thumb);
+	border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--scrollbar-thumb-hover);
+}
+
+/* Sidebar: track matches chrome surface */
 [data-slot="sidebar-content"]::-webkit-scrollbar-track {
 	background: var(--chrome-sidebar-surface);
 }
-[data-slot="sidebar-content"]::-webkit-scrollbar-thumb {
-	background: oklch(0.38 0 0);
-	border-radius: 4px;
-}
-[data-slot="sidebar-content"]::-webkit-scrollbar-thumb:hover {
-	background: oklch(0.48 0 0);
-}
+
 [data-slot="sidebar-content"] {
-	scrollbar-color: oklch(0.38 0 0) var(--chrome-sidebar-surface);
-	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb) var(--chrome-sidebar-surface);
 }
 
 /* Slightly lifted black — sidebar column + scroll body (see .dark --chrome-sidebar-surface) */
@@ -185,6 +187,9 @@ html.dark #root {
 	--sidebar-accent-foreground: oklch(0.205 0 0);
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
+	--scrollbar-size: 4px;
+	--scrollbar-thumb: oklch(0.58 0 0);
+	--scrollbar-thumb-hover: oklch(0.48 0 0);
 }
 
 .dark {
@@ -221,6 +226,8 @@ html.dark #root {
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
+	--scrollbar-thumb: oklch(0.34 0 0);
+	--scrollbar-thumb-hover: oklch(0.44 0 0);
 }
 
 @layer base {

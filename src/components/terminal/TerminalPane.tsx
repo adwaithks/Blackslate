@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { debounce } from "@/lib/debounce";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -48,6 +49,9 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [terminal, setTerminal] = useState<Terminal | null>(null);
 	const fitAddonRef = useRef<FitAddon | null>(null);
+	// Always points at the current Terminal instance so the debounced resize
+	// fn (created once) never closes over a stale value.
+	const terminalRef = useRef<Terminal | null>(null);
 	const fontSize = useSettingsStore((s) => s.fontSize);
 	const terminalThemeId = useSettingsStore((s) => s.terminalTheme);
 
@@ -167,15 +171,35 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		// Defer focus so the webview is ready to accept keyboard events.
 		requestAnimationFrame(() => term.focus());
 
+		terminalRef.current = term;
 		setTerminal(term);
 		return () => {
 			term.dispose();
+			terminalRef.current = null;
 			setTerminal(null);
 			fitAddonRef.current = null;
 		};
 	}, []);
 
 	const { sendResize } = usePty({ terminal, sessionId });
+
+	// ── Debounced fit + PTY resize ────────────────────────────────────────
+	// Both fit() and sendResize() are debounced together so the canvas never
+	// redraws at an intermediate size during layout changes (panel toggles,
+	// window drag). sendResize always reads the cols/rows fit() just set.
+	// Created once; reads state via refs — no stale closures possible.
+	const debouncedFitAndResizeRef = useRef(
+		debounce(() => {
+			fitAddonRef.current?.fit();
+			const t = terminalRef.current;
+			if (t) sendResize(t.cols, t.rows);
+		}, 80),
+	);
+
+	useEffect(() => {
+		const fn = debouncedFitAndResizeRef.current;
+		return () => fn.cancel();
+	}, []);
 
 	// ── Git info + project stack — refresh whenever cwd changes ───────────
 	const cwd = useSessionStore(
@@ -213,32 +237,21 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 	useEffect(() => {
 		if (!terminal) return;
 		terminal.options.theme = resolveTheme();
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [terminalThemeId, terminal]);
 
 	// ── Resize observer ────────────────────────────────────────────────────
-	// fit() runs immediately to keep the terminal crisp; pty_resize is
-	// debounced to avoid flooding the IPC channel during continuous drag.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || !terminal) return;
-		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 		const observer = new ResizeObserver(() => {
-			fitAddonRef.current?.fit();
-			if (debounceTimer !== null) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(
-				() => sendResize(terminal.cols, terminal.rows),
-				80,
-			);
+			debouncedFitAndResizeRef.current();
 		});
 
 		observer.observe(container);
-		return () => {
-			observer.disconnect();
-			if (debounceTimer !== null) clearTimeout(debounceTimer);
-		};
-	}, [terminal, sendResize]);
+		return () => observer.disconnect();
+	}, [terminal]);
 
 	// ── Activation ─────────────────────────────────────────────────────────
 	// Re-fit in case the container size changed while hidden, then focus.

@@ -6,8 +6,9 @@ mod macos_menu;
 use tauri::Emitter;
 use terminal::AppState;
 use terminal::commands::{
-    get_home_dir, get_log_dir, git_info, project_stack, pty_claude_code_active, pty_close,
-    pty_create, pty_resize, pty_session_paths, pty_write,
+    discard_all, discard_file, get_git_status, get_home_dir, get_log_dir, git_discover_repo_root,
+    git_info, pick_folders, project_stack, pty_claude_code_active, pty_close, pty_create,
+    pty_resize, pty_session_paths, pty_write, stage_all, stage_file, unstage_all, unstage_file,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -26,6 +27,15 @@ pub fn run() {
             get_home_dir,
             get_log_dir,
             pty_session_paths,
+            get_git_status,
+            stage_file,
+            unstage_file,
+            discard_file,
+            stage_all,
+            unstage_all,
+            discard_all,
+            pick_folders,
+            git_discover_repo_root,
         ]);
 
     #[cfg(target_os = "macos")]
