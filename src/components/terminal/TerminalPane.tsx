@@ -13,6 +13,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { usePty } from "@/hooks/usePty";
 import {
 	useSessionStore,
+	findSession,
 	type GitInfo,
 	type ProjectStackItem,
 } from "@/store/sessions";
@@ -203,7 +204,7 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 
 	// ── Git info + project stack — refresh whenever cwd changes ───────────
 	const cwd = useSessionStore(
-		(s) => s.sessions.find((x) => x.id === sessionId)?.cwd ?? "~",
+		(s) => findSession(s.workspaces, sessionId)?.cwd ?? "~",
 	);
 	const setGit = useSessionStore((s) => s.setGit);
 	const setProjectStack = useSessionStore((s) => s.setProjectStack);

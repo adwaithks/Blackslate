@@ -72,10 +72,7 @@ function readStoredGitPanelWidth(): number {
 		const v = localStorage.getItem(GIT_PANEL_WIDTH_KEY);
 		const n = v ? Number.parseInt(v, 10) : NaN;
 		if (Number.isFinite(n)) {
-			return Math.min(
-				GIT_PANEL_MAX_W,
-				Math.max(GIT_PANEL_MIN_W, n),
-			);
+			return Math.min(GIT_PANEL_MAX_W, Math.max(GIT_PANEL_MIN_W, n));
 		}
 	} catch {
 		/* ignore */
@@ -141,9 +138,7 @@ function FileRowSkeleton({ wide }: { wide?: boolean }) {
 	return (
 		<div className="flex min-w-0 items-center gap-2 px-2 py-1">
 			<div className="min-w-0 flex-1 overflow-hidden">
-				<Skeleton
-					className={cn("h-3", wide ? "w-[88%]" : "w-[72%]")}
-				/>
+				<Skeleton className={cn("h-3", wide ? "w-[88%]" : "w-[72%]")} />
 			</div>
 			<div className="flex h-5 w-[52px] shrink-0 items-center justify-end gap-1">
 				<Skeleton className="h-3 w-5 rounded-sm" />
@@ -170,9 +165,9 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 	const [addingCurrent, setAddingCurrent] = useState(false);
 	const [footerMsg, setFooterMsg] = useState<string | null>(null);
 	/** Git root for `activeCwd` — basename shown on the session Add button. */
-	const [sessionRepoRoot, setSessionRepoRoot] = useState<string | null | undefined>(
-		undefined,
-	);
+	const [sessionRepoRoot, setSessionRepoRoot] = useState<
+		string | null | undefined
+	>(undefined);
 	const [panelWidth, setPanelWidth] = useState(readStoredGitPanelWidth);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const dragState = useRef<{ startX: number; startWidth: number } | null>(
@@ -223,11 +218,11 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 		if (!open) return;
 		let cancelled = false;
 		setSessionRepoRoot(undefined);
-		void invoke<string | null>("git_discover_repo_root", { cwd: activeCwd }).then(
-			(root) => {
-				if (!cancelled) setSessionRepoRoot(root);
-			},
-		);
+		void invoke<string | null>("git_discover_repo_root", {
+			cwd: activeCwd,
+		}).then((root) => {
+			if (!cancelled) setSessionRepoRoot(root);
+		});
 		return () => {
 			cancelled = true;
 		};
@@ -308,7 +303,7 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 				className="absolute left-0 top-0 bottom-0 z-10 w-1 cursor-col-resize bg-transparent transition-colors hover:bg-white/15"
 				aria-hidden
 			/>
-			<header className="shrink-0 border-b border-border/20 bg-muted/15 px-1.5 py-1 dark:bg-muted/10">
+			<header className="shrink-0 border-b border-border/20 bg-background px-1.5 py-1">
 				<div className="flex min-w-0 gap-1">
 					<Button
 						variant="ghost"
@@ -318,9 +313,7 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 						title="Pick folders to track"
 						className={cn(
 							"h-6 min-h-6 justify-center gap-1 px-1 py-0 text-[11px] leading-none text-muted-foreground hover:text-foreground",
-							showAddSessionRepo
-								? "min-w-0 flex-1"
-								: "w-full",
+							showAddSessionRepo ? "min-w-0 flex-1" : "w-full",
 						)}
 					>
 						<LuFolderPlus className="size-3 shrink-0" />
