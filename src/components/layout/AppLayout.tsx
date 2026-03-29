@@ -19,8 +19,10 @@ import {
 import { useSettingsStore, SIDEBAR_COLOR_OPTIONS } from "@/store/settings";
 import { getHomeDir } from "@/hooks/usePty";
 import {
+	modBracketKey,
 	modDigitKey,
 	modLetter,
+	modOptionDigitKey,
 	useAppShortcuts,
 	zoomInKeys,
 	zoomOutKey,
@@ -58,12 +60,26 @@ export function AppLayout() {
 	const headerPwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
 
 	const buildShortcuts = () => {
-		// ⌘1–9: switch to session N within the active workspace
+		// ⌘1–9: switch to workspace N (sidebar order)
+		const gotoWorkspaceShortcuts = Array.from({ length: 9 }, (_, i) => {
+			const n = i + 1;
+			return {
+				id: `goto-workspace-${n}`,
+				when: (e: KeyboardEvent) => modDigitKey(e) === n,
+				run: () => {
+					const s = useSessionStore.getState();
+					const ws = s.workspaces[n - 1];
+					if (ws) s.activateWorkspace(ws.id);
+				},
+			};
+		});
+
+		// ⌘⌥1–9: switch to session tab N within the active workspace (horizontal tabs)
 		const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
 			const n = i + 1;
 			return {
 				id: `goto-tab-${n}`,
-				when: (e: KeyboardEvent) => modDigitKey(e) === n,
+				when: (e: KeyboardEvent) => modOptionDigitKey(e) === n,
 				run: () => {
 					const s = useSessionStore.getState();
 					const ws = s.workspaces.find(
@@ -77,6 +93,7 @@ export function AppLayout() {
 		});
 
 		return [
+			...gotoWorkspaceShortcuts,
 			...gotoTabShortcuts,
 			{
 				// ⌘N — new workspace (new sidebar row + first tab)
@@ -110,6 +127,48 @@ export function AppLayout() {
 				id: "toggle-sidebar",
 				when: (e: KeyboardEvent) => modLetter(e, "b"),
 				run: () => setSidebarOpen((o) => !o),
+			},
+			{
+				// ⌘L — toggle git panel (same as Chrome “focus address bar” — here: repo UI)
+				id: "toggle-git-panel",
+				when: (e: KeyboardEvent) => modLetter(e, "l"),
+				run: () => setGitPanelOpen((o) => !o),
+			},
+			{
+				// ⌘[ / ⌘] — previous / next session tab (same as Safari/Chrome tabs)
+				id: "tab-prev",
+				when: (e: KeyboardEvent) => modBracketKey(e, "left"),
+				run: () => {
+					const s = useSessionStore.getState();
+					const ws = s.workspaces.find(
+						(w) => w.id === s.activeWorkspaceId,
+					);
+					if (!ws || ws.sessions.length === 0) return;
+					const i = ws.sessions.findIndex(
+						(sess) => sess.id === ws.activeSessionId,
+					);
+					if (i < 0) return;
+					const prev =
+						(i - 1 + ws.sessions.length) % ws.sessions.length;
+					s.activateSession(ws.id, ws.sessions[prev].id);
+				},
+			},
+			{
+				id: "tab-next",
+				when: (e: KeyboardEvent) => modBracketKey(e, "right"),
+				run: () => {
+					const s = useSessionStore.getState();
+					const ws = s.workspaces.find(
+						(w) => w.id === s.activeWorkspaceId,
+					);
+					if (!ws || ws.sessions.length === 0) return;
+					const i = ws.sessions.findIndex(
+						(sess) => sess.id === ws.activeSessionId,
+					);
+					if (i < 0) return;
+					const next = (i + 1) % ws.sessions.length;
+					s.activateSession(ws.id, ws.sessions[next].id);
+				},
 			},
 			{
 				id: "zoom-in",
@@ -204,6 +263,7 @@ export function AppLayout() {
 								variant="ghost"
 								size="sm"
 								onClick={() => setGitPanelOpen((o) => !o)}
+								title="Toggle git panel (⌘L)"
 								aria-label={
 									gitPanelOpen
 										? "Hide git panel"
