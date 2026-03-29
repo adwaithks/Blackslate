@@ -160,6 +160,13 @@ fn pty_size(cols: u16, rows: u16) -> PtySize {
 fn build_shell_cmd(shell: &str) -> CommandBuilder {
     let mut cmd = CommandBuilder::new(shell);
 
+    // Spawn as a login shell so that login startup files (.zprofile, .bash_profile)
+    // are sourced. This is necessary to pick up PATH additions made there — most
+    // notably Homebrew (/opt/homebrew/bin on Apple Silicon, /usr/local/bin on Intel).
+    // Note: we pass `-l` as a regular argument, NOT via the argv[0] `-zsh` trick,
+    // which breaks portable-pty because it uses args[0] as the execve path.
+    cmd.arg("-l");
+
     // Essential: programs use $TERM to decide colour / capability support.
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
@@ -211,6 +218,14 @@ fn setup_zsh_integration() -> Option<std::path::PathBuf> {
     let zdotdir = std::env::temp_dir().join("blackslate_zsh");
     std::fs::create_dir_all(&zdotdir).ok()?;
 
+    // .zprofile: sourced for login shells before .zshrc.
+    // With ZDOTDIR set, zsh looks here instead of $HOME — forward to the real one.
+    let zprofile = format!(
+        r#"# Blackslate shell integration (auto-generated)
+[ -f "{home}/.zprofile" ] && source "{home}/.zprofile"
+"#
+    );
+
     let zshrc = format!(
         r#"# Blackslate shell integration (auto-generated)
 # Source the user's real zshrc first.
@@ -225,6 +240,7 @@ _blackslate_report_cwd
 "#
     );
 
+    std::fs::write(zdotdir.join(".zprofile"), zprofile).ok()?;
     std::fs::write(zdotdir.join(".zshrc"), zshrc).ok()?;
     Some(zdotdir)
 }
