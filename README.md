@@ -117,20 +117,31 @@ The Rust backend is infrastructure only — PTY lifecycle, process detection, gi
 - [Bun](https://bun.sh) (or Node.js 20+)
 - Xcode Command Line Tools: `xcode-select --install`
 
-### Run from source
+### Clone the repository
 
 ```bash
 git clone https://github.com/your-org/blackslate.git
 cd blackslate
-
-bun install        # install frontend dependencies
-bun tauri dev      # development build with hot reload
 ```
 
-The first run compiles the Rust backend — takes a minute or two. Subsequent runs are incremental.
+### Build instructions
+
+**Install dependencies**
 
 ```bash
-bun tauri build    # production .app + .dmg
+bun install
+```
+
+**Run locally** — development build with hot reload (Vite + Tauri). The first run compiles the Rust backend (about a minute); later runs are incremental.
+
+```bash
+bun tauri dev
+```
+
+**Create a release build** — produces the macOS `.app` and a `.dmg` installer (artifacts under `src-tauri/target/release/bundle/`).
+
+```bash
+bun tauri build
 ```
 
 ---
