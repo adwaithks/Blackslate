@@ -17,11 +17,13 @@ A macOS terminal that works like every great terminal you've used — fast, mini
 
 <br />
 
-<img src="screenshots/carbon.png" alt="Blackslate — Carbon sidebar" width="100%" />
+<img src="screenshots/voidwithgitpane.png" alt="Blackslate — Void sidebar with git changes pane" width="100%" />
 
-<img src="screenshots/tokyo.png" alt="Blackslate — Tokyo Night theme" width="100%" />
+<img src="screenshots/carbonwithgitpane.png" alt="Blackslate — Carbon sidebar with git changes pane" width="100%" />
 
-<img src="screenshots/themesettings.png" alt="Blackslate — Theme settings" width="100%" />
+<img src="screenshots/theme.png" alt="Blackslate — Terminal theme & sidebar colour" width="100%" />
+
+<img src="screenshots/void.png" alt="Blackslate — Void sidebar" width="100%" />
 
 <br />
 
@@ -55,15 +57,40 @@ The longer-term goal is bigger: **a full-stack developer workspace that lives in
 
 ## Features
 
+### Workspaces & tabs
+
+- **Multiple workspaces** — each workspace is a row in the sidebar; **`⌘1`–`⌘9`** jumps to workspace 1–9 in order
+- **Horizontal tabs per workspace** — several terminal sessions inside one workspace; **`⌘⌥1`–`⌘⌥9`** selects tab 1–9, **`⌘[`** / **`⌘]`** previous or next tab (wraps)
+- **PTYs stay alive** — every tab keeps its own PTY; inactive tabs stay mounted so switching is instant with no shell state loss
+
+### Git changes pane
+
+- **Right-side git panel** — track multiple repositories, see **Changes** / **Staged** per repo, line stats, and stage or discard from the UI (**`⌘L`** toggles the panel)
+- **Branch and status** — current branch per repo via `git`; status is polled while the panel is open
+
 ### Terminal
 
 - **WebGL-accelerated rendering** — xterm.js with the WebGL backend, the same renderer powering VS Code's integrated terminal
-- **Multiple sessions** — each session has its own PTY; switching is instant with zero shell state loss
 - **Live cwd tracking** — OSC 7 shell integration injected automatically via `ZDOTDIR` (zsh) and `PROMPT_COMMAND` (bash), without touching your dotfiles
-- **Git awareness** — branch name and dirty indicator per session, read directly from `.git/HEAD` with no subprocess overhead
+- **Git awareness in the sidebar** — branch name per session when the cwd is inside a repo
 - **Project stack detection** — Rust, Go, Node, React, Python and more detected from project files and shown as badges per session
 - **Font size control** — `⌘=` / `⌘-` resize live across all sessions
-- **Keyboard-first** — `⌘N` new session, `⌘W` close, `⌘1`–`⌘9` switch, `⌘B` toggle sidebar
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘N` | New workspace |
+| `⌘T` | New tab in the active workspace |
+| `⌘W` / `⌘Q` | Close active tab (or workspace if it’s the last tab) |
+| `⌘1`–`⌘9` | Switch to workspace 1–9 |
+| `⌘⌥1`–`⌘⌥9` | Switch to tab 1–9 in the active workspace |
+| `⌘[` / `⌘]` | Previous / next tab in the active workspace |
+| `⌘B` | Toggle sidebar |
+| `⌘L` | Toggle git changes pane |
+| `⌘=` / `⌘-` | Zoom terminal font |
+
+Settings (terminal theme & sidebar colour) — **Blackslate → Preferences…** from the menu bar (`⌘,` on macOS).
 
 ### Agent Workspace
 

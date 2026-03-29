@@ -48,6 +48,27 @@ export function modDigitKey(e: KeyboardEvent): number | null {
 	return e.key.charCodeAt(0) - 48;
 }
 
+/**
+ * ⌘/Ctrl + ⌥ + digit (1–9) — for workspace switching without clashing with
+ * {@link modDigitKey} (session tabs).
+ */
+export function modOptionDigitKey(e: KeyboardEvent): number | null {
+	if (!modPrimary(e) || !e.altKey || e.shiftKey) return null;
+	if (e.key < "1" || e.key > "9") return null;
+	return e.key.charCodeAt(0) - 48;
+}
+
+/** ⌘/Ctrl + [ or ] (no Shift/Alt). Uses `code` for reliable layout mapping. */
+export function modBracketKey(
+	e: KeyboardEvent,
+	which: "left" | "right",
+): boolean {
+	if (!modPrimary(e) || e.altKey || e.shiftKey) return false;
+	return which === "left"
+		? e.code === "BracketLeft"
+		: e.code === "BracketRight";
+}
+
 // ---------------------------------------------------------------------------
 // Focus — allow shortcuts while xterm is focused (textarea helper)
 // ---------------------------------------------------------------------------

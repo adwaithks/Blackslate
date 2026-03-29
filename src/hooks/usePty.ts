@@ -165,18 +165,17 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// OSC 7: cwd — use a rolling buffer because file:// URLs can span chunk
-					// boundaries. All other OSC sequences are short and always arrive complete.
+					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer,
+					// bounded to MAX_OSC_BUF to prevent unbounded growth on ESC-free output.
 					const combined = oscBufRef.current + withoutCursor;
 					const buf =
 						combined.length > MAX_OSC_BUF
 							? combined.slice(-MAX_OSC_BUF)
 							: combined;
 					const cwd = parseOsc7(buf, home);
-					if (cwd !== null) setCwd(sessionId, cwd);
 					const lastEsc = buf.lastIndexOf("\x1b");
-					oscBufRef.current =
-						lastEsc !== -1 ? buf.slice(lastEsc) : "";
+					oscBufRef.current = lastEsc !== -1 ? buf.slice(lastEsc) : "";
+					if (cwd !== null) setCwd(sessionId, cwd);
 
 					// Claude state — scan the current chunk only so stale sequences in the
 					// rolling buffer don't re-trigger state transitions after they've fired.

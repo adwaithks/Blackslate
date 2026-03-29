@@ -26,7 +26,7 @@ export type ClaudeState = "thinking" | "waiting" | null;
 
 export interface Session {
 	id: string;
-	/** Current working directory, tilde-normalised (e.g. "~/Projects/Blackslate"). */
+	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
 	cwd: string;
 	/** Unix timestamp of when the session was created. */
 	createdAt: number;
@@ -46,35 +46,58 @@ export interface Session {
 	claudeModel: string | null;
 }
 
-interface SessionState {
+/**
+ * A workspace is one sidebar entry that groups multiple terminal sessions
+ * (horizontal tabs). ⌘N creates a new workspace; ⌘T creates a new session
+ * within the active workspace.
+ */
+export interface Workspace {
+	id: string;
 	sessions: Session[];
-	activeId: string;
+	/** The session currently shown in this workspace's terminal area. */
+	activeSessionId: string;
+}
+
+interface SessionState {
+	workspaces: Workspace[];
+	activeWorkspaceId: string;
 }
 
 interface SessionActions {
-	/** Open a new session and make it active. */
-	createSession: () => void;
+	// ── Workspace lifecycle ──────────────────────────────────────────────────
+	/** Create a new workspace with one fresh session, make it active (⌘N). */
+	createWorkspace: () => void;
+	/** Close a workspace and all its sessions. Always keeps at least one workspace. */
+	closeWorkspace: (workspaceId: string) => void;
+	/** Switch the visible workspace (sidebar click). */
+	activateWorkspace: (workspaceId: string) => void;
+
+	// ── Session lifecycle (within a workspace) ───────────────────────────────
+	/** Add a new session to an existing workspace, make it active (⌘T). */
+	createSessionInWorkspace: (workspaceId: string) => void;
 	/**
-	 * Close a session. Activates the nearest sibling.
-	 * Closing the last session is a no-op — one session must always exist.
+	 * Close a session within a workspace.
+	 * If it was the last session, the workspace itself is closed.
 	 */
-	closeSession: (id: string) => void;
-	/** Switch the visible terminal to the given session. */
-	activateSession: (id: string) => void;
-	/** Update the working directory for a session (called by the OSC 7 parser). */
-	setCwd: (id: string, cwd: string) => void;
-	/** Update the git info for a session (called after cwd changes). */
-	setGit: (id: string, git: GitInfo | null) => void;
-	setProjectStack: (id: string, stack: ProjectStackItem[]) => void;
-	/** Link React session id ↔ PTY id after `pty_create`. */
-	setPtyId: (id: string, ptyId: string | null) => void;
-	setClaudeCodeActive: (id: string, active: boolean) => void;
-	/** Update the fine-grained Claude state parsed from the PTY stream. */
-	setClaudeState: (id: string, state: ClaudeState) => void;
-	/** Update the AI-generated session title from Claude Code's window title. */
-	setClaudeSessionTitle: (id: string, title: string | null) => void;
-	/** Update the Claude model parsed from the splash screen. */
-	setClaudeModel: (id: string, model: string | null) => void;
+	closeSession: (workspaceId: string, sessionId: string) => void;
+	/** Switch the active tab within a workspace. */
+	activateSession: (workspaceId: string, sessionId: string) => void;
+
+	// ── Per-session state setters ────────────────────────────────────────────
+	// These take only `sessionId` — the store finds the owning workspace
+	// internally. This keeps `usePty` and `TerminalPane` free of workspaceId.
+
+	/** Update the working directory (called by the OSC 7 parser in usePty). */
+	setCwd: (sessionId: string, cwd: string) => void;
+	/** Update git info (called after cwd changes). */
+	setGit: (sessionId: string, git: GitInfo | null) => void;
+	setProjectStack: (sessionId: string, stack: ProjectStackItem[]) => void;
+	/** Link React session id ↔ PTY backend id after `pty_create`. */
+	setPtyId: (sessionId: string, ptyId: string | null) => void;
+	setClaudeCodeActive: (sessionId: string, active: boolean) => void;
+	setClaudeState: (sessionId: string, state: ClaudeState) => void;
+	setClaudeSessionTitle: (sessionId: string, title: string | null) => void;
+	setClaudeModel: (sessionId: string, model: string | null) => void;
 }
 
 export type SessionStore = SessionState & SessionActions;
@@ -98,90 +121,198 @@ function makeSession(): Session {
 	};
 }
 
-/** Apply a single-field patch to one session by id, leaving all others unchanged. */
-function patchSession<K extends keyof Session>(
-	sessions: Session[],
-	id: string,
+function makeWorkspace(): Workspace {
+	const session = makeSession();
+	return {
+		id: crypto.randomUUID(),
+		sessions: [session],
+		activeSessionId: session.id,
+	};
+}
+
+/**
+ * Patch a single field on a session found by sessionId across all workspaces.
+ * Returns the workspaces array unchanged if the session isn't found.
+ */
+function patchSessionById<K extends keyof Session>(
+	workspaces: Workspace[],
+	sessionId: string,
 	key: K,
 	value: Session[K],
-): Session[] {
-	return sessions.map((x) => (x.id === id ? { ...x, [key]: value } : x));
+): Workspace[] {
+	return workspaces.map((ws) => {
+		const hasSession = ws.sessions.some((s) => s.id === sessionId);
+		if (!hasSession) return ws;
+		return {
+			...ws,
+			sessions: ws.sessions.map((s) =>
+				s.id === sessionId ? { ...s, [key]: value } : s,
+			),
+		};
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Selectors (pure functions — safe to call outside React)
+// ---------------------------------------------------------------------------
+
+export function selectActiveWorkspace(
+	state: Pick<SessionState, "workspaces" | "activeWorkspaceId">,
+): Workspace | undefined {
+	return state.workspaces.find((w) => w.id === state.activeWorkspaceId);
+}
+
+export function selectActiveSession(
+	state: Pick<SessionState, "workspaces" | "activeWorkspaceId">,
+): Session | undefined {
+	const ws = selectActiveWorkspace(state);
+	return ws?.sessions.find((s) => s.id === ws.activeSessionId);
+}
+
+/**
+ * Find a session by id across all workspaces.
+ * Use this in component selectors instead of iterating sessions directly.
+ */
+export function findSession(
+	workspaces: Workspace[],
+	sessionId: string,
+): Session | undefined {
+	for (const ws of workspaces) {
+		const s = ws.sessions.find((x) => x.id === sessionId);
+		if (s) return s;
+	}
+	return undefined;
 }
 
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 
-const initial = makeSession();
+const initialWorkspace = makeWorkspace();
 
 export const useSessionStore = create<SessionStore>((set) => ({
-	sessions: [initial],
-	activeId: initial.id,
+	workspaces: [initialWorkspace],
+	activeWorkspaceId: initialWorkspace.id,
 
-	createSession() {
-		const session = makeSession();
+	// ── Workspace lifecycle ──────────────────────────────────────────────────
+
+	createWorkspace() {
+		const workspace = makeWorkspace();
 		set((s) => ({
-			sessions: [...s.sessions, session],
-			activeId: session.id,
+			workspaces: [...s.workspaces, workspace],
+			activeWorkspaceId: workspace.id,
 		}));
 	},
 
-	closeSession(id) {
+	closeWorkspace(workspaceId) {
 		set((s) => {
-			if (s.sessions.length <= 1) return s; // always keep one session alive
-
-			const idx = s.sessions.findIndex((x) => x.id === id);
-			const sessions = s.sessions.filter((x) => x.id !== id);
-
-			// When closing the active session, activate the nearest sibling.
-			const activeId =
-				s.activeId === id
-					? sessions[Math.max(0, idx - 1)].id
-					: s.activeId;
-
-			return { sessions, activeId };
+			if (s.workspaces.length <= 1) return s;
+			const idx = s.workspaces.findIndex((w) => w.id === workspaceId);
+			const workspaces = s.workspaces.filter((w) => w.id !== workspaceId);
+			const activeWorkspaceId =
+				s.activeWorkspaceId === workspaceId
+					? workspaces[Math.max(0, idx - 1)].id
+					: s.activeWorkspaceId;
+			return { workspaces, activeWorkspaceId };
 		});
 	},
 
-	activateSession(id) {
-		set({ activeId: id });
+	activateWorkspace(workspaceId) {
+		set({ activeWorkspaceId: workspaceId });
 	},
 
-	setCwd(id, cwd) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "cwd", cwd) }));
+	// ── Session lifecycle ────────────────────────────────────────────────────
+
+	createSessionInWorkspace(workspaceId) {
+		const session = makeSession();
+		set((s) => ({
+			workspaces: s.workspaces.map((w) =>
+				w.id === workspaceId
+					? { ...w, sessions: [...w.sessions, session], activeSessionId: session.id }
+					: w,
+			),
+		}));
 	},
 
-	setGit(id, git) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "git", git) }));
+	closeSession(workspaceId, sessionId) {
+		set((s) => {
+			const ws = s.workspaces.find((w) => w.id === workspaceId);
+			if (!ws) return s;
+
+			// Last session in the workspace → close the whole workspace.
+			if (ws.sessions.length <= 1) {
+				if (s.workspaces.length <= 1) return s; // keep at least one workspace
+				const idx = s.workspaces.findIndex((w) => w.id === workspaceId);
+				const workspaces = s.workspaces.filter((w) => w.id !== workspaceId);
+				const activeWorkspaceId =
+					s.activeWorkspaceId === workspaceId
+						? workspaces[Math.max(0, idx - 1)].id
+						: s.activeWorkspaceId;
+				return { workspaces, activeWorkspaceId };
+			}
+
+			// Remove the session; activate nearest sibling if it was active.
+			const idx = ws.sessions.findIndex((x) => x.id === sessionId);
+			const sessions = ws.sessions.filter((x) => x.id !== sessionId);
+			const activeSessionId =
+				ws.activeSessionId === sessionId
+					? sessions[Math.max(0, idx - 1)].id
+					: ws.activeSessionId;
+
+			return {
+				workspaces: s.workspaces.map((w) =>
+					w.id === workspaceId ? { ...w, sessions, activeSessionId } : w,
+				),
+			};
+		});
 	},
 
-	setProjectStack(id, projectStack) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "projectStack", projectStack) }));
+	activateSession(workspaceId, sessionId) {
+		set((s) => ({
+			workspaces: s.workspaces.map((w) =>
+				w.id === workspaceId ? { ...w, activeSessionId: sessionId } : w,
+			),
+			activeWorkspaceId: workspaceId,
+		}));
 	},
 
-	setPtyId(id, ptyId) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "ptyId", ptyId) }));
+	// ── Per-session state setters ────────────────────────────────────────────
+
+	setCwd(sessionId, cwd) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "cwd", cwd) }));
 	},
 
-	setClaudeCodeActive(id, active) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeCodeActive", active) }));
+	setGit(sessionId, git) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "git", git) }));
 	},
 
-	setClaudeState(id, state) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeState", state) }));
+	setProjectStack(sessionId, projectStack) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "projectStack", projectStack) }));
 	},
 
-	setClaudeSessionTitle(id, title) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeSessionTitle", title) }));
+	setPtyId(sessionId, ptyId) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "ptyId", ptyId) }));
 	},
 
-	setClaudeModel(id, model) {
-		set((s) => ({ sessions: patchSession(s.sessions, id, "claudeModel", model) }));
+	setClaudeCodeActive(sessionId, claudeCodeActive) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeCodeActive", claudeCodeActive) }));
+	},
+
+	setClaudeState(sessionId, claudeState) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeState", claudeState) }));
+	},
+
+	setClaudeSessionTitle(sessionId, claudeSessionTitle) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeSessionTitle", claudeSessionTitle) }));
+	},
+
+	setClaudeModel(sessionId, claudeModel) {
+		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeModel", claudeModel) }));
 	},
 }));
 
 // ---------------------------------------------------------------------------
-// Derived helpers (pure, no hooks)
+// Display helpers (pure, no hooks)
 // ---------------------------------------------------------------------------
 
 /** Return the display name for a session: the last path segment, or "~". */
