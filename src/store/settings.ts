@@ -78,15 +78,25 @@ export const SIDEBAR_COLOR_OPTIONS: SidebarColorOption[] = [
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
+export const DEFAULT_SIDEBAR_WIDTH = 270;
+export const DEFAULT_EDITOR_PANEL_WIDTH = 600;
+export const DEFAULT_FILE_TREE_WIDTH = 220;
+
 interface SettingsStore {
 	fontSize: number;
 	terminalTheme: TerminalThemeId;
 	sidebarColor: SidebarColorId;
+	sidebarWidth: number;
+	editorPanelWidth: number;
+	fileTreeWidth: number;
 
 	increaseFontSize: () => void;
 	decreaseFontSize: () => void;
 	setTerminalTheme: (id: TerminalThemeId) => void;
 	setSidebarColor: (id: SidebarColorId) => void;
+	setSidebarWidth: (w: number) => void;
+	setEditorPanelWidth: (w: number) => void;
+	setFileTreeWidth: (w: number) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -95,6 +105,9 @@ export const useSettingsStore = create<SettingsStore>()(
 			fontSize: DEFAULT_FONT_SIZE,
 			terminalTheme: "gruvboxDark",
 			sidebarColor: "void",
+			sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+			editorPanelWidth: DEFAULT_EDITOR_PANEL_WIDTH,
+			fileTreeWidth: DEFAULT_FILE_TREE_WIDTH,
 
 			increaseFontSize() {
 				set((s) => ({
@@ -111,6 +124,15 @@ export const useSettingsStore = create<SettingsStore>()(
 			},
 			setSidebarColor(id) {
 				set({ sidebarColor: id });
+			},
+			setSidebarWidth(w) {
+				set({ sidebarWidth: w });
+			},
+			setEditorPanelWidth(w) {
+				set({ editorPanelWidth: w });
+			},
+			setFileTreeWidth(w) {
+				set({ fileTreeWidth: w });
 			},
 		}),
 		{ name: "blackslate-settings" },

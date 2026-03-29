@@ -1,3 +1,4 @@
+mod fs;
 mod terminal;
 
 #[cfg(target_os = "macos")]
@@ -9,6 +10,7 @@ use terminal::commands::{
     get_home_dir, get_log_dir, git_info, project_stack, pty_claude_code_active, pty_close,
     pty_create, pty_resize, pty_session_paths, pty_write,
 };
+use fs::commands::{fs_list_dir, fs_read_file, fs_write_file};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,6 +28,9 @@ pub fn run() {
             get_home_dir,
             get_log_dir,
             pty_session_paths,
+            fs_list_dir,
+            fs_read_file,
+            fs_write_file,
         ]);
 
     #[cfg(target_os = "macos")]

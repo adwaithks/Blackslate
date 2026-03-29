@@ -40,6 +40,12 @@ html.dark #root {
 	-webkit-app-region: no-drag;
 }
 
+/* Prevent pointer-event capture during panel resize drags */
+.dragging-panel .xterm,
+.dragging-panel .cm-editor {
+	pointer-events: none;
+}
+
 /* xterm.js viewport must fill its container exactly */
 .xterm,
 .xterm-viewport,
@@ -48,23 +54,25 @@ html.dark #root {
 	height: 100% !important;
 }
 
-/* Scrollbars — dark track + visible thumb (WebKit + Firefox) */
+/* Scrollbars — dark track + visible thumb (WebKit + Firefox)
+   NOTE: oklch() does not resolve inside ::-webkit-scrollbar pseudo-elements in
+   WKWebView — use hex literals here or the track falls back to white. */
 .xterm .xterm-viewport::-webkit-scrollbar {
 	width: 10px;
 }
 .xterm .xterm-viewport::-webkit-scrollbar-track {
-	background: oklch(0.2 0 0);
+	background: #1a1a1a;
 }
 .xterm .xterm-viewport::-webkit-scrollbar-thumb {
-	background: oklch(0.42 0 0);
+	background: #6b6b6b;
 	border-radius: 5px;
-	border: 2px solid oklch(0.2 0 0);
+	border: 2px solid #1a1a1a;
 }
 .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-	background: oklch(0.52 0 0);
+	background: #858585;
 }
 .xterm .xterm-viewport {
-	scrollbar-color: oklch(0.42 0 0) oklch(0.2 0 0);
+	scrollbar-color: #6b6b6b #1a1a1a;
 	scrollbar-width: thin;
 }
 
@@ -73,17 +81,17 @@ html.dark #root {
 	width: 8px;
 }
 [data-slot="sidebar-content"]::-webkit-scrollbar-track {
-	background: var(--chrome-sidebar-surface);
+	background: transparent;
 }
 [data-slot="sidebar-content"]::-webkit-scrollbar-thumb {
-	background: oklch(0.38 0 0);
+	background: #616161;
 	border-radius: 4px;
 }
 [data-slot="sidebar-content"]::-webkit-scrollbar-thumb:hover {
-	background: oklch(0.48 0 0);
+	background: #7a7a7a;
 }
 [data-slot="sidebar-content"] {
-	scrollbar-color: oklch(0.38 0 0) var(--chrome-sidebar-surface);
+	scrollbar-color: #616161 transparent;
 	scrollbar-width: thin;
 }
 
@@ -221,6 +229,73 @@ html.dark #root {
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ── CodeMirror editor ───────────────────────────────────────────────────── */
+
+/* Make CodeMirror fill its container (used with height="100%") */
+.cm-editor {
+	height: 100%;
+}
+
+.cm-scroller {
+	overflow: auto;
+	font-family: "Geist Mono Variable", ui-monospace, monospace !important;
+}
+
+/* Scrollbars in the editor — match xterm style */
+.cm-scroller::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+.cm-scroller::-webkit-scrollbar-track {
+	background: #111111;
+}
+.cm-scroller::-webkit-scrollbar-thumb {
+	background: #606060;
+	border-radius: 5px;
+	border: 2px solid #111111;
+}
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+	background: #7a7a7a;
+}
+.cm-scroller {
+	scrollbar-color: #606060 #111111;
+	scrollbar-width: thin;
+}
+
+/* No rounded corners on the editor surface */
+.cm-editor .cm-content,
+.cm-editor .cm-gutters {
+	border-radius: 0 !important;
+}
+
+/* Editor tree scrollbar */
+.editor-tree-scroll::-webkit-scrollbar {
+	width: 6px;
+}
+.editor-tree-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+.editor-tree-scroll::-webkit-scrollbar-thumb {
+	background: #525252;
+	border-radius: 3px;
+}
+.editor-tree-scroll::-webkit-scrollbar-thumb:hover {
+	background: #6b6b6b;
+}
+.editor-tree-scroll {
+	scrollbar-color: #525252 transparent;
+	scrollbar-width: thin;
+}
+
+/* Collapsible trigger: reset button styles so it looks like our custom row */
+[data-slot="collapsible-trigger"] {
+	background: none;
+	border: none;
+	outline: none;
+	text-align: left;
+	cursor: pointer;
 }
 
 @layer base {

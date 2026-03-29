@@ -57,15 +57,25 @@ function isInsideTerminal(target: EventTarget | null): boolean {
 	return Boolean(target.closest(".xterm"));
 }
 
-/** Skip when typing in real form fields; never skip inside the terminal surface. */
+function isInsideEditor(target: EventTarget | null): boolean {
+	if (!target || !(target instanceof Element)) return false;
+	return Boolean(target.closest(".cm-editor"));
+}
+
+/** Skip when typing in real form fields; never skip inside the terminal or code editor. */
 export function shouldIgnoreShortcutTarget(e: KeyboardEvent): boolean {
 	if (isInsideTerminal(e.target)) return false;
+	if (isInsideEditor(e.target)) return false;
 	const el = e.target;
 	if (!(el instanceof HTMLElement)) return false;
 	if (el.isContentEditable) return true;
 	const tag = el.tagName;
 	if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
 	return false;
+}
+
+export function isCmEditorFocused(): boolean {
+	return isInsideEditor(document.activeElement);
 }
 
 // ---------------------------------------------------------------------------
