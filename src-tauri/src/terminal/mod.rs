@@ -5,7 +5,6 @@ mod error;
 mod events;
 pub mod logger;
 mod manager;
-mod project_stack;
 mod session;
 
 pub mod commands;
@@ -28,7 +27,7 @@ impl AppState {
     }
 }
 
-/// Expand a leading `~` to `$HOME`. Shared by `git_info` and `project_stack`.
+/// Expand a leading `~` to `$HOME`. Shared by `git_info` and other path helpers.
 pub(crate) fn resolve_path(cwd: &str) -> PathBuf {
     let mut path = PathBuf::from(cwd);
     if path.starts_with("~") {

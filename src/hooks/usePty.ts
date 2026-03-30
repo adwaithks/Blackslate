@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
-import { useSessionStore } from "@/store/sessions";
+import { findSession, useSessionStore } from "@/store/sessions";
 
 // ---------------------------------------------------------------------------
 // Home dir — fetched once, shared across all callers.
@@ -265,8 +265,16 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				return;
 			}
 
-			console.log(`[pty] invoking pty_create — id=${ptyId}`);
-			await invoke("pty_create", { id: ptyId, cols, rows });
+			const initialCwd =
+				findSession(useSessionStore.getState().workspaces, sessionId)
+					?.cwd ?? null;
+			console.log(`[pty] invoking pty_create — id=${ptyId} cwd=${initialCwd}`);
+			await invoke("pty_create", {
+				id: ptyId,
+				cols,
+				rows,
+				cwd: initialCwd,
+			});
 			console.log(`[pty] session created — id=${ptyId}`);
 
 			if (!active) {

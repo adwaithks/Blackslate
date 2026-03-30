@@ -103,7 +103,6 @@ fn process_is_claude_code(p: &Process) -> bool {
         return true;
     }
 
-    // Node / Bun / Deno often host the CLI; match on argv + typical install paths.
     if matches!(name.as_str(), "node" | "bun" | "deno") {
         return c.contains("claude-code")
             || c.contains("@anthropic-ai/claude-code")

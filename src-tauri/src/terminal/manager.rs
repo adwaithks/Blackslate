@@ -26,13 +26,20 @@ impl SessionManager {
 
     /// Spawn a new PTY session and register it.
     /// Returns an error if a session with `id` already exists.
-    pub fn create(&self, id: String, cols: u16, rows: u16, app: AppHandle) -> CommandResult<()> {
+    pub fn create(
+        &self,
+        id: String,
+        cols: u16,
+        rows: u16,
+        cwd: Option<String>,
+        app: AppHandle,
+    ) -> CommandResult<()> {
         // Spawn outside the lock — PTY creation can block for a moment.
         // Re-check for duplicates atomically at insert time.
         if self.sessions.read().unwrap().contains_key(&id) {
             return Err(format!("session '{id}' already exists"));
         }
-        let session = Arc::new(PtySession::new(id.clone(), cols, rows, app)?);
+        let session = Arc::new(PtySession::new(id.clone(), cols, rows, app, cwd)?);
         let mut map = self.sessions.write().unwrap();
         if map.contains_key(&id) {
             return Err(format!("session '{id}' already exists"));
