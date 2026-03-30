@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { IoAdd } from "react-icons/io5";
 import { LuFolder } from "react-icons/lu";
+import { SiClaude } from "react-icons/si";
 import {
 	TbLayoutSidebarFilled,
 	TbLayoutSidebarRightFilled,
@@ -27,6 +28,8 @@ import {
 	zoomInKeys,
 	zoomOutKey,
 } from "@/lib/appShortcuts";
+import { ClaudeSessionPicker } from "@/components/header/ClaudeSessionPicker";
+import { ClaudeSettingsSheet } from "@/components/header/ClaudeSettingsSheet";
 
 export function AppLayout() {
 	const { workspaces, activeWorkspaceId, createWorkspace } =
@@ -258,32 +261,47 @@ export function AppLayout() {
 									{headerPwd}
 								</span>
 							</span>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => setGitPanelOpen((o) => !o)}
-								title="Toggle git panel (⌘L)"
-								aria-label={
-									gitPanelOpen
-										? "Hide git panel"
-										: "Show git panel"
-								}
-								aria-pressed={gitPanelOpen}
-								className="h-6 w-6 shrink-0 px-1 text-muted-foreground hover:text-foreground"
-							>
-								{gitPanelOpen ? (
-									<TbLayoutSidebarRightFilled
-										className="size-4.5 shrink-0"
-										aria-hidden
-									/>
-								) : (
-									<TbLayoutSidebarFilled
-										className="size-4.5 shrink-0"
-										aria-hidden
-									/>
-								)}
-							</Button>
+							<div className="flex shrink-0 items-center gap-1">
+								<div className="mr-2 h-6.5 flex items-center rounded-sm border border-white/6 bg-white/3">
+									<div className="flex items-center gap-1 px-1.5 py-0.5 border-r border-white/6">
+										<SiClaude
+											className="text-[#D97757] size-3 shrink-0"
+											aria-hidden
+										/>
+										<span className="text-[10px] font-medium text-[#D97757]/80 leading-none">
+											Claude
+										</span>
+									</div>
+									<ClaudeSettingsSheet />
+									<ClaudeSessionPicker cwd={headerPwd} />
+								</div>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => setGitPanelOpen((o) => !o)}
+									title="Toggle git panel (⌘L)"
+									aria-label={
+										gitPanelOpen
+											? "Hide git panel"
+											: "Show git panel"
+									}
+									aria-pressed={gitPanelOpen}
+									className="h-6 w-6 shrink-0 px-1 text-muted-foreground hover:text-foreground"
+								>
+									{gitPanelOpen ? (
+										<TbLayoutSidebarRightFilled
+											className="size-4.5 shrink-0"
+											aria-hidden
+										/>
+									) : (
+										<TbLayoutSidebarFilled
+											className="size-4.5 shrink-0"
+											aria-hidden
+										/>
+									)}
+								</Button>
+							</div>
 						</div>
 					</div>
 

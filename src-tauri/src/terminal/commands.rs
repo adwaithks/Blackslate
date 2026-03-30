@@ -407,3 +407,550 @@ end try"#;
 pub async fn project_stack(cwd: String) -> Vec<ProjectStackItem> {
     project_stack_mod::detect(cwd)
 }
+
+// ---------------------------------------------------------------------------
+// Claude Code session browser
+// ---------------------------------------------------------------------------
+
+/// Summary of a single Claude Code conversation session extracted from the
+/// `~/.claude/projects/<encoded-path>/<uuid>.jsonl` files.
+#[derive(serde::Serialize)]
+pub struct ClaudeSessionSummary {
+    pub session_id: String,
+    pub timestamp: String,
+    pub cwd: String,
+    pub git_branch: Option<String>,
+    /// First ~120 chars of the opening user message.
+    pub summary: String,
+}
+
+/// Reads all Claude Code session JSONL files for the given `cwd` and returns
+/// them sorted newest-first. Mirrors what `claude /resume` does internally.
+#[tauri::command]
+pub async fn list_claude_sessions(cwd: String) -> Vec<ClaudeSessionSummary> {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return vec![],
+    };
+
+    // Claude encodes the project path by replacing every '/' with '-'.
+    // e.g. /Users/kannan/Projects/Slate → -Users-kannan-Projects-Slate
+    let resolved = super::resolve_path(&cwd);
+    let abs_cwd = resolved.to_string_lossy().into_owned();
+    let project_key = abs_cwd.replace('/', "-");
+
+    let sessions_dir = std::path::PathBuf::from(&home)
+        .join(".claude")
+        .join("projects")
+        .join(&project_key);
+
+    if !sessions_dir.is_dir() {
+        return vec![];
+    }
+
+    let entries = match std::fs::read_dir(&sessions_dir) {
+        Ok(e) => e,
+        Err(_) => return vec![],
+    };
+
+    let mut sessions = Vec::new();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+            continue;
+        }
+
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Find the first user message with no parent (the conversation opener).
+        for line in content.lines() {
+            let Ok(obj) = serde_json::from_str::<serde_json::Value>(line) else {
+                continue;
+            };
+
+            if obj.get("type").and_then(|v| v.as_str()) != Some("user") {
+                continue;
+            }
+            // parentUuid must be null / absent
+            if obj.get("parentUuid").map(|v| !v.is_null()).unwrap_or(false) {
+                continue;
+            }
+
+            let session_id = obj
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            if session_id.is_empty() {
+                break;
+            }
+
+            let timestamp = obj
+                .get("timestamp")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let session_cwd = obj
+                .get("cwd")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let git_branch = obj
+                .get("gitBranch")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            // Content is either a plain string or an array of {type, text} blocks.
+            let raw = if let Some(mc) = obj.get("message").and_then(|m| m.get("content")) {
+                if let Some(s) = mc.as_str() {
+                    s.to_string()
+                } else if let Some(arr) = mc.as_array() {
+                    arr.iter()
+                        .filter_map(|c| c.get("text").and_then(|t| t.as_str()))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            // Strip the <local-command-caveat>…</local-command-caveat> wrapper that
+            // Claude Code prepends when replaying a resumed session via /resume.
+            let stripped = if raw.starts_with("<local-command-caveat>") {
+                if let Some(end) = raw.find("</local-command-caveat>") {
+                    raw[end + "</local-command-caveat>".len()..].trim().to_string()
+                } else {
+                    raw
+                }
+            } else {
+                raw
+            };
+
+            // Truncate to 120 Unicode scalar values.
+            let summary: String = stripped.chars().take(120).collect();
+            let summary = if stripped.chars().count() > 120 {
+                format!("{summary}…")
+            } else {
+                summary
+            };
+
+            sessions.push(ClaudeSessionSummary {
+                session_id,
+                timestamp,
+                cwd: session_cwd,
+                git_branch,
+                summary,
+            });
+            break; // one opener per file
+        }
+    }
+
+    // Newest first
+    sessions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    sessions
+}
+
+// ---------------------------------------------------------------------------
+// Claude Code skills browser
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+pub struct SkillInfo {
+    /// Skill name from frontmatter (falls back to directory name).
+    pub name: String,
+    /// Description from frontmatter.
+    pub description: String,
+    /// Version string from frontmatter, if present.
+    pub version: Option<String>,
+    /// Absolute path to the SKILL.md or .md file.
+    pub path: String,
+    /// Human-readable source label (plugin name or project path).
+    pub source: String,
+    /// "skill" for SKILL.md directory skills, "command" for legacy flat .md files.
+    pub kind: String,
+    /// All files inside the skill directory (absolute paths), sorted.
+    /// Empty for flat command files.
+    pub files: Vec<String>,
+}
+
+/// Recursively collect all file paths under `dir`, sorted.
+fn walk_skill_dir(dir: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    fn recurse(dir: &std::path::Path, out: &mut Vec<String>) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let mut children: Vec<std::path::PathBuf> =
+            entries.flatten().map(|e| e.path()).collect();
+        children.sort();
+        for path in children {
+            if path.is_dir() {
+                recurse(&path, out);
+            } else {
+                out.push(path.to_string_lossy().into_owned());
+            }
+        }
+    }
+    recurse(dir, &mut out);
+    out
+}
+
+/// Parse `key: value` YAML frontmatter between `---` delimiters.
+fn parse_frontmatter(content: &str) -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    let Some(after_open) = content.strip_prefix("---") else {
+        return map;
+    };
+    // Find closing ---
+    let close = after_open.find("\n---").unwrap_or(0);
+    for line in after_open[..close].lines() {
+        if let Some(colon) = line.find(':') {
+            let key = line[..colon].trim().to_string();
+            // Strip surrounding quotes from value
+            let raw = line[colon + 1..].trim();
+            let val = raw.trim_matches('"').trim_matches('\'').to_string();
+            if !key.is_empty() {
+                map.insert(key, val);
+            }
+        }
+    }
+    map
+}
+
+fn skill_from_path(skill_md: &std::path::Path, source: &str, kind: &str) -> Option<SkillInfo> {
+    let content = std::fs::read_to_string(skill_md).ok()?;
+    let fm = parse_frontmatter(&content);
+    let is_skill_md = skill_md.file_name().map(|n| n == "SKILL.md").unwrap_or(false);
+    let fallback_name = if is_skill_md {
+        skill_md
+            .parent()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    } else {
+        skill_md
+            .file_stem()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    };
+    // For directory-based skills, collect all supporting files from the directory.
+    // Flat commands: single entry file (same folder may host other commands as separate skills).
+    let files = if is_skill_md {
+        skill_md.parent().map(walk_skill_dir).unwrap_or_default()
+    } else {
+        vec![skill_md.to_string_lossy().into_owned()]
+    };
+    Some(SkillInfo {
+        name: fm.get("name").cloned().unwrap_or(fallback_name),
+        description: fm.get("description").cloned().unwrap_or_default(),
+        version: fm.get("version").cloned().filter(|v| !v.is_empty()),
+        path: skill_md.to_string_lossy().into_owned(),
+        source: source.to_string(),
+        kind: kind.to_string(),
+        files,
+    })
+}
+
+/// Scan a `skills/` directory for `<name>/SKILL.md` entries.
+fn collect_skills_dir(dir: &std::path::Path, source: &str, out: &mut Vec<SkillInfo>) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let skill_dir = entry.path();
+        if !skill_dir.is_dir() {
+            continue;
+        }
+        let skill_md = skill_dir.join("SKILL.md");
+        if skill_md.is_file() {
+            if let Some(info) = skill_from_path(&skill_md, source, "skill") {
+                out.push(info);
+            }
+        }
+    }
+}
+
+/// Scan a `commands/` directory for flat `<name>.md` files (legacy format).
+fn collect_commands_dir(dir: &std::path::Path, source: &str, out: &mut Vec<SkillInfo>) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("md") {
+            continue;
+        }
+        if let Some(info) = skill_from_path(&path, source, "command") {
+            out.push(info);
+        }
+    }
+}
+
+/// Returns all global/personal skills from three sources:
+///  1. `~/.claude/skills/<name>/SKILL.md`   — personal skills
+///  2. `~/.claude/commands/<name>.md`        — personal legacy commands
+///  3. Installed plugins via `installed_plugins.json` → `installPath/skills/`
+#[tauri::command]
+pub async fn list_global_skills() -> Vec<SkillInfo> {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return vec![],
+    };
+
+    let claude_dir = std::path::PathBuf::from(&home).join(".claude");
+    let mut skills = Vec::new();
+
+    // 1. Personal skills: ~/.claude/skills/<name>/SKILL.md
+    collect_skills_dir(&claude_dir.join("skills"), "personal", &mut skills);
+
+    // 2. Personal legacy commands: ~/.claude/commands/<name>.md
+    collect_commands_dir(&claude_dir.join("commands"), "personal (command)", &mut skills);
+
+    // 3. Installed plugins
+    let manifest = claude_dir.join("plugins").join("installed_plugins.json");
+    if let Ok(content) = std::fs::read_to_string(&manifest) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(plugins) = json.get("plugins").and_then(|v| v.as_object()) {
+                for (plugin_key, installs) in plugins {
+                    let source = plugin_key.split('@').next().unwrap_or(plugin_key).to_string();
+                    let Some(arr) = installs.as_array() else { continue };
+                    for install in arr {
+                        let Some(install_path) =
+                            install.get("installPath").and_then(|v| v.as_str())
+                        else {
+                            continue;
+                        };
+                        let plugin_dir = std::path::PathBuf::from(install_path);
+                        collect_skills_dir(&plugin_dir.join("skills"), &source, &mut skills);
+                        collect_commands_dir(&plugin_dir.join("commands"), &source, &mut skills);
+                    }
+                }
+            }
+        }
+    }
+
+    skills.sort_by(|a, b| a.name.cmp(&b.name));
+    skills
+}
+
+/// A Claude Code project known to `~/.claude/projects/`.
+#[derive(serde::Serialize)]
+pub struct ClaudeProject {
+    /// The encoded directory key (e.g. `-Users-kannan-Projects-Slate`).
+    pub key: String,
+    /// The decoded absolute path (e.g. `/Users/kannan/Projects/Slate`).
+    pub path: String,
+    /// Last path component for display (e.g. `Slate`).
+    pub display_name: String,
+    /// Whether the decoded path actually exists on disk.
+    pub exists: bool,
+}
+
+/// Lists all projects known to Claude Code (`~/.claude/projects/`).
+#[tauri::command]
+pub async fn list_claude_projects() -> Vec<ClaudeProject> {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return vec![],
+    };
+
+    let projects_dir = std::path::PathBuf::from(&home).join(".claude").join("projects");
+    let Ok(entries) = std::fs::read_dir(&projects_dir) else {
+        return vec![];
+    };
+
+    let mut projects: Vec<ClaudeProject> = entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().into_owned();
+            if !e.path().is_dir() {
+                return None;
+            }
+            // Decode: replace '-' with '/' (the leading '-' becomes a leading '/')
+            let path = name.replace('-', "/");
+            let display_name = std::path::Path::new(&path)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.clone());
+            let exists = std::path::Path::new(&path).is_dir();
+            Some(ClaudeProject { key: name, path, display_name, exists })
+        })
+        .collect();
+
+    projects.sort_by(|a, b| a.path.cmp(&b.path));
+    projects
+}
+
+/// Returns project-level skills from `.claude/skills/` and legacy `.claude/commands/`.
+#[tauri::command]
+pub async fn list_project_skills(project_path: String) -> Vec<SkillInfo> {
+    let root = std::path::PathBuf::from(&project_path);
+    let claude_dir = root.join(".claude");
+
+    let display = root
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| project_path.clone());
+
+    let mut skills = Vec::new();
+    collect_skills_dir(&claude_dir.join("skills"), &display, &mut skills);
+    collect_commands_dir(&claude_dir.join("commands"), &display, &mut skills);
+
+    // Nested monorepo skills: e.g. <project>/src/.claude/skills/
+    let src_label = format!("{display} (src)");
+    collect_skills_dir(
+        &root.join("src").join(".claude").join("skills"),
+        &src_label,
+        &mut skills,
+    );
+    collect_commands_dir(
+        &root.join("src").join(".claude").join("commands"),
+        &src_label,
+        &mut skills,
+    );
+
+    skills.sort_by(|a, b| a.name.cmp(&b.name));
+    skills
+}
+
+/// Reads and returns the raw file content (full text including frontmatter).
+#[tauri::command]
+pub async fn read_skill_content(path: String) -> Option<String> {
+    std::fs::read_to_string(&path).ok()
+}
+
+// ---------------------------------------------------------------------------
+// Hooks — read from Claude settings.json files
+// ---------------------------------------------------------------------------
+
+/// A single resolved hook handler, with the event and matcher it belongs to.
+#[derive(serde::Serialize, Clone)]
+pub struct HookInfo {
+    pub event: String,
+    /// Regex matcher string; empty string means "match all".
+    pub matcher: String,
+    /// "command" | "http" | "prompt" | "agent"
+    pub handler_type: String,
+    pub command: Option<String>,
+    pub url: Option<String>,
+    pub timeout: Option<u64>,
+    pub run_in_background: bool,
+    pub disabled: bool,
+    /// Human-readable path label, e.g. "~/.claude/settings.json"
+    pub source: String,
+}
+
+fn parse_hooks_from_settings(content: &str, source: &str) -> Vec<HookInfo> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(content) else {
+        return vec![];
+    };
+    let Some(hooks_obj) = v.get("hooks").and_then(|h| h.as_object()) else {
+        return vec![];
+    };
+    let mut result = Vec::new();
+    for (event, groups) in hooks_obj {
+        let Some(groups) = groups.as_array() else {
+            continue;
+        };
+        for group in groups {
+            let matcher = group
+                .get("matcher")
+                .and_then(|m| m.as_str())
+                .unwrap_or("")
+                .to_string();
+            let Some(handlers) = group.get("hooks").and_then(|h| h.as_array()) else {
+                continue;
+            };
+            for handler in handlers {
+                let handler_type = handler
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("command")
+                    .to_string();
+                let command = handler
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .map(String::from);
+                let url = handler
+                    .get("url")
+                    .and_then(|u| u.as_str())
+                    .map(String::from);
+                let timeout = handler.get("timeout").and_then(|t| t.as_u64());
+                let run_in_background = handler
+                    .get("run_in_background")
+                    .and_then(|b| b.as_bool())
+                    .unwrap_or(false);
+                let disabled = handler
+                    .get("disabled")
+                    .and_then(|d| d.as_bool())
+                    .unwrap_or(false);
+                result.push(HookInfo {
+                    event: event.clone(),
+                    matcher: matcher.clone(),
+                    handler_type,
+                    command,
+                    url,
+                    timeout,
+                    run_in_background,
+                    disabled,
+                    source: source.to_string(),
+                });
+            }
+        }
+    }
+    result
+}
+
+#[tauri::command]
+pub async fn list_global_hooks() -> Vec<HookInfo> {
+    let home = std::env::var("HOME").unwrap_or_default();
+    if home.is_empty() {
+        return vec![];
+    }
+    let base = std::path::Path::new(&home).join(".claude");
+    let mut result = Vec::new();
+    let paths = [
+        (base.join("settings.json"), "~/.claude/settings.json"),
+        (base.join("settings.local.json"), "~/.claude/settings.local.json"),
+    ];
+    for (path, label) in paths {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            result.extend(parse_hooks_from_settings(&content, label));
+        }
+    }
+    result
+}
+
+fn collect_project_settings_hook_paths(root: &std::path::Path) -> Vec<(std::path::PathBuf, &'static str)> {
+    vec![
+        (
+            root.join(".claude/settings.json"),
+            ".claude/settings.json",
+        ),
+        (
+            root.join(".claude/settings.local.json"),
+            ".claude/settings.local.json",
+        ),
+        (
+            root.join("src").join(".claude").join("settings.json"),
+            "src/.claude/settings.json",
+        ),
+        (
+            root.join("src").join(".claude").join("settings.local.json"),
+            "src/.claude/settings.local.json",
+        ),
+    ]
+}
+
+#[tauri::command]
+pub async fn list_project_hooks(project_path: String) -> Vec<HookInfo> {
+    let root = std::path::PathBuf::from(&project_path);
+    let mut result = Vec::new();
+    for (p, label) in collect_project_settings_hook_paths(&root) {
+        if let Ok(content) = std::fs::read_to_string(&p) {
+            result.extend(parse_hooks_from_settings(&content, label));
+        }
+    }
+    result
+}
+
