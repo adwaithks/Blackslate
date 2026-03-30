@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
@@ -24,7 +25,15 @@ pub struct PtySession {
 }
 
 impl PtySession {
-    pub fn new(id: String, cols: u16, rows: u16, app: AppHandle) -> CommandResult<Self> {
+    /// `cwd` is the UI session working directory (`~`-normalised or absolute); the shell
+    /// starts there when the path exists. Otherwise falls back to `$HOME`.
+    pub fn new(
+        id: String,
+        cols: u16,
+        rows: u16,
+        app: AppHandle,
+        cwd: Option<String>,
+    ) -> CommandResult<Self> {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
         eprintln!("[blackslate][session] creating id={id} shell={shell} cols={cols} rows={rows}");
 
@@ -35,7 +44,12 @@ impl PtySession {
             cmd_err(e)
         })?;
 
-        let cmd = build_shell_cmd(&shell);
+        let cwd_path = cwd
+            .as_deref()
+            .and_then(resolve_cwd_path)
+            .or_else(|| std::env::var("HOME").ok().map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("/"));
+        let cmd = build_shell_cmd(&shell, cwd_path);
         eprintln!("[blackslate][session] spawning shell...");
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| {
@@ -157,7 +171,29 @@ fn pty_size(cols: u16, rows: u16) -> PtySize {
 /// `isatty()` returns true and the shell initialises as interactive,
 /// loading `.zshrc` (zsh) / `.bashrc` (bash). Users who need login-shell
 /// behaviour (`.zprofile` / `.bash_profile`) can source it from `.zshrc`.
-fn build_shell_cmd(shell: &str) -> CommandBuilder {
+/// Map store cwd (`~`, `~/proj`, or absolute) to a real directory for `CommandBuilder::cwd`.
+fn resolve_cwd_path(raw: &str) -> Option<PathBuf> {
+    let p = raw.trim();
+    if p.is_empty() {
+        return None;
+    }
+    if p.starts_with('/') {
+        let pb = PathBuf::from(p);
+        return if pb.is_dir() { Some(pb) } else { None };
+    }
+    if p == "~" {
+        return std::env::var("HOME").ok().map(PathBuf::from);
+    }
+    if let Some(rest) = p.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            let pb = PathBuf::from(home).join(rest);
+            return if pb.is_dir() { Some(pb) } else { None };
+        }
+    }
+    None
+}
+
+fn build_shell_cmd(shell: &str, cwd: PathBuf) -> CommandBuilder {
     let mut cmd = CommandBuilder::new(shell);
 
     // Spawn as a login shell so that login startup files (.zprofile, .bash_profile)
@@ -183,10 +219,14 @@ fn build_shell_cmd(shell: &str) -> CommandBuilder {
         }
     }
 
-    // Start in $HOME so the shell prompt is in a sensible directory.
-    if let Ok(home) = std::env::var("HOME") {
-        cmd.cwd(home);
-    }
+    let cwd = if cwd.is_dir() {
+        cwd
+    } else if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home)
+    } else {
+        cwd
+    };
+    cmd.cwd(cwd);
 
     // Shell integration: inject OSC 7 cwd reporting so the frontend can
     // track directory changes in real time without modifying user dotfiles.

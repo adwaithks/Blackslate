@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { IoAdd } from "react-icons/io5";
-import { LuFolder } from "react-icons/lu";
+import {
+	LuBrain,
+	LuChevronDown,
+	LuFolder,
+	LuHistory,
+} from "react-icons/lu";
 import { SiClaude } from "react-icons/si";
 import {
 	TbLayoutSidebarFilled,
 	TbLayoutSidebarRightFilled,
 } from "react-icons/tb";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ClaudeSessionPicker } from "@/components/header/ClaudeSessionPicker";
 import { ClaudeSettingsSheet } from "@/components/header/ClaudeSettingsSheet";
 
@@ -21,7 +33,7 @@ interface AppTitlebarProps {
 }
 
 /**
- * macOS titlebar row: drag region, workspace controls, cwd, Claude pill, git toggle.
+ * macOS titlebar row: drag region, workspace controls, cwd, Claude menu, git toggle.
  * Grid columns align with the sidebar width below (see parent).
  */
 export function AppTitlebar({
@@ -32,6 +44,9 @@ export function AppTitlebar({
 	gitPanelOpen,
 	onToggleGitPanel,
 }: AppTitlebarProps) {
+	const [claudeSettingsOpen, setClaudeSettingsOpen] = useState(false);
+	const [claudeSessionsOpen, setClaudeSessionsOpen] = useState(false);
+
 	return (
 		<div
 			className="relative z-20 grid h-[34px] shrink-0"
@@ -41,7 +56,6 @@ export function AppTitlebar({
 					: "minmax(76px, auto) minmax(0, 1fr)",
 			}}
 		>
-			{/* Left column: traffic-light padding + new workspace + sidebar toggle */}
 			<div
 				data-tauri-drag-region
 				className="flex min-w-0 items-center justify-end gap-0.5 bg-[var(--chrome-sidebar-surface)] pl-[76px] pr-2"
@@ -78,7 +92,6 @@ export function AppTitlebar({
 				</Button>
 			</div>
 
-			{/* Right column: cwd + Claude config/session + git panel */}
 			<div
 				data-tauri-drag-region
 				className="border-b border-white/4 flex min-w-0 w-full items-center justify-between bg-background px-3"
@@ -94,19 +107,57 @@ export function AppTitlebar({
 					<span className="min-w-0 flex-1 truncate">{headerPwd}</span>
 				</span>
 				<div className="flex shrink-0 items-center gap-1">
-					<div className="mr-2 h-6.5 flex items-center rounded-sm border border-white/6 bg-white/3">
-						<div className="flex items-center gap-1 px-1.5 py-0.5 border-r border-white/6">
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							type="button"
+							className="inline-flex h-6.5 shrink-0 items-center gap-1 rounded-sm border border-white/6 bg-white/3 px-2 py-0.5 text-[10px] font-medium text-[#D97757]/90 outline-none transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-ring/40"
+							aria-label="Claude menu"
+						>
 							<SiClaude
-								className="text-[#D97757] size-3 shrink-0"
+								className="size-3 shrink-0 text-[#D97757]"
 								aria-hidden
 							/>
-							<span className="text-[10px] font-medium text-[#D97757]/80 leading-none">
-								Claude
-							</span>
-						</div>
-						<ClaudeSettingsSheet />
-						<ClaudeSessionPicker cwd={headerPwd} />
-					</div>
+							<span className="leading-none">Claude</span>
+							<LuChevronDown
+								className="size-3 shrink-0 opacity-60"
+								aria-hidden
+							/>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="min-w-[9rem]">
+							<DropdownMenuItem
+								className="gap-2 text-xs"
+								onClick={() => setClaudeSettingsOpen(true)}
+							>
+								<LuBrain
+									className="size-3 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+								Config
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								className="gap-2 text-xs"
+								onClick={() => setClaudeSessionsOpen(true)}
+							>
+								<LuHistory
+									className="size-3 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
+								Sessions
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+
+					<ClaudeSettingsSheet
+						open={claudeSettingsOpen}
+						onOpenChange={setClaudeSettingsOpen}
+					/>
+					<ClaudeSessionPicker
+						cwd={headerPwd}
+						open={claudeSessionsOpen}
+						onOpenChange={setClaudeSessionsOpen}
+						trigger="menu"
+					/>
+
 					<Button
 						type="button"
 						variant="ghost"

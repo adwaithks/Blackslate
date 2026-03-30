@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { LuBrain } from "react-icons/lu";
-import {
-	Sheet,
-	SheetContent,
-	SheetTitle,
-	SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { GlobalTab } from "./claudeSettings/GlobalTab";
 import { HooksGlobalTab } from "./claudeSettings/HooksGlobalTab";
 import { HooksProjectTab } from "./claudeSettings/HooksProjectTab";
@@ -15,21 +10,20 @@ import type { Scope, TopTab } from "./claudeSettings/types";
 /**
  * Right sheet: browse Claude skills, slash commands, and hooks (global vs per-project).
  * Data comes from Tauri commands (`list_*`); layout is tab × scope.
+ * Opened from the titlebar Claude menu (no built-in trigger).
  */
-export function ClaudeSettingsSheet() {
+export function ClaudeSettingsSheet({
+	open,
+	onOpenChange,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
 	const [tab, setTab] = useState<TopTab>("skills");
 	const [scope, setScope] = useState<Scope>("global");
 
 	return (
-		<Sheet>
-			<SheetTrigger
-				className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-muted-foreground/70 hover:text-foreground transition-colors rounded-sm hover:bg-white/6"
-				title="Claude settings"
-			>
-				<LuBrain className="size-3 shrink-0" aria-hidden />
-				<span>Config</span>
-			</SheetTrigger>
-
+		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="right"
 				className="mt-8 flex flex-col gap-0 p-0 border-l-0"

@@ -14,6 +14,8 @@ interface ClaudeSessionPickerDropdownProps {
 	sessions: ClaudeSession[];
 	loading: boolean;
 	onPickSession: (sessionId: string) => void;
+	/** `fixed` — under titlebar when opened from Claude menu (no anchor button). */
+	variant?: "anchor" | "fixed";
 }
 
 /**
@@ -23,12 +25,18 @@ export function ClaudeSessionPickerDropdown({
 	sessions,
 	loading,
 	onPickSession,
+	variant = "anchor",
 }: ClaudeSessionPickerDropdownProps) {
+	const positionClass =
+		variant === "fixed"
+			? "fixed right-3 top-[42px] z-50 mt-0"
+			: "absolute right-0 top-full z-50 mt-1";
+
 	return (
 		<div
 			role="dialog"
 			aria-label="Claude Code session picker"
-			className="absolute right-0 top-full z-50 mt-1 w-[500px] overflow-hidden rounded-md border border-white/8 bg-popover shadow-xl ring-1 ring-black/20"
+			className={`${positionClass} w-[500px] overflow-hidden rounded-md border border-white/8 bg-popover shadow-xl ring-1 ring-black/20`}
 		>
 			<Command className="rounded-none bg-transparent">
 				<div className="flex items-center justify-between gap-2 border-b border-white/8 px-3 py-2">

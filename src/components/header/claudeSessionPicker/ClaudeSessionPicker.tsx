@@ -11,14 +11,34 @@ import { usePickerDismiss } from "./usePickerDismiss";
 interface ClaudeSessionPickerProps {
 	/** Absolute path of the active terminal cwd — from AppTitlebar / layout. */
 	cwd: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	/**
+	 * `menu` — no Sessions button; panel uses fixed position (titlebar Claude menu).
+	 * `button` — default trigger beside other controls.
+	 */
+	trigger?: "button" | "menu";
 }
 
-export function ClaudeSessionPicker({ cwd }: ClaudeSessionPickerProps) {
-	const [open, setOpen] = useState(false);
+export function ClaudeSessionPicker({
+	cwd,
+	open: openProp,
+	onOpenChange,
+	trigger = "button",
+}: ClaudeSessionPickerProps) {
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+	const open = openProp ?? uncontrolledOpen;
+	const setOpen = useCallback(
+		(next: boolean) => {
+			onOpenChange?.(next);
+			if (openProp === undefined) setUncontrolledOpen(next);
+		},
+		[openProp, onOpenChange],
+	);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const { sessions, loading } = useClaudeSessionsList(open, cwd);
-	const closePicker = useCallback(() => setOpen(false), []);
+	const closePicker = useCallback(() => setOpen(false), [setOpen]);
 	usePickerDismiss(open, closePicker, containerRef);
 
 	const { workspaces, activeWorkspaceId } = useSessionStore();
@@ -41,24 +61,27 @@ export function ClaudeSessionPicker({ cwd }: ClaudeSessionPickerProps) {
 
 	return (
 		<div ref={containerRef} className="relative">
-			<Button
-				variant="ghost"
-				size="sm"
-				onClick={() => setOpen((o) => !o)}
-				aria-expanded={open}
-				aria-haspopup="listbox"
-				className="h-auto gap-1 px-2 py-1 text-[10px] font-medium text-muted-foreground/70 hover:text-foreground rounded-sm hover:bg-white/6"
-				title="Browse past Claude Code conversations (/resume)"
-			>
-				<LuHistory className="size-3 shrink-0" aria-hidden />
-				<span>Sessions</span>
-			</Button>
+			{trigger === "button" ? (
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setOpen(!open)}
+					aria-expanded={open}
+					aria-haspopup="listbox"
+					className="h-auto gap-1 px-2 py-1 text-[10px] font-medium text-muted-foreground/70 hover:text-foreground rounded-sm hover:bg-white/6"
+					title="Browse past Claude Code conversations (/resume)"
+				>
+					<LuHistory className="size-3 shrink-0" aria-hidden />
+					<span>Sessions</span>
+				</Button>
+			) : null}
 
 			{open && (
 				<ClaudeSessionPickerDropdown
 					sessions={sessions}
 					loading={loading}
 					onPickSession={handleSelect}
+					variant={trigger === "menu" ? "fixed" : "anchor"}
 				/>
 			)}
 		</div>

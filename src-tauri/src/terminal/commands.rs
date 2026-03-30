@@ -15,11 +15,12 @@ pub async fn pty_create(
     id: String,
     cols: u16,
     rows: u16,
+    cwd: Option<String>,
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> CommandResult<()> {
-    eprintln!("[blackslate][cmd] pty_create id={id} cols={cols} rows={rows}");
-    let result = state.sessions.create(id.clone(), cols, rows, app);
+    eprintln!("[blackslate][cmd] pty_create id={id} cols={cols} rows={rows} cwd={cwd:?}");
+    let result = state.sessions.create(id.clone(), cols, rows, cwd, app);
     match &result {
         Ok(_) => eprintln!("[blackslate][cmd] pty_create ok id={id}"),
         Err(e) => eprintln!("[blackslate][cmd] pty_create err id={id}: {e}"),

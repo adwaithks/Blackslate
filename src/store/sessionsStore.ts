@@ -1,15 +1,16 @@
 import { create } from "zustand";
 
+import { selectActiveSession } from "@/store/sessionsSelectors";
 import type {
 	Session,
 	SessionStore,
 	Workspace,
 } from "@/store/sessionsTypes";
 
-function makeSession(): Session {
+function makeSession(cwd = "~"): Session {
 	return {
 		id: crypto.randomUUID(),
-		cwd: "~",
+		cwd,
 		createdAt: Date.now(),
 		git: null,
 		projectStack: [],
@@ -21,8 +22,9 @@ function makeSession(): Session {
 	};
 }
 
-function makeWorkspace(): Workspace {
-	const session = makeSession();
+/** `initialCwd` is usually `~` (first launch) or copied from the session that was active when the user added a workspace/tab. */
+function makeWorkspace(initialCwd = "~"): Workspace {
+	const session = makeSession(initialCwd);
 	return {
 		id: crypto.randomUUID(),
 		sessions: [session],
@@ -59,11 +61,15 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	activeWorkspaceId: initialWorkspace.id,
 
 	createWorkspace() {
-		const workspace = makeWorkspace();
-		set((s) => ({
-			workspaces: [...s.workspaces, workspace],
-			activeWorkspaceId: workspace.id,
-		}));
+		set((s) => {
+			const active = selectActiveSession(s);
+			const cwd = active?.cwd ?? "~";
+			const workspace = makeWorkspace(cwd);
+			return {
+				workspaces: [...s.workspaces, workspace],
+				activeWorkspaceId: workspace.id,
+			};
+		});
 	},
 
 	closeWorkspace(workspaceId) {
@@ -84,14 +90,24 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	},
 
 	createSessionInWorkspace(workspaceId) {
-		const session = makeSession();
-		set((s) => ({
-			workspaces: s.workspaces.map((w) =>
-				w.id === workspaceId
-					? { ...w, sessions: [...w.sessions, session], activeSessionId: session.id }
-					: w,
-			),
-		}));
+		set((s) => {
+			const ws = s.workspaces.find((w) => w.id === workspaceId);
+			const cwd =
+				ws?.sessions.find((sess) => sess.id === ws.activeSessionId)
+					?.cwd ?? "~";
+			const session = makeSession(cwd);
+			return {
+				workspaces: s.workspaces.map((w) =>
+					w.id === workspaceId
+						? {
+								...w,
+								sessions: [...w.sessions, session],
+								activeSessionId: session.id,
+							}
+						: w,
+				),
+			};
+		});
 	},
 
 	closeSession(workspaceId, sessionId) {
