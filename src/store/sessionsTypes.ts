@@ -10,13 +10,6 @@ export interface GitInfo {
 	dirty: boolean;
 }
 
-/** One stack line from `project_stack` (Rust) — add fields only with backend changes. */
-export interface ProjectStackItem {
-	id: string;
-	label: string;
-	version: string | null;
-}
-
 /**
  * Fine-grained Claude Code state, parsed from the PTY stream:
  *   'thinking' — Claude is processing (braille spinner in OSC 0 window title)
@@ -33,8 +26,6 @@ export interface Session {
 	createdAt: number;
 	/** Git info for the current cwd, null when not in a repo. */
 	git: GitInfo | null;
-	/** Detected project stacks (Rust, Go, Node, …) at cwd — empty when unknown/none. */
-	projectStack: ProjectStackItem[];
 	/** PTY backend id (Rust session key), set when the terminal connects. */
 	ptyId: string | null;
 	/** Whether Claude Code / `claude` CLI is running in that PTY (from OS process tree). */
@@ -92,7 +83,6 @@ export interface SessionActions {
 	setCwd: (sessionId: string, cwd: string) => void;
 	/** Update git info (called after cwd changes). */
 	setGit: (sessionId: string, git: GitInfo | null) => void;
-	setProjectStack: (sessionId: string, stack: ProjectStackItem[]) => void;
 	/** Link React session id ↔ PTY backend id after `pty_create`. */
 	setPtyId: (sessionId: string, ptyId: string | null) => void;
 	setClaudeCodeActive: (sessionId: string, active: boolean) => void;

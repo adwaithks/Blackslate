@@ -13,7 +13,6 @@ function makeSession(cwd = "~"): Session {
 		cwd,
 		createdAt: Date.now(),
 		git: null,
-		projectStack: [],
 		ptyId: null,
 		claudeCodeActive: false,
 		claudeState: null,
@@ -158,10 +157,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
 	setGit(sessionId, git) {
 		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "git", git) }));
-	},
-
-	setProjectStack(sessionId, projectStack) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "projectStack", projectStack) }));
 	},
 
 	setPtyId(sessionId, ptyId) {

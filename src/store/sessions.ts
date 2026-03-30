@@ -7,7 +7,6 @@
 export type {
 	ClaudeState,
 	GitInfo,
-	ProjectStackItem,
 	Session,
 	SessionActions,
 	SessionState,

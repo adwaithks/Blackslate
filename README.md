@@ -190,16 +190,14 @@ blackslate/
 │   │   └── settings.ts            # Preferences — theme, sidebar colour, font
 │   └── lib/
 │       ├── terminalThemes.ts      # xterm.js colour theme definitions
-│       ├── appShortcuts.ts        # Global keyboard shortcut registry
-│       └── projectStack.tsx       # Stack badge icons and detection ordering
+│       └── appShortcuts.ts        # Global keyboard shortcut registry
 │
 └── src-tauri/src/                 # Rust backend
     └── terminal/
-        ├── session.rs             # PtySession — spawn, read, write, resize
+        ├── session/               # PtySession, shell cmd builder, PTY reader task
         ├── manager.rs             # SessionManager — RwLock concurrent map
-        ├── commands.rs            # Tauri IPC command handlers
-        ├── agent_detect.rs        # Claude Code process-tree detection
-        └── project_stack.rs       # Project file detection (Cargo.toml, go.mod, …)
+        ├── commands/              # Tauri IPC command handlers
+        └── agent_detect/          # Claude Code process-tree detection
 ```
 
 ---
