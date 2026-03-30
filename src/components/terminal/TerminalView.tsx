@@ -9,7 +9,8 @@ import { WorkspaceTabBar } from "./WorkspaceTabBar";
  * tab is active — switching is instant with zero shell state loss.
  *
  * Inactive panes use `visibility: hidden` (not `display: none`) so xterm.js
- * can still measure container dimensions via ResizeObserver.
+ * can still measure container dimensions via ResizeObserver. Each inactive
+ * wrapper also sets `inert` so focus does not land in a hidden terminal.
  *
  * Layout:
  *   ┌─────────────────────────────┐
@@ -37,6 +38,7 @@ export function TerminalView() {
 								key={session.id}
 								className="absolute inset-0"
 								style={{ visibility: isActive ? "visible" : "hidden" }}
+								inert={!isActive}
 							>
 								<TerminalPane
 									sessionId={session.id}

@@ -9,10 +9,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// Tab bar
-// ---------------------------------------------------------------------------
-
 interface WorkspaceTabBarProps {
 	workspace: Workspace;
 }

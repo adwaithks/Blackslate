@@ -1,0 +1,25 @@
+import { AppSidebar } from "@/components/sidebar/AppSidebar";
+import { TerminalView } from "@/components/terminal/TerminalView";
+import { GitPanel } from "@/components/git/GitPanel";
+
+interface AppMainAreaProps {
+	/** Git panel visibility */
+	gitPanelOpen: boolean;
+	/** Absolute cwd for git status (same as titlebar path when home is known). */
+	gitActiveCwd: string;
+}
+
+/**
+ * Sidebar + terminal + optional git panel. flex-1 fills space below the titlebar.
+ */
+export function AppMainArea({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
+	return (
+		<div className="flex flex-1 min-h-0 min-w-0">
+			<AppSidebar />
+			<main className="flex-1 overflow-hidden min-w-0">
+				<TerminalView />
+			</main>
+			<GitPanel open={gitPanelOpen} activeCwd={gitActiveCwd} />
+		</div>
+	);
+}
