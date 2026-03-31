@@ -70,6 +70,7 @@ export function AppLayout() {
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}
 						onToggleGitPanel={() => setGitPanelOpen((o) => !o)}
+						lastTurnUsage={activeSession?.lastTurnUsage ?? null}
 					/>
 					<AppMainArea
 						gitPanelOpen={gitPanelOpen}

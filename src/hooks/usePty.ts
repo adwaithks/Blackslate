@@ -28,10 +28,6 @@ const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
 // OSC 0/2 window title — captures the title string.
 const OSC_TITLE_RE = /\x1b\](?:0|2);([^\x07\x1b]*)(?:\x07|\x1b\\)/g;
 
-// Braille spinner chars Claude Code cycles through while thinking/processing.
-// These appear in the OSC 0 window title (⠂ ⠐ etc.), not in visible terminal output.
-const BRAILLE_SPINNER_RE = /[⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]/;
-
 // Strips any leading spinner/icon char + whitespace from a Claude Code OSC 0 title.
 // e.g. "✳ New coding session" → "New coding session"
 const TITLE_PREFIX_RE = /^[\s✳✻✽✶✢·⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]+/;
@@ -52,12 +48,25 @@ const CLAUDE_MODEL_DOT_RE = /([A-Za-z][a-zA-Z0-9.]+)\u00B7Claude/;
 const CLAUDE_MODEL_CURRENTLY_RE =
 	/\(Set model to ([A-Za-z][a-zA-Z]+ \d+\.\d+)\)/;
 
-// OSC 9;4;0 — ConEmu progress reset. Claude Code emits this when a response finishes.
-// It also fires once at startup, so we only act on it when already in 'thinking' state.
-const OSC9_PROGRESS_RESET_RE = /\x1b\]9;4;0;?(?:\x07|\x1b\\)/;
-
 // CSI SP q (DECSCUSR) — shells set block/underline/bar; strip so xterm `cursorStyle` wins.
 const DECSCUSR_RE = /\x1b\[[0-9;]* ?q/g;
+
+// OSC 6973 — Blackslate shell state: \e]6973;running\a or \e]6973;prompt\a
+const OSC_SHELL_STATE_RE = /\x1b\]6973;(running|prompt)\x07/g;
+
+// OSC 6974 — Claude Code lifecycle hooks, written to /dev/tty by injected hook scripts:
+//   thinking  UserPromptSubmit / PreToolUse  — Claude is actively working
+//   waiting   Notification                   — paused for permission or input
+//   complete  Stop                           — Claude finished its entire turn
+const OSC_CLAUDE_HOOK_RE = /\x1b\]6974;(thinking|waiting|complete)\x07/g;
+
+// OSC 6975 — current tool label from PreToolUse (empty payload = clear).
+// e.g. \e]6975;Reading App.tsx\a
+const OSC_TOOL_RE = /\x1b\]6975;([^\x07]*)\x07/g;
+
+// OSC 6976 — token usage from Stop hook after reading transcript JSONL.
+// e.g. \e]6976;in=1234;out=567;cache_read=890;cache_write=0;model=claude-sonnet-4-5\a
+const OSC_USAGE_RE = /\x1b\]6976;([^\x07]+)\x07/g;
 
 // OSC buffer cap: OSC 7 sequences are short; 2 KB is enough to span any chunk boundary.
 const MAX_OSC_BUF = 2048;
@@ -91,6 +100,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		(s) => s.setClaudeSessionTitle,
 	);
 	const setClaudeModel = useSessionStore((s) => s.setClaudeModel);
+	const setShellState = useSessionStore((s) => s.setShellState);
+	const setCurrentTool = useSessionStore((s) => s.setCurrentTool);
+	const setLastTurnUsage = useSessionStore((s) => s.setLastTurnUsage);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
 	// Rolling buffer for OSC sequences that span chunk boundaries.
 	const oscBufRef = useRef("");
@@ -118,12 +130,10 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			);
 		};
 
-		// Set to true when we've seen Claude-specific OSC signatures (spinner/title).
+		// Set to true when we've seen Claude-specific OSC signatures (hook or title).
 		// Guards setClaudeSessionTitle so shell window-title updates don't bleed in.
 		// Cleared when Claude sends an empty title (its explicit exit signal).
 		let claudeOscActive = false;
-		// Tracks whether Claude is currently processing a response.
-		let isThinking = false;
 		// Last title written to the store — skips redundant writes on repeated OSC.
 		let lastSessionTitle: string | null = null;
 
@@ -131,11 +141,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		// Called on OSC exit signal, on poll exit, on poll error, and on cleanup.
 		const clearClaudeOscState = () => {
 			claudeOscActive = false;
-			isThinking = false;
 			lastSessionTitle = null;
 			setClaudeState(sessionId, null);
 			setClaudeSessionTitle(sessionId, null);
 			setClaudeModel(sessionId, null);
+			setCurrentTool(sessionId, null);
 		};
 
 		const run = async () => {
@@ -166,6 +176,16 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
+					// Shell state (OSC 6973) — running vs idle, from preexec/precmd hooks.
+					OSC_SHELL_STATE_RE.lastIndex = 0;
+					const stateMatch = OSC_SHELL_STATE_RE.exec(withoutCursor);
+					if (stateMatch) {
+						setShellState(
+							sessionId,
+							stateMatch[1] === "running" ? "running" : "idle",
+						);
+					}
+
 					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer,
 					// bounded to MAX_OSC_BUF to prevent unbounded growth on ESC-free output.
 					const combined = oscBufRef.current + withoutCursor;
@@ -179,58 +199,63 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 						lastEsc !== -1 ? buf.slice(lastEsc) : "";
 					if (cwd !== null) setCwd(sessionId, cwd);
 
-					// Claude state — scan the current chunk only so stale sequences in the
-					// rolling buffer don't re-trigger state transitions after they've fired.
-					//
-					// Primary signal: title switches from braille spinner (thinking) to
-					// non-braille (done). OSC 9;4;0 is a secondary fallback — it fires
-					// inconsistently across Claude Code versions.
+					// OSC 6974 — Claude Code lifecycle hooks (most reliable signal).
+					// UserPromptSubmit fires when the user submits → thinking.
+					// Stop fires when Claude finishes responding → waiting.
+					OSC_CLAUDE_HOOK_RE.lastIndex = 0;
+					const hookMatch = OSC_CLAUDE_HOOK_RE.exec(withoutCursor);
+					if (hookMatch) {
+						claudeOscActive = true;
+						setClaudeState(
+							sessionId,
+							hookMatch[1] as "thinking" | "waiting" | "complete",
+						);
+					}
+
+					// OSC 6975 — tool label from PreToolUse (empty = clear).
+					OSC_TOOL_RE.lastIndex = 0;
+					const toolMatch = OSC_TOOL_RE.exec(withoutCursor);
+					if (toolMatch !== null) {
+						setCurrentTool(sessionId, toolMatch[1] || null);
+					}
+
+					// OSC 6976 — token usage from Stop hook (key=value pairs).
+					OSC_USAGE_RE.lastIndex = 0;
+					const usageMatch = OSC_USAGE_RE.exec(withoutCursor);
+					if (usageMatch) {
+						const pairs = Object.fromEntries(
+							usageMatch[1].split(";").map((p) => p.split("=")),
+						);
+						const usage = {
+							inputTokens: parseInt(pairs.in ?? "0", 10) || 0,
+							outputTokens: parseInt(pairs.out ?? "0", 10) || 0,
+							cacheRead: parseInt(pairs.cache_read ?? "0", 10) || 0,
+							cacheWrite: parseInt(pairs.cache_write ?? "0", 10) || 0,
+						};
+						setLastTurnUsage(sessionId, usage);
+						// If transcript provided a model name, prefer it over OSC title.
+						if (pairs.model) setClaudeModel(sessionId, pairs.model);
+					}
+
+					// OSC 0/2 window title — session name only (no longer drives thinking state).
 					OSC_TITLE_RE.lastIndex = 0;
 					let titleMatch: RegExpExecArray | null;
 					while (
 						(titleMatch = OSC_TITLE_RE.exec(withoutCursor)) !== null
 					) {
 						const title = titleMatch[1];
-						if (BRAILLE_SPINNER_RE.test(title)) {
-							// Braille spinner → Claude is definitely active and thinking.
-							claudeOscActive = true;
-							if (!isThinking) {
-								isThinking = true;
-								setClaudeState(sessionId, "thinking");
-							}
-						} else if (title.length > 0) {
-							// Non-empty, non-spinner title.
+						if (title.length > 0) {
 							const name = title.replace(TITLE_PREFIX_RE, "");
 							if (name === "Claude Code") {
-								// Idle app title — mark OSC active but don't set a session name.
 								claudeOscActive = true;
-							} else if (
-								name &&
-								claudeOscActive &&
-								name !== lastSessionTitle
-							) {
-								// AI-generated session name — only store while Claude is active.
+							} else if (name && claudeOscActive && name !== lastSessionTitle) {
 								lastSessionTitle = name;
 								setClaudeSessionTitle(sessionId, name);
-							}
-							if (isThinking) {
-								// Title switched from spinner to steady — response done.
-								isThinking = false;
-								setClaudeState(sessionId, "waiting");
 							}
 						} else {
 							// Empty title: Claude's explicit exit signal — clear immediately.
 							if (claudeOscActive) clearClaudeOscState();
 						}
-					}
-
-					// OSC 9;4;0 — fallback: progress reset also signals response done.
-					if (
-						isThinking &&
-						OSC9_PROGRESS_RESET_RE.test(withoutCursor)
-					) {
-						isThinking = false;
-						setClaudeState(sessionId, "waiting");
 					}
 
 					// Model name — two patterns checked on every chunk:
@@ -363,6 +388,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		setClaudeState,
 		setClaudeSessionTitle,
 		setClaudeModel,
+		setShellState,
+		setCurrentTool,
+		setLastTurnUsage,
 	]);
 
 	return { sendResize };

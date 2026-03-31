@@ -10,13 +10,22 @@ export interface GitInfo {
 	dirty: boolean;
 }
 
+/** Token usage for the most-recently completed Claude turn (from Stop hook + transcript). */
+export interface TurnUsage {
+	inputTokens: number;
+	outputTokens: number;
+	cacheRead: number;
+	cacheWrite: number;
+}
+
 /**
- * Fine-grained Claude Code state, parsed from the PTY stream:
- *   'thinking' — Claude is processing (braille spinner in OSC 0 window title)
- *   'waiting'  — Claude finished responding (OSC 777 "waiting for your input")
- *   null       — Claude not active, or state not yet determined
+ * Fine-grained Claude Code state, driven by lifecycle hooks (OSC 6974):
+ *   'thinking'  — Claude is processing (UserPromptSubmit or PreToolUse hook)
+ *   'waiting'   — Claude paused for permission or input (Notification hook)
+ *   'complete'  — Claude finished its entire turn (Stop hook)
+ *   null        — Claude not active, or state not yet determined
  */
-export type ClaudeState = "thinking" | "waiting" | null;
+export type ClaudeState = "thinking" | "waiting" | "complete" | null;
 
 export interface Session {
 	id: string;
@@ -40,6 +49,20 @@ export interface Session {
 	claudeSessionTitle: string | null;
 	/** Claude model parsed from the splash screen (e.g. "Sonnet 4.6"). */
 	claudeModel: string | null;
+	/**
+	 * Shell activity state from preexec/precmd hooks (OSC 6973):
+	 *   'running' — a command is executing (preexec fired)
+	 *   'idle'    — shell is at the prompt (precmd fired)
+	 */
+	shellState: "running" | "idle";
+	/**
+	 * Human-readable description of the tool Claude is currently running,
+	 * e.g. "Reading App.tsx", "Running npm test". Null when no tool is active.
+	 * Set by PreToolUse hook (OSC 6975); cleared on Stop/Notification/UserPromptSubmit.
+	 */
+	currentTool: string | null;
+	/** Token usage from the most recently completed turn (OSC 6976 from Stop hook). */
+	lastTurnUsage: TurnUsage | null;
 }
 
 /**
@@ -100,6 +123,9 @@ export interface SessionActions {
 	/** Non-empty trimmed string locks the tab name; null clears to automatic naming. */
 	setSessionCustomName: (sessionId: string, name: string | null) => void;
 	setWorkspaceCustomName: (workspaceId: string, name: string | null) => void;
+	setShellState: (sessionId: string, state: "running" | "idle") => void;
+	setCurrentTool: (sessionId: string, tool: string | null) => void;
+	setLastTurnUsage: (sessionId: string, usage: TurnUsage | null) => void;
 }
 
 export type SessionStore = SessionState & SessionActions;

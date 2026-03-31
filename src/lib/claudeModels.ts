@@ -80,6 +80,11 @@ export function buildClaudeModelSwitchPayload(modelId: string): string {
 	return `/model ${modelId}\r`;
 }
 
+/** Bytes to send for a normal Claude prompt submission. */
+export function buildClaudeMessagePayload(message: string): string {
+	return `${message}\r`;
+}
+
 /**
  * When to show the header model picker: OS says Claude is in the PTY, or the PTY stream
  * already reflects Claude (model / state / title) while process polling may lag or miss.

@@ -91,13 +91,128 @@ pub(super) fn build_shell_cmd(shell: &str, cwd: PathBuf) -> CommandBuilder {
 
 /// Create a temporary ZDOTDIR containing a `.zshrc` that:
 ///   1. Sources the user's real `~/.zshrc`
-///   2. Appends an OSC 7 precmd hook so zsh reports `$PWD` before each prompt
+///   2. Appends OSC 7 / OSC 6973 shell hooks for cwd + running/idle tracking
+///   3. Wraps the `claude` binary to inject UserPromptSubmit/Stop hooks that
+///      emit OSC 6974 sequences so Blackslate can track thinking vs waiting state
 ///
 /// Using ZDOTDIR avoids touching the user's dotfiles.
 fn setup_zsh_integration() -> Option<std::path::PathBuf> {
+    use std::os::unix::fs::PermissionsExt;
+
     let home = std::env::var("HOME").ok()?;
     let zdotdir = std::env::temp_dir().join("blackslate_zsh");
     std::fs::create_dir_all(&zdotdir).ok()?;
+
+    // Hook scripts — Claude Code runs these as subprocesses; they write OSC sequences
+    // directly to /dev/tty (the controlling PTY) so Blackslate sees them in the stream.
+    //
+    //  slate-thinking  UserPromptSubmit + PreToolUse
+    //                  OSC 6974;thinking  — start pulsing
+    //                  OSC 6975;{label}   — current tool description (or empty to clear)
+    //
+    //  slate-waiting   Notification
+    //                  OSC 6974;waiting   — pause pulse, clear tool label
+    //
+    //  slate-complete  Stop
+    //                  OSC 6974;complete  — stop pulsing
+    //                  OSC 6975;          — clear tool label
+    //                  OSC 6976;{usage}   — token counts from transcript JSONL
+
+    // slate-thinking: Python — parses tool_name/tool_input from stdin.
+    // Works for both UserPromptSubmit (no tool_name → emits clear) and
+    // PreToolUse (has tool_name → emits human-readable description).
+    let hook_thinking = zdotdir.join("slate-thinking");
+    std::fs::write(&hook_thinking, r#"#!/usr/bin/env python3
+import sys, json, os
+
+with open('/dev/tty', 'wb', buffering=0) as tty:
+    tty.write(b'\033]6974;thinking\007')
+    try:
+        d = json.load(sys.stdin)
+        tool = d.get('tool_name', '')
+        if tool:
+            inp = d.get('tool_input') or {}
+            if tool == 'Read':
+                p = inp.get('file_path', '')
+                desc = 'Reading ' + (os.path.basename(p) or p)
+            elif tool in ('Edit', 'MultiEdit'):
+                p = inp.get('file_path', '')
+                desc = 'Editing ' + (os.path.basename(p) or p)
+            elif tool == 'Write':
+                p = inp.get('file_path', '')
+                desc = 'Writing ' + (os.path.basename(p) or p)
+            elif tool == 'Bash':
+                cmd = (inp.get('command') or '').split('\n')[0]
+                first = cmd.split()[0] if cmd.split() else ''
+                desc = ('Running ' + first[:30]) if first else 'Running bash'
+            elif tool in ('Glob', 'Grep'):
+                desc = 'Searching ' + (inp.get('pattern') or inp.get('glob') or '')[:30]
+            elif tool == 'WebFetch':
+                desc = 'Fetching URL'
+            elif tool == 'WebSearch':
+                desc = 'Search: ' + (inp.get('query') or '')[:30]
+            elif tool == 'Agent':
+                desc = 'Agent: ' + (inp.get('description') or inp.get('prompt') or '')[:40]
+            elif tool == 'AskUserQuestion':
+                desc = 'Asking a question'
+            else:
+                desc = tool
+            desc = ''.join(c for c in desc if ord(c) >= 32 and c not in '\x07\x1b')
+            tty.write(('\033]6975;' + desc + '\007').encode())
+        else:
+            tty.write(b'\033]6975;\007')
+    except Exception:
+        pass
+"#).ok()?;
+
+    // slate-waiting: simple shell — pause + clear tool label.
+    let hook_waiting = zdotdir.join("slate-waiting");
+    std::fs::write(&hook_waiting, "#!/bin/sh\nprintf '\\033]6974;waiting\\007' >/dev/tty\nprintf '\\033]6975;\\007' >/dev/tty\n").ok()?;
+
+    // slate-complete: Python — emits complete + reads transcript for token usage.
+    let hook_complete = zdotdir.join("slate-complete");
+    std::fs::write(&hook_complete, r#"#!/usr/bin/env python3
+import sys, json, os
+
+with open('/dev/tty', 'wb', buffering=0) as tty:
+    tty.write(b'\033]6974;complete\007')
+    tty.write(b'\033]6975;\007')
+    try:
+        d = json.load(sys.stdin)
+        tp = d.get('transcript_path', '')
+        if tp:
+            with open(os.path.expanduser(tp)) as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                try:
+                    obj = json.loads(line)
+                    # Claude Code JSONL wraps messages: {message: {role, usage, model, ...}}
+                    msg = obj.get('message') or obj
+                    usage = msg.get('usage') or {}
+                    if usage.get('input_tokens') is not None:
+                        parts = [
+                            'in='         + str(usage.get('input_tokens', 0)),
+                            'out='        + str(usage.get('output_tokens', 0)),
+                            'cache_read=' + str(usage.get('cache_read_input_tokens', 0)),
+                            'cache_write='+ str(usage.get('cache_creation_input_tokens', 0)),
+                        ]
+                        model = msg.get('model', '')
+                        if model:
+                            safe_model = ''.join(c for c in model if c not in '\x07\x1b;')
+                            parts.append('model=' + safe_model)
+                        tty.write(('\033]6976;' + ';'.join(parts) + '\007').encode())
+                        break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+"#).ok()?;
+
+    std::fs::set_permissions(&hook_thinking, std::fs::Permissions::from_mode(0o755)).ok()?;
+    std::fs::set_permissions(&hook_waiting,  std::fs::Permissions::from_mode(0o755)).ok()?;
+    std::fs::set_permissions(&hook_complete, std::fs::Permissions::from_mode(0o755)).ok()?;
+
+    let zdotdir_str = zdotdir.to_string_lossy();
 
     let zprofile = format!(
         r#"# Blackslate shell integration (auto-generated)
@@ -116,6 +231,27 @@ _blackslate_report_cwd() {{
 }}
 precmd_functions+=(_blackslate_report_cwd)
 _blackslate_report_cwd
+
+# Shell state tracking: OSC 6973 signals running vs idle.
+_blackslate_report_running() {{
+    printf '\033]6973;running\a'
+}}
+_blackslate_report_idle() {{
+    printf '\033]6973;prompt\a'
+}}
+preexec_functions+=(_blackslate_report_running)
+precmd_functions+=(_blackslate_report_idle)
+
+# Claude Code hook injection: wrap `claude` to inject UserPromptSubmit/Stop hooks
+# that emit OSC 6974 so Blackslate can track thinking vs waiting state.
+# Uses `command claude` inside the function to call the real binary, not this wrapper.
+claude() {{
+    case "${{1:-}}" in
+        mcp|config|api-key|doctor|update) command claude "$@"; return ;;
+    esac
+    local _hooks='{{"hooks":{{"UserPromptSubmit":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-thinking","timeout":5}}]}}],"PreToolUse":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-thinking","timeout":5,"run_in_background":true}}]}}],"Notification":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-waiting","timeout":5}}]}}],"Stop":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-complete","timeout":5}}]}}]}}}}'
+    command claude --settings "$_hooks" "$@"
+}}
 "#
     );
 

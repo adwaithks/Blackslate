@@ -79,38 +79,60 @@ export function WorkspaceItem({
 										: "hover:bg-white/10!",
 								)}
 							>
-						{/* Row 1: dot, index + title, tab pill, Claude pill */}
-						<div className="flex w-full min-w-0 items-center gap-2">
-							<span
-								className={cn(
-									"size-1.5 shrink-0 rounded-full transition-colors",
-									isActive ? "bg-green-300" : "bg-white/30",
-								)}
-							/>
-							<span className="min-w-0 flex-1 truncate text-xs leading-none tracking-tight">
-								<span className="mr-2 text-muted-foreground/55">
-									#{index + 1}
-								</span>
-								{dirName}
-							</span>
-							{tabCount > 1 && (
-								<span className="shrink-0 rounded-full px-1 py-px text-[9px] tabular-nums text-muted-foreground bg-white/5">
-									{tabCount}
-								</span>
-							)}
-							{session.claudeCodeActive && (
-								<ClaudeIndicator
-									state={session.claudeState}
-									model={session.claudeModel}
-								/>
-							)}
-						</div>
+								{/* Row 1: dot, index + title, tab pill, Claude pill */}
+								<div className="flex w-full min-w-0 items-center gap-2">
+									<span
+										className={cn(
+											"size-1.5 shrink-0 rounded-full transition-colors",
+											isActive
+												? "bg-green-300"
+												: "bg-white/30",
+										)}
+									/>
+									<span className="min-w-0 flex-1 truncate text-xs leading-none tracking-tight">
+										<span className="mr-2 text-muted-foreground/55">
+											#{index + 1}
+										</span>
+										{dirName}
+									</span>
+									{tabCount > 1 && (
+										<span className="shrink-0 rounded-full px-1 py-px text-[9px] tabular-nums text-muted-foreground bg-white/5">
+											{tabCount}
+										</span>
+									)}
+								</div>
 
-						{/* Row 2: optional git branch + cwd (truncated in row; full path in tooltip) */}
-						<div className="flex w-full min-w-0 items-center gap-1.5 pl-[14px]">
-							{git && (
-								<>
-									<PiGitBranchDuotone
+								{/* Row 2: optional git branch + cwd (truncated in row; full path in tooltip) */}
+								<div className="flex w-full min-w-0 items-center gap-1.5 pl-[14px]">
+									{git && (
+										<>
+											<PiGitBranchDuotone
+												className={cn(
+													"size-2.5 shrink-0",
+													HEADER_REPO_ICON,
+												)}
+												aria-hidden
+											/>
+											<span
+												className={cn(
+													"max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide",
+													HEADER_REPO_TEXT,
+												)}
+											>
+												{git.branch}
+											</span>
+											<span
+												className={cn(
+													"shrink-0 px-0.5 text-[10px]",
+													HEADER_REPO_SEP,
+												)}
+												aria-hidden
+											>
+												·
+											</span>
+										</>
+									)}
+									<IoFolder
 										className={cn(
 											"size-2.5 shrink-0",
 											HEADER_REPO_ICON,
@@ -119,37 +141,24 @@ export function WorkspaceItem({
 									/>
 									<span
 										className={cn(
-											"max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide",
+											"min-w-0 flex-1 truncate text-[10px] leading-none tracking-wide",
 											HEADER_REPO_TEXT,
 										)}
 									>
-										{git.branch}
+										{session.cwd}
 									</span>
-									<span
-										className={cn(
-											"shrink-0 px-0.5 text-[10px]",
-											HEADER_REPO_SEP,
-										)}
-										aria-hidden
-									>
-										·
-									</span>
-								</>
-							)}
-							<IoFolder
-								className={cn("size-2.5 shrink-0", HEADER_REPO_ICON)}
-								aria-hidden
-							/>
-							<span
-								className={cn(
-									"min-w-0 flex-1 truncate text-[10px] leading-none tracking-wide",
-									HEADER_REPO_TEXT,
-								)}
-							>
-								{session.cwd}
-							</span>
-						</div>
-					</SidebarMenuButton>
+								</div>
+
+								{/* Row 3: Claude model name if active */}
+								{session.claudeCodeActive &&
+									session.claudeModel && (
+										<div className="flex w-full items-center gap-1 pl-[14px]">
+											<ClaudeIndicator
+												model={session.claudeModel}
+											/>
+										</div>
+									)}
+							</SidebarMenuButton>
 						</TooltipTrigger>
 					</ContextMenuTrigger>
 
@@ -158,7 +167,10 @@ export function WorkspaceItem({
 							className="gap-2 text-xs focus:bg-white/[0.08]"
 							onClick={() => openRenameWorkspace(workspace.id)}
 						>
-							<IoPencil className="size-3.5 opacity-70" aria-hidden />
+							<IoPencil
+								className="size-3.5 opacity-70"
+								aria-hidden
+							/>
 							Rename
 							<ContextMenuShortcut className="text-white/35">
 								⌘⇧R
@@ -168,7 +180,10 @@ export function WorkspaceItem({
 							className="gap-2 text-xs focus:bg-white/[0.08]"
 							onClick={() => closeWorkspace(workspace.id)}
 						>
-							<IoClose className="size-3.5 opacity-70" aria-hidden />
+							<IoClose
+								className="size-3.5 opacity-70"
+								aria-hidden
+							/>
 							Close workspace
 							<ContextMenuShortcut className="text-white/35">
 								⌘⇧W

@@ -15,6 +15,9 @@ function makeSession(cwd = "~"): Session {
 		claudeState: null,
 		claudeSessionTitle: null,
 		claudeModel: null,
+		shellState: "idle",
+		currentTool: null,
+		lastTurnUsage: null,
 	};
 }
 
@@ -251,6 +254,39 @@ export const useSessionStore = create<SessionStore>((set) => ({
 				workspaceId,
 				"customName",
 				v,
+			),
+		}));
+	},
+
+	setShellState(sessionId, shellState) {
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"shellState",
+				shellState,
+			),
+		}));
+	},
+
+	setCurrentTool(sessionId, currentTool) {
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"currentTool",
+				currentTool,
+			),
+		}));
+	},
+
+	setLastTurnUsage(sessionId, lastTurnUsage) {
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"lastTurnUsage",
+				lastTurnUsage,
 			),
 		}));
 	},
