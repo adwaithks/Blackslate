@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useSessionStore, selectActiveWorkspace } from "@/store/sessions";
 import { TerminalPane } from "./TerminalPane";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
@@ -27,6 +28,17 @@ export function TerminalView() {
 		activeWorkspaceId,
 	});
 
+	const paneList = useMemo(
+		() =>
+			workspaces.flatMap((workspace) =>
+				workspace.sessions.map((session) => ({
+					workspace,
+					session,
+				})),
+			),
+		[workspaces],
+	);
+
 	const showMessageComposer = false; // on the way
 
 	return (
@@ -34,28 +46,26 @@ export function TerminalView() {
 			{activeWorkspace && <WorkspaceTabBar workspace={activeWorkspace} />}
 
 			<div className="relative flex-1 min-h-0">
-				{workspaces.map((workspace) =>
-					workspace.sessions.map((session) => {
-						const isActive =
-							workspace.id === activeWorkspaceId &&
-							session.id === workspace.activeSessionId;
-						return (
-							<div
-								key={session.id}
-								className="absolute inset-0"
-								style={{
-									visibility: isActive ? "visible" : "hidden",
-								}}
-								inert={!isActive}
-							>
-								<TerminalPane
-									sessionId={session.id}
-									isActive={isActive}
-								/>
-							</div>
-						);
-					}),
-				)}
+				{paneList.map(({ workspace, session }) => {
+					const isActive =
+						workspace.id === activeWorkspaceId &&
+						session.id === workspace.activeSessionId;
+					return (
+						<div
+							key={session.id}
+							className="absolute inset-0"
+							style={{
+								visibility: isActive ? "visible" : "hidden",
+							}}
+							inert={!isActive}
+						>
+							<TerminalPane
+								sessionId={session.id}
+								isActive={isActive}
+							/>
+						</div>
+					);
+				})}
 			</div>
 			<div className="bg-black">
 				{showMessageComposer && <MessageComposer />}

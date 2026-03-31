@@ -35,7 +35,6 @@ interface WorkspaceItemProps {
 	workspace: Workspace;
 	/** Active session within this workspace — drives the row label, cwd, and Claude line. */
 	session: Session;
-	index: number;
 	isActive: boolean;
 	onActivate: () => void;
 	onClose: () => void;
@@ -48,7 +47,6 @@ interface WorkspaceItemProps {
 export function WorkspaceItem({
 	workspace,
 	session,
-	index,
 	isActive,
 	onActivate,
 	onClose,
@@ -77,7 +75,7 @@ export function WorkspaceItem({
 										: "hover:bg-white/10!",
 								)}
 							>
-								{/* Row 1: dot, index + title, tab pill, Claude pill */}
+								{/* Row 1: dot, title, tab pill, Claude pill */}
 								<div className="flex w-full min-w-0 items-center gap-2">
 									<span
 										className={cn(
@@ -88,9 +86,6 @@ export function WorkspaceItem({
 										)}
 									/>
 									<span className="min-w-0 flex-1 truncate text-xs leading-none tracking-tight">
-										<span className="mr-2 text-muted-foreground/55">
-											#{index + 1}
-										</span>
 										{dirName}
 									</span>
 									{tabCount > 1 && (
@@ -210,7 +205,6 @@ export function WorkspaceItem({
 				className="flex max-w-sm flex-col items-start gap-1.5 border border-white/[0.08] bg-[#2a2a2d] px-3 py-2 text-[#eceae6] shadow-lg"
 			>
 				<span className="text-xs font-medium leading-none tracking-tight text-[#f2f0eb]">
-					<span className="mr-2 text-[#eceae6]/45">#{index + 1}</span>
 					{dirName}
 					{tabCount > 1 && (
 						<span className="ml-2 text-[10px] font-normal text-[#eceae6]/40">

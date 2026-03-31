@@ -49,14 +49,13 @@ export function AppSidebar() {
 					<SidebarGroup className="px-1.5">
 						<SidebarGroupContent>
 							<SidebarMenu className="gap-1">
-								{workspaces.map((workspace, index) => {
+								{workspaces.map((workspace) => {
 									const session = getWorkspaceDisplaySession(workspace);
 									return (
 										<WorkspaceItem
 											key={workspace.id}
 											workspace={workspace}
 											session={session}
-											index={index}
 											isActive={
 												workspace.id === activeWorkspaceId
 											}

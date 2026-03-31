@@ -229,8 +229,10 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 						const usage = {
 							inputTokens: parseInt(pairs.in ?? "0", 10) || 0,
 							outputTokens: parseInt(pairs.out ?? "0", 10) || 0,
-							cacheRead: parseInt(pairs.cache_read ?? "0", 10) || 0,
-							cacheWrite: parseInt(pairs.cache_write ?? "0", 10) || 0,
+							cacheRead:
+								parseInt(pairs.cache_read ?? "0", 10) || 0,
+							cacheWrite:
+								parseInt(pairs.cache_write ?? "0", 10) || 0,
 						};
 						setLastTurnUsage(sessionId, usage);
 						// If transcript provided a model name, prefer it over OSC title.
@@ -248,7 +250,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							const name = title.replace(TITLE_PREFIX_RE, "");
 							if (name === "Claude Code") {
 								claudeOscActive = true;
-							} else if (name && claudeOscActive && name !== lastSessionTitle) {
+							} else if (
+								name &&
+								claudeOscActive &&
+								name !== lastSessionTitle
+							) {
 								lastSessionTitle = name;
 								setClaudeSessionTitle(sessionId, name);
 							}
@@ -325,6 +331,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					const on = await invoke<boolean>("pty_claude_code_active", {
 						id: ptyId,
 					});
+					if (!active) return;
 					if (on !== lastClaudeActive) {
 						lastClaudeActive = on;
 						setClaudeCodeActive(sessionId, on);
@@ -333,6 +340,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 						if (!on) clearClaudeOscState();
 					}
 				} catch {
+					if (!active) return;
 					if (lastClaudeActive !== false) {
 						lastClaudeActive = false;
 						setClaudeCodeActive(sessionId, false);

@@ -34,7 +34,9 @@ function makeWorkspace(initialCwd = "~"): Workspace {
 
 /**
  * Patch a single field on a session found by sessionId across all workspaces.
- * Returns the workspaces array unchanged if the session isn't found.
+ * If the session id is not in any workspace (e.g. stale async handler after a
+ * workspace closed), return the same `workspaces` reference — avoids allocating
+ * a new array on every no-op patch and unnecessary subtree re-renders.
  */
 function patchSessionById<K extends keyof Session>(
 	workspaces: Workspace[],
@@ -42,6 +44,10 @@ function patchSessionById<K extends keyof Session>(
 	key: K,
 	value: Session[K],
 ): Workspace[] {
+	const exists = workspaces.some((ws) =>
+		ws.sessions.some((s) => s.id === sessionId),
+	);
+	if (!exists) return workspaces;
 	return workspaces.map((ws) => {
 		const hasSession = ws.sessions.some((s) => s.id === sessionId);
 		if (!hasSession) return ws;
