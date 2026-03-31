@@ -40,7 +40,7 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 <br />
 
 <img src="screenshots/codereview.png" alt="Blackslate — git diff viewer" width="100%" />
-<p align="center"><em><strong>Git panel</strong> with Changes / Staged and full <strong>side-by-side diffs</strong> for code review.</em></p>
+<p align="center"><em><strong>Git panel</strong> with Changes / Staged and a full <strong>diff viewer</strong> for code review.</em></p>
 
 <br />
 
@@ -106,7 +106,7 @@ The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, 
 **Git & code review**
 
 - Right-side **git panel** — Changes / Staged per repo (`⌘L`)
-- Full **side-by-side diff viewer** for any file
+- **Unified diff viewer** for any changed file
 - Stage, unstage, discard from the UI
 - Branch + dirty status in sidebar
 
