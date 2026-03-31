@@ -8,9 +8,9 @@ import { ProjectTab } from "./claudeSettings/ProjectTab";
 import type { Scope, TopTab } from "./claudeSettings/types";
 
 /**
- * Right sheet: browse Claude skills, slash commands, and hooks (global vs per-project).
+ * Right sheet: browse Claude Code skills, slash commands, and hooks (global vs per-project).
  * Data comes from Tauri commands (`list_*`); layout is tab × scope.
- * Opened from the titlebar Claude menu (no built-in trigger).
+ * Opened from the titlebar gear menu (no built-in trigger).
  */
 export function ClaudeSettingsSheet({
 	open,
@@ -31,7 +31,7 @@ export function ClaudeSettingsSheet({
 				<div className="shrink-0 flex items-center gap-2 border-b border-white/8 px-4 py-3">
 					<LuBrain className="size-4 shrink-0 text-muted-foreground/60" />
 					<SheetTitle className="text-sm font-semibold">
-						Claude Settings
+						Claude Code resources
 					</SheetTitle>
 				</div>
 

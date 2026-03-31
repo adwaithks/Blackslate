@@ -2,12 +2,11 @@ import { useState } from "react";
 import { IoAdd } from "react-icons/io5";
 import {
 	LuBrain,
-	LuChevronDown,
 	LuDot,
 	LuFolder,
 	LuHistory,
+	LuSettings,
 } from "react-icons/lu";
-import { SiClaude } from "react-icons/si";
 import {
 	TbLayoutSidebarFilled,
 	TbLayoutSidebarRightFilled,
@@ -42,7 +41,7 @@ interface AppTitlebarProps {
 }
 
 /**
- * macOS titlebar row: drag region, workspace controls, cwd, Claude menu, git toggle.
+ * macOS titlebar row: drag region, workspace controls, cwd, model + Claude gear menu, git toggle.
  * Grid columns align with the sidebar width below (see parent).
  */
 export function AppTitlebar({
@@ -151,18 +150,10 @@ export function AppTitlebar({
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							type="button"
-							className="inline-flex h-6.5 shrink-0 items-center gap-1 rounded-sm border border-white/6 bg-white/3 px-2 py-0.5 text-[10px] font-medium text-[#D97757]/90 outline-none transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-ring/40"
-							aria-label="Claude menu"
+							className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-white/6 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+							aria-label="Claude Code: resources and sessions"
 						>
-							<SiClaude
-								className="size-3 shrink-0 text-[#D97757]"
-								aria-hidden
-							/>
-							<span className="leading-none">Claude</span>
-							<LuChevronDown
-								className="size-3 shrink-0 opacity-60"
-								aria-hidden
-							/>
+							<LuSettings className="size-4 shrink-0" aria-hidden />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
 							align="end"
@@ -176,7 +167,7 @@ export function AppTitlebar({
 									className="size-3 shrink-0 text-muted-foreground"
 									aria-hidden
 								/>
-								Config
+								Resources
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								className="gap-2 text-xs"

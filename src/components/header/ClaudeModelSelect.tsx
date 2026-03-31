@@ -37,15 +37,21 @@ export function ClaudeModelSelect() {
 		setOptimisticId(null);
 	}, [activeSession?.id]);
 
+	const resolvedId = useMemo(
+		() =>
+			resolveClaudeModelIdFromParsedLabel(
+				activeSession?.claudeModel ?? null,
+			),
+		[activeSession?.claudeModel],
+	);
+
 	const value = useMemo(() => {
 		return (
 			optimisticId ??
-			resolveClaudeModelIdFromParsedLabel(
-				activeSession?.claudeModel ?? null,
-			) ??
+			resolvedId ??
 			DEFAULT_CLAUDE_MODEL_ID
 		);
-	}, [activeSession?.claudeModel, optimisticId]);
+	}, [optimisticId, resolvedId]);
 
 	const items = useMemo(() => claudeModelSelectItems(), []);
 
@@ -67,6 +73,15 @@ export function ClaudeModelSelect() {
 	);
 
 	if (!sessionShowsClaudeModelPicker(activeSession)) {
+		return null;
+	}
+
+	/** No stream-reported model yet — avoid showing a bogus default (e.g. Sonnet). */
+	const hasKnownModel =
+		(activeSession?.claudeModel != null &&
+			activeSession.claudeModel.trim() !== "") ||
+		optimisticId != null;
+	if (!hasKnownModel) {
 		return null;
 	}
 

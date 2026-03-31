@@ -7,6 +7,7 @@ import {
 	type Workspace,
 } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	ContextMenu,
@@ -46,15 +47,17 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 					))}
 				</TabsList>
 
-				<button
+				<Button
 					type="button"
-					className="flex rounded-sm shrink-0 items-center p-1 ml-1 cursor-pointer text-muted-foreground/40 transition-colors hover:bg-white/[0.04] hover:text-muted-foreground"
+					variant="ghost"
+					size="sm"
+					className="ml-1 h-6 shrink-0 px-1 text-muted-foreground rounded-sm"
 					onClick={() => createSessionInWorkspace(workspace.id)}
 					title="New tab (⌘T)"
 					aria-label="New tab"
 				>
-					<IoAdd className="size-4" />
-				</button>
+					<IoAdd className="size-4 shrink-0" />
+				</Button>
 			</div>
 		</Tabs>
 	);
@@ -132,7 +135,9 @@ function SessionTabTrigger({
 				>
 					<IoPencil className="size-3.5 opacity-70" aria-hidden />
 					Rename
-					<ContextMenuShortcut className="text-white/35">⌘R</ContextMenuShortcut>
+					<ContextMenuShortcut className="text-white/35">
+						⌘R
+					</ContextMenuShortcut>
 				</ContextMenuItem>
 				<ContextMenuItem
 					className="gap-2 text-xs focus:bg-white/[0.08]"
@@ -140,7 +145,9 @@ function SessionTabTrigger({
 				>
 					<IoClose className="size-3.5 opacity-70" aria-hidden />
 					Close tab
-					<ContextMenuShortcut className="text-white/35">⌘Q</ContextMenuShortcut>
+					<ContextMenuShortcut className="text-white/35">
+						⌘Q
+					</ContextMenuShortcut>
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>
