@@ -11,6 +11,7 @@ import { useSettingsStore, SIDEBAR_COLOR_OPTIONS } from "@/store/settings";
 import { useHomeDir } from "@/hooks/useHomeDir";
 import { useChromeSidebarSurface } from "@/hooks/useChromeSidebarSurface";
 import { useAppLayoutShortcuts } from "@/hooks/useAppLayoutShortcuts";
+import { useWindowAndQuitCloseGuard } from "@/hooks/useWindowAndQuitCloseGuard";
 import { AppTitlebar } from "@/components/layout/AppTitlebar";
 import { AppMainArea } from "@/components/layout/AppMainArea";
 
@@ -46,6 +47,8 @@ export function AppLayout() {
 		increaseFontSize,
 		decreaseFontSize,
 	});
+
+	useWindowAndQuitCloseGuard();
 
 	// Single resolved path for titlebar + git when we know HOME
 	const resolvedCwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;

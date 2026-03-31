@@ -9,7 +9,7 @@ export interface ShortcutDefinition {
 	id: string;
 	/** Return true when this binding should handle the event (incl. modifiers). */
 	when: (e: KeyboardEvent) => boolean;
-	run: () => void;
+	run: () => void | Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +143,7 @@ export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 					});
 					e.preventDefault();
 					e.stopPropagation();
-					def.run();
+					void Promise.resolve(def.run()).catch(console.error);
 					return;
 				}
 			}

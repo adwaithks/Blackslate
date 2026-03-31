@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { FaFolderOpen } from "react-icons/fa";
 import {
 	Sidebar,
@@ -8,6 +9,7 @@ import {
 	SidebarMenu,
 } from "@/components/ui/sidebar";
 import { useSessionStore } from "@/store/sessions";
+import { confirmCloseWorkspace } from "@/lib/closeConfirm";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceItem } from "@/components/sidebar/WorkspaceItem";
 import { getWorkspaceDisplaySession } from "@/components/sidebar/getWorkspaceDisplaySession";
@@ -19,6 +21,16 @@ import { getWorkspaceDisplaySession } from "@/components/sidebar/getWorkspaceDis
 export function AppSidebar() {
 	const { workspaces, activeWorkspaceId, closeWorkspace, activateWorkspace } =
 		useSessionStore();
+
+	const requestCloseWorkspaceFromSidebar = useCallback(
+		async (workspaceId: string) => {
+			const ws = workspaces.find((w) => w.id === workspaceId);
+			if (!ws) return;
+			const ok = await confirmCloseWorkspace(ws);
+			if (ok) closeWorkspace(workspaceId);
+		},
+		[closeWorkspace, workspaces],
+	);
 
 	return (
 		<TooltipProvider>
@@ -52,7 +64,9 @@ export function AppSidebar() {
 												activateWorkspace(workspace.id)
 											}
 											onClose={() =>
-												closeWorkspace(workspace.id)
+												requestCloseWorkspaceFromSidebar(
+													workspace.id,
+												)
 											}
 										/>
 									);

@@ -17,6 +17,7 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
+import { confirmCloseSessionInWorkspace } from "@/lib/closeConfirm";
 
 interface WorkspaceTabBarProps {
 	workspace: Workspace;
@@ -28,6 +29,11 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 
 	const activeId = workspace.activeSessionId;
 
+	const requestCloseSession = async (sessionId: string) => {
+		const ok = await confirmCloseSessionInWorkspace(workspace, sessionId);
+		if (ok) closeSession(workspace.id, sessionId);
+	};
+
 	return (
 		<Tabs
 			value={activeId}
@@ -38,11 +44,8 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 					{workspace.sessions.map((session) => (
 						<SessionTabTrigger
 							key={session.id}
-							workspaceId={workspace.id}
 							session={session}
-							onClose={() =>
-								closeSession(workspace.id, session.id)
-							}
+							onClose={() => requestCloseSession(session.id)}
 						/>
 					))}
 				</TabsList>
@@ -64,18 +67,12 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 }
 
 interface SessionTabTriggerProps {
-	workspaceId: string;
 	session: Session;
 	onClose: () => void;
 }
 
-function SessionTabTrigger({
-	workspaceId,
-	session,
-	onClose,
-}: SessionTabTriggerProps) {
+function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 	const openRenameSession = useRenameUiStore((s) => s.openSession);
-	const closeSession = useSessionStore((s) => s.closeSession);
 
 	const label = terminalDisplayName(session);
 
@@ -141,12 +138,12 @@ function SessionTabTrigger({
 				</ContextMenuItem>
 				<ContextMenuItem
 					className="gap-2 text-xs focus:bg-white/[0.08]"
-					onClick={() => closeSession(workspaceId, session.id)}
+					onClick={() => onClose()}
 				>
 					<IoClose className="size-3.5 opacity-70" aria-hidden />
 					Close tab
 					<ContextMenuShortcut className="text-white/35">
-						⌘Q
+						⌘W
 					</ContextMenuShortcut>
 				</ContextMenuItem>
 			</ContextMenuContent>

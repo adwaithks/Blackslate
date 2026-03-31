@@ -66,6 +66,15 @@ impl SessionManager {
         }
     }
 
+    /// Kill every PTY (shell child + reader task). Used on app exit so processes are not left
+    /// running when the parent process terminates.
+    pub fn close_all(&self) {
+        let mut map = self.sessions.write().unwrap();
+        for (_, session) in map.drain() {
+            session.close();
+        }
+    }
+
     /// Whether Claude Code (or the `claude` CLI) is running under this PTY's shell.
     pub fn claude_code_active(&self, id: &str) -> CommandResult<bool> {
         Ok(self.get(id)?.claude_code_active())

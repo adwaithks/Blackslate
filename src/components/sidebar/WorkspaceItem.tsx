@@ -11,7 +11,6 @@ import {
 	TooltipContent,
 } from "@/components/ui/tooltip";
 import {
-	useSessionStore,
 	workspaceDisplayName,
 	type Session,
 	type Workspace,
@@ -54,7 +53,6 @@ export function WorkspaceItem({
 	onActivate,
 	onClose,
 }: WorkspaceItemProps) {
-	const closeWorkspace = useSessionStore((s) => s.closeWorkspace);
 	const openRenameWorkspace = useRenameUiStore((s) => s.openWorkspace);
 
 	const dirName = workspaceDisplayName(workspace);
@@ -178,7 +176,7 @@ export function WorkspaceItem({
 						</ContextMenuItem>
 						<ContextMenuItem
 							className="gap-2 text-xs focus:bg-white/[0.08]"
-							onClick={() => closeWorkspace(workspace.id)}
+							onClick={() => onClose()}
 						>
 							<IoClose
 								className="size-3.5 opacity-70"

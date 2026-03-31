@@ -1,6 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useSessionStore } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
+import {
+	confirmCloseSessionInWorkspace,
+	confirmCloseWorkspace,
+} from "@/lib/closeConfirm";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
 import {
 	modBracketKey,
@@ -83,15 +87,21 @@ export function buildAppLayoutShortcuts(
 			},
 		},
 		{
-			// ⌘W / ⌘Q
+			// ⌘W / ⌘Q — close active tab (⌘⇧Q is Quit in the app menu)
 			id: "close-tab",
 			when: (e: KeyboardEvent) => modLetter(e, "w") || modLetter(e, "q"),
-			run: () => {
+			run: async () => {
 				const s = useSessionStore.getState();
 				const ws = s.workspaces.find(
 					(w) => w.id === s.activeWorkspaceId,
 				);
-				if (ws) s.closeSession(ws.id, ws.activeSessionId);
+				if (!ws) return;
+				const session = ws.sessions.find(
+					(sess) => sess.id === ws.activeSessionId,
+				);
+				if (!session) return;
+				const ok = await confirmCloseSessionInWorkspace(ws, session.id);
+				if (ok) s.closeSession(ws.id, session.id);
 			},
 		},
 		{
@@ -117,12 +127,17 @@ export function buildAppLayoutShortcuts(
 			},
 		},
 		{
-			// ⌘⇧W — close active workspace
+			// ⌘⇧W — close active workspace (busy or 3+ tabs)
 			id: "close-workspace",
 			when: (e: KeyboardEvent) => modShiftLetter(e, "w"),
-			run: () => {
-				const id = useSessionStore.getState().activeWorkspaceId;
-				useSessionStore.getState().closeWorkspace(id);
+			run: async () => {
+				const s = useSessionStore.getState();
+				const ws = s.workspaces.find(
+					(w) => w.id === s.activeWorkspaceId,
+				);
+				if (!ws) return;
+				const ok = await confirmCloseWorkspace(ws);
+				if (ok) s.closeWorkspace(ws.id);
 			},
 		},
 		{

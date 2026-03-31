@@ -3,7 +3,7 @@ mod terminal;
 #[cfg(target_os = "macos")]
 mod macos_menu;
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use terminal::AppState;
 use terminal::commands::{
     discard_all, discard_file, get_git_diff, get_git_diff_bundle, get_git_status, get_home_dir,
@@ -15,11 +15,19 @@ use terminal::commands::{
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    // ExitRequested handler runs `SessionManager::close_all` before teardown.
+    app.exit(0);
+}
+
 pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
+            quit_app,
             pty_create,
             pty_write,
             pty_resize,
@@ -56,7 +64,9 @@ pub fn run() {
             .menu(|app| macos_menu::default_menu(app))
             .on_menu_event(|app, event| {
                 match event.id().as_ref() {
-                    "blackslate.quit" => app.exit(0),
+                    "blackslate.quit" => {
+                        let _ = app.emit("blackslate://confirm-quit", ());
+                    }
                     "blackslate.settings" => {
                         app.emit("blackslate://open-settings", ()).ok();
                     }
@@ -65,7 +75,13 @@ pub fn run() {
             });
     }
 
-    builder
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    let app = builder
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app, event| {
+        if let tauri::RunEvent::ExitRequested { .. } = event {
+            app.state::<AppState>().sessions.close_all();
+        }
+    });
 }
