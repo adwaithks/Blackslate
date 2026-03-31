@@ -1,11 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useSessionStore } from "@/store/sessions";
+import { useRenameUiStore } from "@/store/renameUiStore";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
 import {
 	modBracketKey,
 	modDigitKey,
 	modLetter,
 	modOptionDigitKey,
+	modShiftLetter,
 	zoomInKeys,
 	zoomOutKey,
 } from "@/lib/appShortcuts";
@@ -83,14 +85,44 @@ export function buildAppLayoutShortcuts(
 		{
 			// ⌘W / ⌘Q
 			id: "close-tab",
-			when: (e: KeyboardEvent) =>
-				modLetter(e, "w") || modLetter(e, "q"),
+			when: (e: KeyboardEvent) => modLetter(e, "w") || modLetter(e, "q"),
 			run: () => {
 				const s = useSessionStore.getState();
 				const ws = s.workspaces.find(
 					(w) => w.id === s.activeWorkspaceId,
 				);
 				if (ws) s.closeSession(ws.id, ws.activeSessionId);
+			},
+		},
+		{
+			// ⌘⇧R — rename active workspace (same modifier rules as ⌘B; capture stops PTY)
+			id: "rename-active-workspace",
+			when: (e: KeyboardEvent) => modShiftLetter(e, "r"),
+			run: () => {
+				const id = useSessionStore.getState().activeWorkspaceId;
+				useRenameUiStore.getState().openWorkspace(id);
+			},
+		},
+		{
+			// ⌘R — rename active tab (works with xterm focused; event intercepted in capture)
+			id: "rename-active-tab",
+			when: (e: KeyboardEvent) => modLetter(e, "r"),
+			run: () => {
+				const s = useSessionStore.getState();
+				const ws = s.workspaces.find(
+					(w) => w.id === s.activeWorkspaceId,
+				);
+				if (!ws) return;
+				useRenameUiStore.getState().openSession(ws.activeSessionId);
+			},
+		},
+		{
+			// ⌘⇧W — close active workspace
+			id: "close-workspace",
+			when: (e: KeyboardEvent) => modShiftLetter(e, "w"),
+			run: () => {
+				const id = useSessionStore.getState().activeWorkspaceId;
+				useSessionStore.getState().closeWorkspace(id);
 			},
 		},
 		{

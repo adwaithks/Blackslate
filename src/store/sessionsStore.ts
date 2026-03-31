@@ -10,6 +10,7 @@ import type {
 function makeSession(cwd = "~"): Session {
 	return {
 		id: crypto.randomUUID(),
+		customName: null,
 		cwd,
 		createdAt: Date.now(),
 		git: null,
@@ -26,6 +27,7 @@ function makeWorkspace(initialCwd = "~"): Workspace {
 	const session = makeSession(initialCwd);
 	return {
 		id: crypto.randomUUID(),
+		customName: null,
 		sessions: [session],
 		activeSessionId: session.id,
 	};
@@ -51,6 +53,17 @@ function patchSessionById<K extends keyof Session>(
 			),
 		};
 	});
+}
+
+function patchWorkspaceById<K extends keyof Workspace>(
+	workspaces: Workspace[],
+	workspaceId: string,
+	key: K,
+	value: Workspace[K],
+): Workspace[] {
+	return workspaces.map((w) =>
+		w.id === workspaceId ? { ...w, [key]: value } : w,
+	);
 }
 
 const initialWorkspace = makeWorkspace();
@@ -177,5 +190,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
 	setClaudeModel(sessionId, claudeModel) {
 		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeModel", claudeModel) }));
+	},
+
+	setSessionCustomName(sessionId, name) {
+		const v = name === null || name.trim() === "" ? null : name.trim();
+		set((s) => ({
+			workspaces: patchSessionById(s.workspaces, sessionId, "customName", v),
+		}));
+	},
+
+	setWorkspaceCustomName(workspaceId, name) {
+		const v = name === null || name.trim() === "" ? null : name.trim();
+		set((s) => ({
+			workspaces: patchWorkspaceById(s.workspaces, workspaceId, "customName", v),
+		}));
 	},
 }));

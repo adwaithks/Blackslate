@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { IoAdd } from "react-icons/io5";
-import {
-	LuBrain,
-	LuChevronDown,
-	LuFolder,
-	LuHistory,
-} from "react-icons/lu";
+import { LuBrain, LuChevronDown, LuFolder, LuHistory } from "react-icons/lu";
 import { SiClaude } from "react-icons/si";
 import {
 	TbLayoutSidebarFilled,
@@ -123,7 +118,10 @@ export function AppTitlebar({
 								aria-hidden
 							/>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="min-w-[9rem]">
+						<DropdownMenuContent
+							align="end"
+							className="min-w-[9rem]"
+						>
 							<DropdownMenuItem
 								className="gap-2 text-xs"
 								onClick={() => setClaudeSettingsOpen(true)}

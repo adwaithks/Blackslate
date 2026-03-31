@@ -20,6 +20,11 @@ export {
 	findSession,
 } from "@/store/sessionsSelectors";
 
-export { sessionDisplayName, cwdToAbsolute } from "@/store/sessionsDisplay";
+export {
+	sessionDisplayName,
+	cwdToAbsolute,
+	terminalDisplayName,
+	workspaceDisplayName,
+} from "@/store/sessionsDisplay";
 
 export { useSessionStore } from "@/store/sessionsStore";

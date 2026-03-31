@@ -20,6 +20,10 @@ export type ClaudeState = "thinking" | "waiting" | null;
 
 export interface Session {
 	id: string;
+	/**
+	 * User-set tab label. When non-null, automatic labels (cwd / Claude session title) are ignored.
+	 */
+	customName: string | null;
 	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
 	cwd: string;
 	/** Unix timestamp of when the session was created. */
@@ -45,6 +49,10 @@ export interface Session {
  */
 export interface Workspace {
 	id: string;
+	/**
+	 * User-set sidebar label. When non-null, the name no longer tracks the active terminal.
+	 */
+	customName: string | null;
 	sessions: Session[];
 	/** The session currently shown in this workspace's terminal area. */
 	activeSessionId: string;
@@ -89,6 +97,9 @@ export interface SessionActions {
 	setClaudeState: (sessionId: string, state: ClaudeState) => void;
 	setClaudeSessionTitle: (sessionId: string, title: string | null) => void;
 	setClaudeModel: (sessionId: string, model: string | null) => void;
+	/** Non-empty trimmed string locks the tab name; null clears to automatic naming. */
+	setSessionCustomName: (sessionId: string, name: string | null) => void;
+	setWorkspaceCustomName: (workspaceId: string, name: string | null) => void;
 }
 
 export type SessionStore = SessionState & SessionActions;

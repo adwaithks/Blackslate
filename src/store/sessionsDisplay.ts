@@ -1,9 +1,30 @@
-import type { Session } from "@/store/sessionsTypes";
+import type { Session, Workspace } from "@/store/sessionsTypes";
 
 /** Display name for a session: the last path segment of cwd, or "~" / "/". */
 export function sessionDisplayName(session: Session): string {
 	if (session.cwd === "~" || session.cwd === "/") return session.cwd;
 	return session.cwd.split("/").filter(Boolean).pop() ?? "~";
+}
+
+/**
+ * Tab label: explicit name wins, then Claude session title, then cwd folder name.
+ */
+export function terminalDisplayName(session: Session): string {
+	if (session.customName !== null) return session.customName;
+	if (session.claudeSessionTitle) return session.claudeSessionTitle;
+	return sessionDisplayName(session);
+}
+
+/**
+ * Sidebar workspace row: explicit name wins, else the active tab’s {@link terminalDisplayName}.
+ */
+export function workspaceDisplayName(workspace: Workspace): string {
+	if (workspace.customName !== null) return workspace.customName;
+	const active =
+		workspace.sessions.find((s) => s.id === workspace.activeSessionId) ??
+		workspace.sessions[0];
+	if (!active) return "~";
+	return terminalDisplayName(active);
 }
 
 /**
