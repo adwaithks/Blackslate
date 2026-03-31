@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSessionStore, findSession } from "@/store/sessions";
 import { useSettingsStore } from "@/store/settings";
 import { usePty } from "@/hooks/usePty";
@@ -5,6 +6,7 @@ import { useTerminalBootstrap } from "@/hooks/useTerminalBootstrap";
 import { useDebouncedTerminalFitResize } from "@/hooks/useDebouncedTerminalFitResize";
 import { useTerminalSessionCwdMetadata } from "@/hooks/useTerminalSessionCwdMetadata";
 import { useTerminalPaneLayoutEffects } from "@/hooks/useTerminalPaneLayoutEffects";
+import { FOCUS_ACTIVE_TERMINAL_EVENT } from "@/lib/focusActiveTerminal";
 
 interface TerminalPaneProps {
 	sessionId: string;
@@ -55,6 +57,22 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		fitAddonRef,
 		sendResize,
 	});
+
+	useEffect(() => {
+		if (!terminal) return;
+		const onRequestFocus = () => {
+			if (!isActive) return;
+			requestAnimationFrame(() => {
+				terminal.focus();
+			});
+		};
+		window.addEventListener(FOCUS_ACTIVE_TERMINAL_EVENT, onRequestFocus);
+		return () =>
+			window.removeEventListener(
+				FOCUS_ACTIVE_TERMINAL_EVENT,
+				onRequestFocus,
+			);
+	}, [terminal, isActive]);
 
 	return (
 		<div

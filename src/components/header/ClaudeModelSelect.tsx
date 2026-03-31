@@ -16,6 +16,7 @@ import {
 	sessionShowsClaudeModelPicker,
 } from "@/lib/claudeModels";
 import { selectActiveSession, useSessionStore } from "@/store/sessions";
+import { requestActiveTerminalFocus } from "@/lib/focusActiveTerminal";
 import { cn } from "@/lib/utils";
 
 const triggerClassName =
@@ -46,11 +47,7 @@ export function ClaudeModelSelect() {
 	);
 
 	const value = useMemo(() => {
-		return (
-			optimisticId ??
-			resolvedId ??
-			DEFAULT_CLAUDE_MODEL_ID
-		);
+		return optimisticId ?? resolvedId ?? DEFAULT_CLAUDE_MODEL_ID;
 	}, [optimisticId, resolvedId]);
 
 	const items = useMemo(() => claudeModelSelectItems(), []);
@@ -86,7 +83,14 @@ export function ClaudeModelSelect() {
 	}
 
 	return (
-		<Select value={value} onValueChange={handleValueChange} items={items}>
+		<Select
+			value={value}
+			onValueChange={handleValueChange}
+			onOpenChangeComplete={(open) => {
+				if (!open) requestActiveTerminalFocus();
+			}}
+			items={items}
+		>
 			<SelectTrigger
 				size="sm"
 				aria-label="Model"

@@ -1,11 +1,7 @@
 import { create } from "zustand";
 
 import { selectActiveSession } from "@/store/sessionsSelectors";
-import type {
-	Session,
-	SessionStore,
-	Workspace,
-} from "@/store/sessionsTypes";
+import type { Session, SessionStore, Workspace } from "@/store/sessionsTypes";
 
 function makeSession(cwd = "~"): Session {
 	return {
@@ -131,7 +127,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
 			if (ws.sessions.length <= 1) {
 				if (s.workspaces.length <= 1) return s; // keep at least one workspace
 				const idx = s.workspaces.findIndex((w) => w.id === workspaceId);
-				const workspaces = s.workspaces.filter((w) => w.id !== workspaceId);
+				const workspaces = s.workspaces.filter(
+					(w) => w.id !== workspaceId,
+				);
 				const activeWorkspaceId =
 					s.activeWorkspaceId === workspaceId
 						? workspaces[Math.max(0, idx - 1)].id
@@ -149,7 +147,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
 			return {
 				workspaces: s.workspaces.map((w) =>
-					w.id === workspaceId ? { ...w, sessions, activeSessionId } : w,
+					w.id === workspaceId
+						? { ...w, sessions, activeSessionId }
+						: w,
 				),
 			};
 		});
@@ -165,44 +165,93 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	},
 
 	setCwd(sessionId, cwd) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "cwd", cwd) }));
+		set((s) => ({
+			workspaces: patchSessionById(s.workspaces, sessionId, "cwd", cwd),
+		}));
 	},
 
 	setGit(sessionId, git) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "git", git) }));
+		set((s) => ({
+			workspaces: patchSessionById(s.workspaces, sessionId, "git", git),
+		}));
 	},
 
 	setPtyId(sessionId, ptyId) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "ptyId", ptyId) }));
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"ptyId",
+				ptyId,
+			),
+		}));
 	},
 
 	setClaudeCodeActive(sessionId, claudeCodeActive) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeCodeActive", claudeCodeActive) }));
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"claudeCodeActive",
+				claudeCodeActive,
+			),
+		}));
 	},
 
 	setClaudeState(sessionId, claudeState) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeState", claudeState) }));
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"claudeState",
+				claudeState,
+			),
+		}));
 	},
 
 	setClaudeSessionTitle(sessionId, claudeSessionTitle) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeSessionTitle", claudeSessionTitle) }));
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"claudeSessionTitle",
+				claudeSessionTitle,
+			),
+		}));
 	},
 
 	setClaudeModel(sessionId, claudeModel) {
-		set((s) => ({ workspaces: patchSessionById(s.workspaces, sessionId, "claudeModel", claudeModel) }));
+		set((s) => ({
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"claudeModel",
+				claudeModel,
+			),
+		}));
 	},
 
 	setSessionCustomName(sessionId, name) {
 		const v = name === null || name.trim() === "" ? null : name.trim();
 		set((s) => ({
-			workspaces: patchSessionById(s.workspaces, sessionId, "customName", v),
+			workspaces: patchSessionById(
+				s.workspaces,
+				sessionId,
+				"customName",
+				v,
+			),
 		}));
 	},
 
 	setWorkspaceCustomName(workspaceId, name) {
 		const v = name === null || name.trim() === "" ? null : name.trim();
 		set((s) => ({
-			workspaces: patchWorkspaceById(s.workspaces, workspaceId, "customName", v),
+			workspaces: patchWorkspaceById(
+				s.workspaces,
+				workspaceId,
+				"customName",
+				v,
+			),
 		}));
 	},
 }));
