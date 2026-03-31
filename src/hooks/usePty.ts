@@ -122,9 +122,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		let unlistenExit: UnlistenFn | null = null;
 		let onDataDisposable: IDisposable | null = null;
 		let pollTimer: ReturnType<typeof setInterval> | null = null;
+		// Fit / ResizeObserver can run while `run()` is awaiting; PTY is not in Rust yet.
+		let ptyRegistered = false;
 
 		resizeFnRef.current = (cols: number, rows: number) => {
-			if (!active) return;
+			if (!active || !ptyRegistered) return;
 			invoke("pty_resize", { id: ptyId, cols, rows }).catch(
 				console.error,
 			);
@@ -319,6 +321,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				invoke("pty_close", { id: ptyId }).catch(() => {});
 				return;
 			}
+
+			ptyRegistered = true;
+			resizeFnRef.current(term.cols, term.rows);
 
 			setPtyId(sessionId, ptyId);
 

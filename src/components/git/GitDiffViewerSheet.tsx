@@ -450,7 +450,7 @@ export function GitDiffViewerSheet({
 											actions={[
 												{
 													icon: (
-														<TbPlus className="size-3.5" />
+														<TbMinus className="size-3.5" />
 													),
 													label: "Stage file",
 													onClick: () =>
@@ -460,7 +460,7 @@ export function GitDiffViewerSheet({
 												},
 												{
 													icon: (
-														<TbMinus className="size-3.5" />
+														<TbPlus className="size-3.5" />
 													),
 													label: "Discard changes",
 													danger: true,
