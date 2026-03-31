@@ -17,17 +17,25 @@ A macOS terminal that works like every great terminal you've used — fast, mini
 
 <br />
 
-<img src="screenshots/voidwithgitpane.png" alt="Blackslate — Void sidebar with git changes pane" width="100%" />
+<img src="screenshots/main-terminal.png" alt="Blackslate — terminal workspace" width="100%" />
 
-<img src="screenshots/carbonwithgitpane.png" alt="Blackslate — Carbon sidebar with git changes pane" width="100%" />
+<img src="screenshots/main-claude.png" alt="Blackslate — Claude Code active with title bar token usage and session controls" width="100%" />
 
-<img src="screenshots/theme.png" alt="Blackslate — Terminal theme & sidebar colour" width="100%" />
+<img src="screenshots/codereview.png" alt="Blackslate — git diff viewer for your changes" width="100%" />
 
-<img src="screenshots/void.png" alt="Blackslate — Void sidebar" width="100%" />
+<img src="screenshots/resumeclaudesessions.png" alt="Blackslate — resume Claude Code sessions from the UI" width="100%" />
+
+<img src="screenshots/sills-commands-hooks.png" alt="Blackslate — browse Claude skills, commands, and hooks" width="100%" />
+
+<img src="screenshots/themeconfig.png" alt="Blackslate — terminal theme and preferences" width="100%" />
 
 <br />
 
 </div>
+
+---
+
+> **Active development** — Blackslate is evolving quickly. **Expect breaking changes** (APIs, shortcuts, storage, and UI) between releases until things stabilise. **Pull requests are welcome.**
 
 ---
 
@@ -41,7 +49,7 @@ The tools are powerful. The workspace isn't built for them.
 
 ## What Blackslate does
 
-Blackslate wraps the terminal in an intelligent workspace layer. It doesn't replace the shell — it reads it. When Claude Code is running, the sidebar surfaces what matters: which session is active, what directory you're in, the git branch, the project stack, and a live agent indicator. No more hunting through tabs.
+Blackslate wraps the terminal in an intelligent workspace layer. It doesn't replace the shell — it reads it. When Claude Code is running, the UI surfaces what matters: usage and session controls in the title bar, which workspace and tab is active, git and diffs beside your work, and a live picture of the agent. No more hunting through tabs.
 
 The philosophy is deliberate: **augment at the UI/UX layer, not at the protocol layer.** PTY, shell, and process management are solved problems. The unsolved problem is the experience of working *alongside* an agent — and that's entirely a UI/UX problem.
 
@@ -51,17 +59,39 @@ The philosophy is deliberate: **augment at the UI/UX layer, not at the protocol 
 
 Blackslate's near-term goal is the best Claude Code–native terminal on macOS.
 
-The longer-term goal is bigger: **a full-stack developer workspace that lives inside the terminal.** An integrated code editor, an agent action timeline, inline diffs, pane splits — everything you need to run a complete read-edit-run loop without ever leaving the surface where the agent is working. Not Electron. Not a browser tab. A native macOS application built from the ground up for the workflow that's actually happening in 2025.
+The longer-term goal is bigger: **a full-stack developer workspace that lives inside the terminal.** An integrated code editor, a **Claude events timeline**, splits, composer + model controls, and git actions — everything you need to run a complete read–edit–run loop without ever leaving the surface where the agent is working. Not Electron. Not a browser tab. A native macOS application built from the ground up for the workflow that's actually happening in 2025.
 
 ---
 
 ## Features
 
+### Title bar & usage
+
+- **Token usage** — after each Claude Code turn, **input** and **output** token counts appear at the **top right** of the title bar; hover for cache read/write and full detail
+
+### Git & code review
+
+- **Diff viewer** — open your **Changes** / **Staged** files in a full **code diff** view so you can review what you (and the agent) touched before you commit (**`⌘L`** toggles the git panel)
+
+### Claude in the workspace
+
+- **Tab & workspace indicators** — see at a glance where Claude Code is running: indicators on **horizontal tabs** and **workspace** rows in the sidebar
+- **Claude Code detection** — Blackslate polls the PTY's foreground process group and walks the shell's process tree to detect when `claude` is running
+
 ### Workspaces & tabs
 
 - **Multiple workspaces** — each workspace is a row in the sidebar; **`⌘1`–`⌘9`** jumps to workspace 1–9 in order
-- **Horizontal tabs per workspace** — several terminal sessions inside one workspace; **`⌘⌥1`–`⌘⌥9`** selects tab 1–9, **`⌘[`** / **`⌘]`** previous or next tab (wraps)
+- **Multiple tabs per workspace** — several terminal sessions inside one workspace; **`⌘⌥1`–`⌘⌥9`** selects tab 1–9, **`⌘[`** / **`⌘]`** previous or next tab (wraps)
+- **Rename** — rename **workspaces** and **terminal tabs** inline so long-running sessions stay identifiable
 - **PTYs stay alive** — every tab keeps its own PTY; inactive tabs stay mounted so switching is instant with no shell state loss
+
+### Resume Claude sessions
+
+- **Session picker** — browse past Claude Code conversations from the header and **resume** one with a click; Blackslate sends the right `/resume` or `claude --resume` input to the active PTY
+
+### Claude toolkit (skills, commands, hooks)
+
+- **In-terminal UI** — inspect your **skills**, **slash commands**, and **hooks** in a structured, readable layout without leaving Blackslate
 
 ### Git changes pane
 
@@ -78,43 +108,71 @@ The longer-term goal is bigger: **a full-stack developer workspace that lives in
 
 ### Keyboard shortcuts
 
+Global shortcuts use **⌘** on macOS (shown below). On other platforms the same actions use **Ctrl** where applicable.
+
 | Shortcut | Action |
 |----------|--------|
+| `⌘,` | Open **Settings** (terminal theme, sidebar colour, font size) |
 | `⌘N` | New workspace |
 | `⌘T` | New tab in the active workspace |
-| `⌘W` / `⌘Q` | Close active tab (or workspace if it’s the last tab) |
-| `⌘1`–`⌘9` | Switch to workspace 1–9 |
-| `⌘⌥1`–`⌘⌥9` | Switch to tab 1–9 in the active workspace |
-| `⌘[` / `⌘]` | Previous / next tab in the active workspace |
+| `⌘W` or `⌘Q` | Close active tab (with confirm when the session has work in progress) |
+| `⌘⇧W` | Close the **active workspace** (with confirm when needed) |
+| `⌘⇧Q` | **Quit** Blackslate (from the app menu; frees `⌘Q` for close-tab) |
+| `⌘R` | Rename the **active tab** |
+| `⌘⇧R` | Rename the **active workspace** |
+| `⌘1`–`⌘9` | Switch to workspace **1–9** (sidebar order) |
+| `⌘⌥1`–`⌘⌥9` | Switch to tab **1–9** in the active workspace |
+| `⌘[` / `⌘]` | Previous / next tab in the active workspace (wraps) |
 | `⌘B` | Toggle sidebar |
 | `⌘L` | Toggle git changes pane |
-| `⌘=` / `⌘-` | Zoom terminal font |
+| `⌘=` / `⌘-` | Zoom terminal font in / out (main keyboard; **numpad +** / **numpad −** also work) |
 
-Settings (terminal theme & sidebar colour) — **Blackslate → Preferences…** from the menu bar (`⌘,` on macOS).
+Also: **Blackslate → Settings…** in the menu bar.
 
 ### Agent Workspace
 
-- **Claude Code detection** — Blackslate polls the PTY's foreground process group and walks the shell's process tree to detect when `claude` is running, shown as a live indicator per session
 - **Persistent session sidebar** — directory, full path, git branch, dirty status, and project stack at a glance for every open session
 - **Session persistence** — inactive sessions stay mounted with `visibility: hidden`; the PTY keeps running, scroll history is intact, no reconnection on switch
 
 ### Personalisation
 
-- **Terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord — switchable live via `⌘,`
-- **Sidebar colours** — ten distinct dark palettes (Void, Carbon, Ember, Aurora, Deep Sea, Toxic, Dusk, Crimson, Rose, Slate) designed to pair with each terminal theme
-- **More customisation coming** — font family, font size, shell path, and additional themes on the roadmap
+- **Terminal themes** (xterm palette, live preview in Settings) — **Gruvbox Dark**, **Tokyo Night**, **Dracula**, **Nord**, **Solarized Dark** — switch anytime via **`⌘,`**
+- **Sidebar colours** — ten dark palettes (**Void**, **Carbon**, **Ember**, **Aurora**, **Deep Sea**, **Toxic**, **Dusk**, **Crimson**, **Rose**, **Slate**) tuned to sit next to the terminal
+- Deeper preferences will move toward **`blackslate.config`** and file-based settings (see roadmap)
 
-### On the Roadmap
+### Roadmap & priorities
+
+Planned work below is **not** shipped yet unless called out elsewhere in this README. Order reflects current intent; **test coverage** is the top priority.
+
+#### Foundation
+
+| Priority | Feature |
+|:---:|:---|
+| **1** | **Test coverage** — automated tests across the Rust backend (PTY, git, process helpers) and the React/TypeScript frontend (stores, hooks, critical UI). Goal: safe refactors and regression protection as the surface area grows. |
+| **2** | **`blackslate.config`** — a single, user-owned config file so behaviour that is today scattered (or only in the UI) becomes **fully configurable**: shortcuts, defaults, feature flags, paths, and anything else we expose over time. |
+| **3** | **Restore workspace on reopen** — persist the **current workspace layout** (workspaces, tabs, ordering, active selection) so after quit and relaunch you pick up where you left off. (Live PTY sessions themselves are not restored—only layout and metadata.) |
+
+#### Layout & terminals
 
 | | Feature |
 |---|---|
-| 🔲 | **Agent action timeline** — structured feed of tool calls and file operations as Claude Code works |
-| 🔲 | **Inline diff viewer** — file edits as side-by-side diffs without leaving the terminal |
-| 🔲 | **Integrated code editor** — edit files inside Blackslate; the agent's loop never leaves |
-| 🔲 | **Enhanced agent status** — expand the existing Claude indicator into thinking / tool running / waiting states |
-| 🔲 | **Pane splits** — vertical and horizontal splits, multiple terminals in one window |
-| 🔲 | **Session renaming** — double-click to name a session |
-| 🔲 | **Extended settings** — font family, shell path, and additional colour schemes |
+| 🔲 | **Reorder workspaces and tabs** — drag-and-drop (or equivalent) to change sidebar and tab order |
+| 🔲 | **Vertical split terminal** — two terminals stacked in one pane |
+| 🔲 | **Horizontal split terminal** — two terminals side by side |
+
+#### Claude, composer & git
+
+| | Feature |
+|---|---|
+| 🔲 | **Message composer + model selection** — first-class UI for composing input and choosing the Claude model in context |
+| 🔲 | **Claude events timeline** — structured feed of agent-visible events (tool use, lifecycle, file touchpoints) alongside the scrollback |
+| 🔲 | **Commit and push** — dedicated actions from the git UI to commit and push without leaving Blackslate |
+
+#### Further out
+
+| | Feature |
+|---|---|
+| 🔲 | **Integrated code editor** — edit files inside Blackslate so the read–edit–run loop can stay in one window |
 
 ---
 
@@ -218,7 +276,7 @@ blackslate/
 
 ## Contributing
 
-Blackslate is in active early development. Issues and pull requests are welcome.
+Issues and **pull requests are welcome**. Because the project is under active development, larger refactors or behaviour changes may land without a long deprecation window—pin to a release or commit if you need stability.
 
 A few hard constraints that keep the architecture clean:
 
