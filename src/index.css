@@ -40,20 +40,35 @@ html.dark #root {
 	-webkit-app-region: no-drag;
 }
 
-/* xterm.js viewport must fill its container exactly */
+/* xterm: root + legacy viewport fill the pane. Do NOT set height on `.xterm-screen` — the
+   renderer sets buffer height inline; `height: 100% !important` overrides that and breaks scrollback
+   metrics (wrong thumb size, drag on the real scrollbar). */
 .xterm,
-.xterm-viewport,
-.xterm-screen {
+.xterm-viewport {
 	width: 100% !important;
 	height: 100% !important;
 }
 
-/* Terminal: hide native scrollbar (trackpad / wheel / keys still scroll scrollback) */
+/* Modern xterm scrolls inside `.xterm-scrollable-element` (custom scrollbar). The empty
+   `.xterm-viewport` still has `overflow-y: scroll` from xterm.css — that shows a bogus native
+   scrollbar (often mis-sized) on top of the real one; dragging it does nothing useful. */
 .xterm .xterm-viewport {
+	overflow: hidden !important;
 	scrollbar-width: none;
 }
 .xterm .xterm-viewport::-webkit-scrollbar {
 	display: none;
+}
+
+/* xterm’s scrollbar is custom DOM (not ::-webkit-scrollbar); JS sets ~14px width inline.
+   Fixed 8px here — `var(--scrollbar-size)` does not visually match xterm’s control. */
+.xterm .xterm-scrollable-element > .scrollbar.vertical {
+	width: 7px !important;
+}
+.xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+	width: 7px !important;
+	left: 0 !important;
+	border-radius: 10px;
 }
 
 /* Compact scrollbars app-wide (WKWebView + Firefox). xterm keeps viewport hidden above. */
