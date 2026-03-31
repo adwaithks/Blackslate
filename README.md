@@ -173,7 +173,9 @@ All shortcuts use **⌘** on macOS.
 
 Near-term: the best **Claude Code–native terminal** on macOS.
 
-Longer-term: **a full-stack developer workspace that lives inside the terminal** — an integrated editor, Claude events timeline, splits, composer + model controls, and git actions. Everything for a complete read–edit–run loop without leaving the surface where the agent works. Not Electron. Not a browser tab. A native macOS app built for the workflow of 2025.
+Longer-term: **a full-stack developer workspace that lives inside the terminal** — an integrated editor, Claude events timeline, splits, composer + model controls, and git actions. Everything for a complete read–edit–run loop without leaving the surface where the agent works. Not Electron. Not a browser tab. A native macOS app built for the workflow of 2026.
+
+**We are deliberately opinionated about scope.** Every feature must earn its place — if it doesn't make working with Claude Code meaningfully better, it doesn't ship. No bloat, no feature creep, no "nice to have" that costs attention.
 
 ---
 
