@@ -49,7 +49,8 @@ const STRIP_CSI_RE = /\x1b\[[?!>]?[0-9;]*[A-Za-z]/g;
 //             Also fires on first open when the hint is visible.
 //             Model name already has a space e.g. "Sonnet 4.6".
 const CLAUDE_MODEL_DOT_RE = /([A-Za-z][a-zA-Z0-9.]+)\u00B7Claude/;
-const CLAUDE_MODEL_CURRENTLY_RE = /\(currently ([A-Za-z][a-zA-Z]+ \d+\.\d+)\)/;
+const CLAUDE_MODEL_CURRENTLY_RE =
+	/\(Set model to ([A-Za-z][a-zA-Z]+ \d+\.\d+)\)/;
 
 // OSC 9;4;0 — ConEmu progress reset. Claude Code emits this when a response finishes.
 // It also fires once at startup, so we only act on it when already in 'thinking' state.
@@ -174,7 +175,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: combined;
 					const cwd = parseOsc7(buf, home);
 					const lastEsc = buf.lastIndexOf("\x1b");
-					oscBufRef.current = lastEsc !== -1 ? buf.slice(lastEsc) : "";
+					oscBufRef.current =
+						lastEsc !== -1 ? buf.slice(lastEsc) : "";
 					if (cwd !== null) setCwd(sessionId, cwd);
 
 					// Claude state — scan the current chunk only so stale sequences in the
@@ -237,8 +239,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					//   DOT: splash banner "Sonnet4.6·Claude" — fallback for first open.
 					{
 						const stripped = chunk.replace(STRIP_CSI_RE, "");
-						const mCurrent = CLAUDE_MODEL_CURRENTLY_RE.exec(stripped);
-						const mDot = mCurrent ? null : CLAUDE_MODEL_DOT_RE.exec(stripped);
+						const mCurrent =
+							CLAUDE_MODEL_CURRENTLY_RE.exec(stripped);
+						const mDot = mCurrent
+							? null
+							: CLAUDE_MODEL_DOT_RE.exec(stripped);
 						const m = mCurrent ?? mDot;
 						if (m) {
 							// CURRENTLY already has a space e.g. "Sonnet 4.6".
@@ -268,7 +273,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			const initialCwd =
 				findSession(useSessionStore.getState().workspaces, sessionId)
 					?.cwd ?? null;
-			console.log(`[pty] invoking pty_create — id=${ptyId} cwd=${initialCwd}`);
+			console.log(
+				`[pty] invoking pty_create — id=${ptyId} cwd=${initialCwd}`,
+			);
 			await invoke("pty_create", {
 				id: ptyId,
 				cols,
