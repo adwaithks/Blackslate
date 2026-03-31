@@ -134,3 +134,34 @@ export function nord(background = "#2e3440"): ITheme {
 		brightWhite:   "#eceff4", // nord6
 	};
 }
+
+// ─── Solarized Dark ──────────────────────────────────────────────────────────
+// https://github.com/altercation/solarized
+// Canonical teal-base palette — one of the most widely adopted terminal themes.
+export function solarizedDark(background = "#002b36"): ITheme {
+	return {
+		background,
+		foreground:          "#839496", // base0
+		cursor:              "#839496",
+		cursorAccent:        "#002b36",
+		selectionBackground: "#586e7580", // base01 @ ~50%
+
+		black:         "#073642", // base02
+		red:           "#dc322f",
+		green:         "#859900",
+		yellow:        "#b58900",
+		blue:          "#268bd2",
+		magenta:       "#d33682",
+		cyan:          "#2aa198",
+		white:         "#eee8d5", // base2
+
+		brightBlack:   "#586e75", // base01
+		brightRed:     "#cb4b16", // orange
+		brightGreen:   "#586e75",
+		brightYellow:  "#657b83", // base00
+		brightBlue:    "#839496", // base0
+		brightMagenta: "#6c71c4", // violet
+		brightCyan:    "#93a1a1", // base1
+		brightWhite:   "#fdf6e3", // base3
+	};
+}

@@ -5,7 +5,12 @@
 
 // ─── Terminal themes ──────────────────────────────────────────────────────────
 
-export type TerminalThemeId = "gruvboxDark" | "dracula" | "tokyoNight" | "nord";
+export type TerminalThemeId =
+	| "gruvboxDark"
+	| "dracula"
+	| "tokyoNight"
+	| "nord"
+	| "solarizedDark";
 
 export interface TerminalThemeOption {
 	id: TerminalThemeId;
@@ -33,6 +38,11 @@ export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 		id: "nord",
 		label: "Nord",
 		preview: { bg: "#2e3440", fg: "#d8dee9", accent: "#88c0d0" }, // arctic blue
+	},
+	{
+		id: "solarizedDark",
+		label: "Solarized Dark",
+		preview: { bg: "#002b36", fg: "#839496", accent: "#268bd2" }, // teal base, blue accent
 	},
 ];
 
