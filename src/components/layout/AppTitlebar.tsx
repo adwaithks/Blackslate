@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { IoAdd } from "react-icons/io5";
-import { LuBrain, LuChevronDown, LuFolder, LuHistory } from "react-icons/lu";
+import {
+	LuBrain,
+	LuChevronDown,
+	LuDot,
+	LuFolder,
+	LuHistory,
+} from "react-icons/lu";
 import { SiClaude } from "react-icons/si";
 import {
 	TbLayoutSidebarFilled,
@@ -16,12 +22,19 @@ import {
 import { ClaudeModelSelect } from "@/components/header/ClaudeModelSelect";
 import { ClaudeSessionPicker } from "@/components/header/ClaudeSessionPicker";
 import { ClaudeSettingsSheet } from "@/components/header/ClaudeSettingsSheet";
+import {
+	HEADER_REPO_ICON,
+	HEADER_REPO_SEP,
+	HEADER_REPO_TEXT,
+} from "@/lib/headerRepoLineStyles";
 
 interface AppTitlebarProps {
 	/** Whether the left sidebar column is expanded (drives titlebar grid + toggle icon). */
 	sidebarOpen: boolean;
 	/** Absolute cwd string for the path label and session picker. */
 	headerPwd: string;
+	/** Current git branch for active session’s cwd, when known. */
+	headerBranch: string | null;
 	onCreateWorkspace: () => void;
 	onToggleSidebar: () => void;
 	gitPanelOpen: boolean;
@@ -35,6 +48,7 @@ interface AppTitlebarProps {
 export function AppTitlebar({
 	sidebarOpen,
 	headerPwd,
+	headerBranch,
 	onCreateWorkspace,
 	onToggleSidebar,
 	gitPanelOpen,
@@ -89,19 +103,46 @@ export function AppTitlebar({
 			</div>
 
 			<div
-				data-tauri-drag-region
-				className="border-b border-white/4 flex min-w-0 w-full items-center justify-between bg-background px-3"
+				className="@container/titlebar border-b border-white/4 flex min-w-0 w-full items-center gap-2 bg-background px-3"
 			>
 				<span
-					title={headerPwd}
-					className="flex min-w-0 items-center gap-1.5 text-xs leading-none text-muted-foreground/50 select-none"
+					data-tauri-drag-region
+					title={
+						headerBranch
+							? `${headerPwd} · ${headerBranch}`
+							: headerPwd
+					}
+					className="flex min-w-0 shrink items-center gap-1.5 overflow-hidden text-xs leading-none select-none"
 				>
 					<LuFolder
-						className="size-3.5 shrink-0 text-muted-foreground/45"
+						className={`size-3.5 shrink-0 ${HEADER_REPO_ICON}`}
 						aria-hidden
 					/>
-					<span className="min-w-0 flex-1 truncate">{headerPwd}</span>
+					<span
+						className={`min-w-0 max-w-[35cqw] shrink truncate ${HEADER_REPO_TEXT}`}
+					>
+						{headerPwd}
+					</span>
+					{headerBranch ? (
+						<>
+							<LuDot
+								className={`size-2.5 shrink-0 ${HEADER_REPO_SEP}`}
+								aria-hidden
+							/>
+							<span
+								className={`min-w-0 shrink truncate ${HEADER_REPO_TEXT}`}
+							>
+								{headerBranch}
+							</span>
+						</>
+					) : null}
 				</span>
+				{/* WKWebKit only applies drag to nodes with the attribute; an empty flex-1 strip restores window drag in the gap. */}
+				<div
+					className="min-h-8 min-w-0 flex-1 self-stretch"
+					data-tauri-drag-region
+					aria-hidden
+				/>
 				<div
 					className="flex shrink-0 items-center gap-1"
 					data-tauri-drag-region="false"

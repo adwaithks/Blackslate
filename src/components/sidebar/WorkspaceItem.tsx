@@ -17,6 +17,11 @@ import {
 	type Workspace,
 } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
+import {
+	HEADER_REPO_ICON,
+	HEADER_REPO_SEP,
+	HEADER_REPO_TEXT,
+} from "@/lib/headerRepoLineStyles";
 import { cn } from "@/lib/utils";
 import { ClaudeIndicator } from "@/components/sidebar/ClaudeIndicator";
 import {
@@ -106,14 +111,25 @@ export function WorkspaceItem({
 							{git && (
 								<>
 									<PiGitBranchDuotone
-										className="size-2.5 shrink-0 text-muted-foreground/50"
+										className={cn(
+											"size-2.5 shrink-0",
+											HEADER_REPO_ICON,
+										)}
 										aria-hidden
 									/>
-									<span className="max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide text-muted-foreground/65">
+									<span
+										className={cn(
+											"max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide",
+											HEADER_REPO_TEXT,
+										)}
+									>
 										{git.branch}
 									</span>
 									<span
-										className="shrink-0 px-0.5 text-[10px] text-muted-foreground/35"
+										className={cn(
+											"shrink-0 px-0.5 text-[10px]",
+											HEADER_REPO_SEP,
+										)}
 										aria-hidden
 									>
 										·
@@ -121,10 +137,15 @@ export function WorkspaceItem({
 								</>
 							)}
 							<IoFolder
-								className="size-2.5 shrink-0 text-muted-foreground/50"
+								className={cn("size-2.5 shrink-0", HEADER_REPO_ICON)}
 								aria-hidden
 							/>
-							<span className="min-w-0 flex-1 truncate text-[10px] leading-none tracking-wide text-muted-foreground/65">
+							<span
+								className={cn(
+									"min-w-0 flex-1 truncate text-[10px] leading-none tracking-wide",
+									HEADER_REPO_TEXT,
+								)}
+							>
 								{session.cwd}
 							</span>
 						</div>

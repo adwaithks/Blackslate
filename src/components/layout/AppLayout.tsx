@@ -21,8 +21,12 @@ import { AppMainArea } from "@/components/layout/AppMainArea";
 export function AppLayout() {
 	const { workspaces, activeWorkspaceId, createWorkspace } =
 		useSessionStore();
-	const activeCwd =
-		selectActiveSession({ workspaces, activeWorkspaceId })?.cwd ?? "~";
+	const activeSession = selectActiveSession({
+		workspaces,
+		activeWorkspaceId,
+	});
+	const activeCwd = activeSession?.cwd ?? "~";
+	const headerBranch = activeSession?.git?.branch ?? null;
 
 	const homeDir = useHomeDir();
 	const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -61,6 +65,7 @@ export function AppLayout() {
 					<AppTitlebar
 						sidebarOpen={sidebarOpen}
 						headerPwd={resolvedCwd}
+						headerBranch={headerBranch}
 						onCreateWorkspace={createWorkspace}
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}
