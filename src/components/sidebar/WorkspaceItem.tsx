@@ -49,7 +49,7 @@ export function WorkspaceItem({
 	onActivate,
 	onClose,
 }: WorkspaceItemProps) {
-	const closeSession = useSessionStore((s) => s.closeSession);
+	const closeWorkspace = useSessionStore((s) => s.closeWorkspace);
 	const openRenameWorkspace = useRenameUiStore((s) => s.openWorkspace);
 
 	const dirName = workspaceDisplayName(workspace);
@@ -132,7 +132,7 @@ export function WorkspaceItem({
 						</TooltipTrigger>
 					</ContextMenuTrigger>
 
-					<ContextMenuContent className="min-w-44 border-white/[0.08] bg-[#1c1c1f] text-[#eceae6]">
+					<ContextMenuContent className="min-w-48 border-white/[0.08] bg-[#1c1c1f] text-[#eceae6]">
 						<ContextMenuItem
 							className="gap-2 text-xs focus:bg-white/[0.08]"
 							onClick={() => openRenameWorkspace(workspace.id)}
@@ -140,19 +140,17 @@ export function WorkspaceItem({
 							<IoPencil className="size-3.5 opacity-70" aria-hidden />
 							Rename
 							<ContextMenuShortcut className="text-white/35">
-								⌘R
+								⌘⇧R
 							</ContextMenuShortcut>
 						</ContextMenuItem>
 						<ContextMenuItem
 							className="gap-2 text-xs focus:bg-white/[0.08]"
-							onClick={() =>
-								closeSession(workspace.id, workspace.activeSessionId)
-							}
+							onClick={() => closeWorkspace(workspace.id)}
 						>
 							<IoClose className="size-3.5 opacity-70" aria-hidden />
-							Close tab
+							Close workspace
 							<ContextMenuShortcut className="text-white/35">
-								⌘Q
+								⌘⇧W
 							</ContextMenuShortcut>
 						</ContextMenuItem>
 					</ContextMenuContent>

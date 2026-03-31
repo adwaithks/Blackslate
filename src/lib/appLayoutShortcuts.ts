@@ -3,11 +3,11 @@ import { useSessionStore } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
 import {
-	isInsideTerminal,
 	modBracketKey,
 	modDigitKey,
 	modLetter,
 	modOptionDigitKey,
+	modShiftLetter,
 	zoomInKeys,
 	zoomOutKey,
 } from "@/lib/appShortcuts";
@@ -85,8 +85,7 @@ export function buildAppLayoutShortcuts(
 		{
 			// ⌘W / ⌘Q
 			id: "close-tab",
-			when: (e: KeyboardEvent) =>
-				modLetter(e, "w") || modLetter(e, "q"),
+			when: (e: KeyboardEvent) => modLetter(e, "w") || modLetter(e, "q"),
 			run: () => {
 				const s = useSessionStore.getState();
 				const ws = s.workspaces.find(
@@ -96,10 +95,18 @@ export function buildAppLayoutShortcuts(
 			},
 		},
 		{
-			// ⌘R — rename active tab (not while typing in the terminal surface)
+			// ⌘⇧R — rename active workspace (same modifier rules as ⌘B; capture stops PTY)
+			id: "rename-active-workspace",
+			when: (e: KeyboardEvent) => modShiftLetter(e, "r"),
+			run: () => {
+				const id = useSessionStore.getState().activeWorkspaceId;
+				useRenameUiStore.getState().openWorkspace(id);
+			},
+		},
+		{
+			// ⌘R — rename active tab (works with xterm focused; event intercepted in capture)
 			id: "rename-active-tab",
-			when: (e: KeyboardEvent) =>
-				modLetter(e, "r") && !isInsideTerminal(e.target),
+			when: (e: KeyboardEvent) => modLetter(e, "r"),
 			run: () => {
 				const s = useSessionStore.getState();
 				const ws = s.workspaces.find(
@@ -107,6 +114,15 @@ export function buildAppLayoutShortcuts(
 				);
 				if (!ws) return;
 				useRenameUiStore.getState().openSession(ws.activeSessionId);
+			},
+		},
+		{
+			// ⌘⇧W — close active workspace
+			id: "close-workspace",
+			when: (e: KeyboardEvent) => modShiftLetter(e, "w"),
+			run: () => {
+				const id = useSessionStore.getState().activeWorkspaceId;
+				useSessionStore.getState().closeWorkspace(id);
 			},
 		},
 		{

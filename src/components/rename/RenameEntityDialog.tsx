@@ -12,6 +12,15 @@ import {
 } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
 
+/** Same treatment as `SectionLabel` in {@link SettingsDialog}. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+	return (
+		<p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/30 pb-0.5">
+			{children}
+		</p>
+	);
+}
+
 /**
  * Modal to rename a workspace or terminal tab — shell matches {@link SettingsDialog}.
  */
@@ -45,8 +54,8 @@ export function RenameEntityDialog() {
 		if (open) setValue(initialName);
 	}, [open, initialName]);
 
-	const title =
-		target?.kind === "workspace" ? "Rename workspace" : "Rename tab";
+	const scopeLabel =
+		target?.kind === "workspace" ? "Workspace" : "Terminal";
 
 	function handleSave() {
 		if (!target) return;
@@ -76,7 +85,7 @@ export function RenameEntityDialog() {
 				>
 					<div className="flex h-9 shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
 						<Dialog.Title className="text-xs font-medium tracking-wide text-white/60">
-							{title}
+							Rename
 						</Dialog.Title>
 						<button
 							type="button"
@@ -88,20 +97,23 @@ export function RenameEntityDialog() {
 						</button>
 					</div>
 
-					<div className="flex flex-col gap-4 p-4">
-						<Input
-							autoFocus
-							value={value}
-							onChange={(e) => setValue(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									handleSave();
-								}
-							}}
-							placeholder="Name"
-							className="h-9 border-white/10 bg-white/[0.03] text-[#eceae6] placeholder:text-white/25"
-						/>
+					<div className="flex flex-col gap-5 p-4">
+						<section className="flex flex-col gap-2">
+							<SectionLabel>{scopeLabel}</SectionLabel>
+							<Input
+								autoFocus
+								value={value}
+								onChange={(e) => setValue(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										handleSave();
+									}
+								}}
+								placeholder="Name"
+								className="h-9 border-white/10 bg-white/[0.03] text-[#eceae6] placeholder:text-white/25"
+							/>
+						</section>
 
 						<div className="flex justify-end gap-2">
 							<button
