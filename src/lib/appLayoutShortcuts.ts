@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useSessionStore } from "@/store/sessions";
+import { useRenameUiStore } from "@/store/renameUiStore";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
 import {
+	isInsideTerminal,
 	modBracketKey,
 	modDigitKey,
 	modLetter,
@@ -91,6 +93,20 @@ export function buildAppLayoutShortcuts(
 					(w) => w.id === s.activeWorkspaceId,
 				);
 				if (ws) s.closeSession(ws.id, ws.activeSessionId);
+			},
+		},
+		{
+			// ⌘R — rename active tab (not while typing in the terminal surface)
+			id: "rename-active-tab",
+			when: (e: KeyboardEvent) =>
+				modLetter(e, "r") && !isInsideTerminal(e.target),
+			run: () => {
+				const s = useSessionStore.getState();
+				const ws = s.workspaces.find(
+					(w) => w.id === s.activeWorkspaceId,
+				);
+				if (!ws) return;
+				useRenameUiStore.getState().openSession(ws.activeSessionId);
 			},
 		},
 		{

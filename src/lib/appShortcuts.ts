@@ -73,7 +73,7 @@ export function modBracketKey(
 // Focus — allow shortcuts while xterm is focused (textarea helper)
 // ---------------------------------------------------------------------------
 
-function isInsideTerminal(target: EventTarget | null): boolean {
+export function isInsideTerminal(target: EventTarget | null): boolean {
 	if (!target || !(target instanceof Element)) return false;
 	return Boolean(target.closest(".xterm"));
 }

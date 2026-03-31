@@ -1,5 +1,5 @@
 import { PiGitBranchDuotone } from "react-icons/pi";
-import { IoClose, IoFolder } from "react-icons/io5";
+import { IoClose, IoFolder, IoPencil } from "react-icons/io5";
 import {
 	SidebarMenuAction,
 	SidebarMenuButton,
@@ -10,9 +10,22 @@ import {
 	TooltipTrigger,
 	TooltipContent,
 } from "@/components/ui/tooltip";
-import { sessionDisplayName, type Session, type Workspace } from "@/store/sessions";
+import {
+	useSessionStore,
+	workspaceDisplayName,
+	type Session,
+	type Workspace,
+} from "@/store/sessions";
+import { useRenameUiStore } from "@/store/renameUiStore";
 import { cn } from "@/lib/utils";
 import { ClaudeIndicator } from "@/components/sidebar/ClaudeIndicator";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuShortcut,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 interface WorkspaceItemProps {
 	workspace: Workspace;
@@ -36,26 +49,31 @@ export function WorkspaceItem({
 	onActivate,
 	onClose,
 }: WorkspaceItemProps) {
-	const dirName = session.claudeSessionTitle ?? sessionDisplayName(session);
+	const closeSession = useSessionStore((s) => s.closeSession);
+	const openRenameWorkspace = useRenameUiStore((s) => s.openWorkspace);
+
+	const dirName = workspaceDisplayName(workspace);
 	const { git } = session;
 	const tabCount = workspace.sessions.length;
 
 	return (
 		<Tooltip>
 			<SidebarMenuItem>
-				<TooltipTrigger className="w-full">
-					<SidebarMenuButton
-						isActive={isActive}
-						onClick={onActivate}
-						className={cn(
-							"group/item h-auto flex-col items-start gap-2 py-2 px-2",
-							"rounded-sm transition-colors",
-							"[&_svg]:!size-2.5",
-							isActive
-								? "data-active:bg-white/6! hover:data-active:bg-white/28!"
-								: "hover:bg-white/10!",
-						)}
-					>
+				<ContextMenu>
+					<ContextMenuTrigger className="w-full">
+						<TooltipTrigger className="w-full">
+							<SidebarMenuButton
+								isActive={isActive}
+								onClick={onActivate}
+								className={cn(
+									"group/item h-auto flex-col items-start gap-2 py-2 px-2",
+									"rounded-sm transition-colors",
+									"[&_svg]:!size-2.5",
+									isActive
+										? "data-active:bg-white/6! hover:data-active:bg-white/28!"
+										: "hover:bg-white/10!",
+								)}
+							>
 						{/* Row 1: dot, index + title, tab pill, Claude pill */}
 						<div className="flex w-full min-w-0 items-center gap-2">
 							<span
@@ -111,7 +129,34 @@ export function WorkspaceItem({
 							</span>
 						</div>
 					</SidebarMenuButton>
-				</TooltipTrigger>
+						</TooltipTrigger>
+					</ContextMenuTrigger>
+
+					<ContextMenuContent className="min-w-44 border-white/[0.08] bg-[#1c1c1f] text-[#eceae6]">
+						<ContextMenuItem
+							className="gap-2 text-xs focus:bg-white/[0.08]"
+							onClick={() => openRenameWorkspace(workspace.id)}
+						>
+							<IoPencil className="size-3.5 opacity-70" aria-hidden />
+							Rename
+							<ContextMenuShortcut className="text-white/35">
+								⌘R
+							</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuItem
+							className="gap-2 text-xs focus:bg-white/[0.08]"
+							onClick={() =>
+								closeSession(workspace.id, workspace.activeSessionId)
+							}
+						>
+							<IoClose className="size-3.5 opacity-70" aria-hidden />
+							Close tab
+							<ContextMenuShortcut className="text-white/35">
+								⌘Q
+							</ContextMenuShortcut>
+						</ContextMenuItem>
+					</ContextMenuContent>
+				</ContextMenu>
 
 				<SidebarMenuAction
 					className="[&>svg]:!size-2.5"

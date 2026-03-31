@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { RenameEntityDialog } from "@/components/rename/RenameEntityDialog";
 import {
 	cwdToAbsolute,
 	selectActiveSession,
@@ -50,6 +51,7 @@ export function AppLayout() {
 	return (
 		<>
 			<SettingsDialog />
+			<RenameEntityDialog />
 			<SidebarProvider
 				open={sidebarOpen}
 				onOpenChange={setSidebarOpen}
