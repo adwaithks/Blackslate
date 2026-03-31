@@ -48,9 +48,7 @@ export function AppLayout() {
 	});
 
 	// Single resolved path for titlebar + git when we know HOME
-	const resolvedCwd = homeDir
-		? cwdToAbsolute(activeCwd, homeDir)
-		: activeCwd;
+	const resolvedCwd = homeDir ? cwdToAbsolute(activeCwd, homeDir) : activeCwd;
 
 	return (
 		<>

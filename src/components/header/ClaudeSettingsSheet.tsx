@@ -26,16 +26,16 @@ export function ClaudeSettingsSheet({
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="right"
-				className="mt-8 flex flex-col gap-0 p-0 border-l-0"
+				className="mt-8 flex flex-col gap-0 p-0 border-l-0 bg-background"
 			>
-				<div className="shrink-0 flex items-center gap-2 border-b border-white/8 px-4 py-3">
+				<div className="shrink-0 flex items-center gap-2 border-b border-border/25 px-4 py-3 bg-background">
 					<LuBrain className="size-4 shrink-0 text-muted-foreground/60" />
 					<SheetTitle className="text-sm font-semibold">
 						Claude Code resources
 					</SheetTitle>
 				</div>
 
-				<div className="shrink-0 flex items-center gap-0 border-b border-white/8 px-4">
+				<div className="shrink-0 flex items-center gap-0 border-b border-border/25 px-4 bg-background">
 					{(["skills", "commands", "hooks"] as TopTab[]).map((t) => (
 						<button
 							key={t}
@@ -52,7 +52,7 @@ export function ClaudeSettingsSheet({
 					))}
 				</div>
 
-				<div className="shrink-0 flex items-center gap-1 border-b border-white/8 bg-white/2 px-3 py-1.5">
+				<div className="shrink-0 flex items-center gap-1 border-b border-border/25 bg-background px-3 py-1.5">
 					{(["global", "project"] as Scope[]).map((s) => (
 						<button
 							key={s}

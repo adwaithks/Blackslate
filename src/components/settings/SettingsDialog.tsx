@@ -49,7 +49,7 @@ function SidebarSwatch({ color }: { color: string }) {
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (
-		<p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/30 pb-0.5">
+		<p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50 pb-0.5">
 			{children}
 		</p>
 	);
@@ -79,8 +79,8 @@ export function SettingsDialog() {
 						"fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
 					// Size
 					"w-[460px]",
-						// Surface — pitch black + hairline border matching the sidebar
-						"bg-[#0a0a0a] border border-white/[0.07] rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
+						// Surface — match app surfaces
+						"bg-background border border-border/25 rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
 						// Layout
 						"flex flex-col overflow-hidden",
 						// Animation
@@ -90,12 +90,12 @@ export function SettingsDialog() {
 					)}
 				>
 					{/* Title bar strip — matches the app titlebar height */}
-					<div className="flex h-9 shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
-						<Dialog.Title className="text-xs font-medium text-white/60 tracking-wide">
+					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border/25 px-4 bg-background">
+						<Dialog.Title className="text-xs font-medium text-muted-foreground tracking-wide">
 							Settings
 						</Dialog.Title>
 					<Dialog.Close
-						className="flex size-5 cursor-pointer items-center justify-center rounded text-white/25 hover:text-white/60 transition-colors"
+						className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/60 hover:text-foreground/80 transition-colors"
 						aria-label="Close"
 					>
 							<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -147,7 +147,7 @@ export function SettingsDialog() {
 						</section>
 
 						{/* Divider */}
-						<div className="h-px bg-white/[0.06]" />
+						<div className="h-px bg-border/30" />
 
 						{/* ── Sidebar Color ── */}
 						<section className="flex flex-col gap-2">

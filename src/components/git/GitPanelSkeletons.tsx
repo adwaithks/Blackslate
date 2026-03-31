@@ -32,25 +32,13 @@ export function GitPanelRepoBlockSkeleton() {
 	);
 }
 
-/** Placeholder matching RepoTabs + FileRow layout during `get_git_status`. */
+/** Placeholder matching the flat file list layout during `get_git_status`. */
 export function RepoSectionInnerSkeleton() {
 	return (
-		<div className="min-h-0">
-			<div className="flex shrink-0 items-center border-b border-border/20 min-w-0">
-				<div className="flex h-7 min-h-7 flex-1 min-w-0 items-center gap-2 px-2">
-					<Skeleton className="h-5 w-18 rounded-sm" />
-					<Skeleton className="h-5 w-14 rounded-sm" />
-				</div>
-				<div className="flex h-7 w-[50px] shrink-0 items-center justify-end gap-0.5 pr-2 pl-1">
-					<Skeleton className="size-6 shrink-0 rounded-sm" />
-					<Skeleton className="size-6 shrink-0 rounded-sm" />
-				</div>
-			</div>
-			<div className="pt-0.5">
-				<FileRowSkeleton />
-				<FileRowSkeleton wide />
-				<FileRowSkeleton />
-			</div>
+		<div className="min-h-0 pt-0.5">
+			<FileRowSkeleton />
+			<FileRowSkeleton wide />
+			<FileRowSkeleton />
 		</div>
 	);
 }

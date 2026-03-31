@@ -2,6 +2,7 @@
 
 mod claude_sessions;
 mod claude_skills;
+mod git_diff;
 mod git_info;
 mod git_status;
 mod hooks;
@@ -11,6 +12,7 @@ mod pty;
 
 pub use claude_sessions::*;
 pub use claude_skills::*;
+pub use git_diff::*;
 pub use git_info::*;
 pub use git_status::*;
 pub use hooks::*;

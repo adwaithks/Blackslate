@@ -47,8 +47,6 @@ interface AppTitlebarProps {
 	onToggleGitPanel: () => void;
 	/** Token usage from last completed Claude turn, if available. */
 	lastTurnUsage: TurnUsage | null;
-	/** Whether Claude Code is active in the current session. */
-	claudeCodeActive: boolean;
 }
 
 /**
@@ -64,7 +62,6 @@ export function AppTitlebar({
 	gitPanelOpen,
 	onToggleGitPanel,
 	lastTurnUsage,
-	claudeCodeActive,
 }: AppTitlebarProps) {
 	const [claudeSettingsOpen, setClaudeSettingsOpen] = useState(false);
 	const [claudeSessionsOpen, setClaudeSessionsOpen] = useState(false);
@@ -114,7 +111,7 @@ export function AppTitlebar({
 				</Button>
 			</div>
 
-			<div className="@container/titlebar border-b border-white/4 flex min-w-0 w-full items-center gap-2 bg-background px-3">
+			<div className="@container/titlebar border-b border-white/3 flex min-w-0 w-full items-center gap-2 bg-background px-3">
 				<span
 					data-tauri-drag-region
 					title={
