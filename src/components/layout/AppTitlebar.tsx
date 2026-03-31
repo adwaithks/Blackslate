@@ -13,6 +13,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ClaudeModelSelect } from "@/components/header/ClaudeModelSelect";
 import { ClaudeSessionPicker } from "@/components/header/ClaudeSessionPicker";
 import { ClaudeSettingsSheet } from "@/components/header/ClaudeSettingsSheet";
 
@@ -101,7 +102,11 @@ export function AppTitlebar({
 					/>
 					<span className="min-w-0 flex-1 truncate">{headerPwd}</span>
 				</span>
-				<div className="flex shrink-0 items-center gap-1">
+				<div
+					className="flex shrink-0 items-center gap-1"
+					data-tauri-drag-region="false"
+				>
+					<ClaudeModelSelect />
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							type="button"
