@@ -17,6 +17,28 @@ pub struct SkillInfo {
     pub files: Vec<String>,
 }
 
+/// Decodes a Claude Code project key (directory name in `~/.claude/projects/`) back to a
+/// filesystem path by replacing every `-` with `/`.
+///
+/// Claude encodes paths as `-Users-kannan-Projects-Slate` so this reverses that.
+/// Limitation: hyphens that were originally in a directory name are also decoded as `/`.
+fn decode_project_key(key: &str) -> String {
+    key.replace('-', "/")
+}
+
+/// Returns the display-friendly source name for a plugin key.
+///
+/// Plugin keys look like `plugin-name@1.0.0` or `@scope/plugin`. We take everything
+/// before the first `@` as the display name. For scoped packages (`@scope/plugin`) this
+/// produces an empty string — that is the current upstream behaviour.
+fn plugin_display_source(plugin_key: &str) -> String {
+    plugin_key
+        .split('@')
+        .next()
+        .unwrap_or(plugin_key)
+        .to_string()
+}
+
 fn walk_skill_dir(dir: &std::path::Path) -> Vec<String> {
     let mut out = Vec::new();
     fn recurse(dir: &std::path::Path, out: &mut Vec<String>) {
@@ -151,11 +173,7 @@ pub async fn list_global_skills() -> Vec<SkillInfo> {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(plugins) = json.get("plugins").and_then(|v| v.as_object()) {
                 for (plugin_key, installs) in plugins {
-                    let source = plugin_key
-                        .split('@')
-                        .next()
-                        .unwrap_or(plugin_key)
-                        .to_string();
+                    let source = plugin_display_source(plugin_key);
                     let Some(arr) = installs.as_array() else {
                         continue;
                     };
@@ -213,7 +231,7 @@ pub async fn list_claude_projects() -> Vec<ClaudeProject> {
             if !e.path().is_dir() {
                 return None;
             }
-            let path = name.replace('-', "/");
+            let path = decode_project_key(&name);
             let display_name = std::path::Path::new(&path)
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -268,3 +286,7 @@ pub async fn list_project_skills(project_path: String) -> Vec<SkillInfo> {
 pub async fn read_skill_content(path: String) -> Option<String> {
     std::fs::read_to_string(&path).ok()
 }
+
+#[cfg(test)]
+#[path = "tests/claude_skills.test.rs"]
+mod claude_skills_tests;

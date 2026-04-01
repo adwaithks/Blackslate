@@ -119,6 +119,10 @@ fn collect_project_settings_hook_paths(
     ]
 }
 
+#[cfg(test)]
+#[path = "tests/hooks.test.rs"]
+mod hooks_tests;
+
 #[tauri::command]
 pub async fn list_project_hooks(project_path: String) -> Vec<HookInfo> {
     let root = std::path::PathBuf::from(&project_path);
