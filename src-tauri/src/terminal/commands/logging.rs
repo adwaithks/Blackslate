@@ -22,6 +22,9 @@ pub struct SessionPaths {
 pub fn pty_session_paths(id: String, state: State<'_, AppState>) -> SessionPaths {
     match state.sessions.get_paths(&id) {
         Some((log, raw)) => SessionPaths { log, raw },
-        None => SessionPaths { log: None, raw: None },
+        None => SessionPaths {
+            log: None,
+            raw: None,
+        },
     }
 }

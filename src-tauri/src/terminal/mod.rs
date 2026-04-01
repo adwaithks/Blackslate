@@ -32,9 +32,16 @@ pub(crate) fn resolve_path(cwd: &str) -> PathBuf {
     let mut path = PathBuf::from(cwd);
     if path.starts_with("~") {
         if let Ok(home) = std::env::var("HOME") {
-            let rest = path.strip_prefix("~").unwrap().to_path_buf();
-            path = PathBuf::from(home).join(rest);
+            if !home.is_empty() {
+                let rest = path.strip_prefix("~").unwrap().to_path_buf();
+                path = PathBuf::from(home).join(rest);
+            }
         }
     }
     path
 }
+
+// Module name cannot contain `.`; `#[path]` maps this to `tests/resolve_path.test.rs`.
+#[cfg(test)]
+#[path = "tests/resolve_path.test.rs"]
+mod resolve_path_tests;

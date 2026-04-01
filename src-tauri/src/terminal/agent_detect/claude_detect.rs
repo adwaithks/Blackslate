@@ -46,11 +46,7 @@ fn build_children_map(sys: &System) -> HashMap<Pid, Vec<Pid>> {
     children
 }
 
-fn subtree_has_claude(
-    sys: &System,
-    children: &HashMap<Pid, Vec<Pid>>,
-    root: Pid,
-) -> bool {
+fn subtree_has_claude(sys: &System, children: &HashMap<Pid, Vec<Pid>>, root: Pid) -> bool {
     let mut queue = vec![root];
     let mut seen = HashSet::new();
 

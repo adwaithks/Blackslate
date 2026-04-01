@@ -122,7 +122,9 @@ fn setup_zsh_integration() -> Option<std::path::PathBuf> {
     // Works for both UserPromptSubmit (no tool_name → emits clear) and
     // PreToolUse (has tool_name → emits human-readable description).
     let hook_thinking = zdotdir.join("slate-thinking");
-    std::fs::write(&hook_thinking, r#"#!/usr/bin/env python3
+    std::fs::write(
+        &hook_thinking,
+        r#"#!/usr/bin/env python3
 import sys, json, os
 
 with open('/dev/tty', 'wb', buffering=0) as tty:
@@ -163,7 +165,9 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
             tty.write(b'\033]6975;\007')
     except Exception:
         pass
-"#).ok()?;
+"#,
+    )
+    .ok()?;
 
     // slate-waiting: simple shell — pause + clear tool label.
     let hook_waiting = zdotdir.join("slate-waiting");
@@ -171,7 +175,9 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
 
     // slate-complete: Python — emits complete + reads transcript for token usage.
     let hook_complete = zdotdir.join("slate-complete");
-    std::fs::write(&hook_complete, r#"#!/usr/bin/env python3
+    std::fs::write(
+        &hook_complete,
+        r#"#!/usr/bin/env python3
 import sys, json, os
 
 with open('/dev/tty', 'wb', buffering=0) as tty:
@@ -206,10 +212,12 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
                     continue
     except Exception:
         pass
-"#).ok()?;
+"#,
+    )
+    .ok()?;
 
     std::fs::set_permissions(&hook_thinking, std::fs::Permissions::from_mode(0o755)).ok()?;
-    std::fs::set_permissions(&hook_waiting,  std::fs::Permissions::from_mode(0o755)).ok()?;
+    std::fs::set_permissions(&hook_waiting, std::fs::Permissions::from_mode(0o755)).ok()?;
     std::fs::set_permissions(&hook_complete, std::fs::Permissions::from_mode(0o755)).ok()?;
 
     let zdotdir_str = zdotdir.to_string_lossy();

@@ -4,15 +4,15 @@ mod terminal;
 mod macos_menu;
 
 use tauri::{Emitter, Manager};
-use terminal::AppState;
 use terminal::commands::{
-    discard_all, discard_file, get_git_diff, get_git_diff_bundle, get_git_status, get_home_dir,
-    get_log_dir,
-    get_git_status_poll, git_discover_repo_root, git_info, list_claude_projects, list_claude_sessions,
-    list_global_hooks, list_global_skills, list_project_hooks, list_project_skills, pick_folders,
-    pty_claude_code_active, pty_close, pty_create, pty_resize, pty_session_paths, pty_write,
-    read_skill_content, stage_all, stage_file, unstage_all, unstage_file,
+    discard_all, discard_file, get_git_diff, get_git_diff_bundle, get_git_status,
+    get_git_status_poll, get_home_dir, get_log_dir, git_discover_repo_root, git_info,
+    list_claude_projects, list_claude_sessions, list_global_hooks, list_global_skills,
+    list_project_hooks, list_project_skills, pick_folders, pty_claude_code_active, pty_close,
+    pty_create, pty_resize, pty_session_paths, pty_write, read_skill_content, stage_all,
+    stage_file, unstage_all, unstage_file,
 };
+use terminal::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tauri::command]
@@ -62,16 +62,14 @@ pub fn run() {
     {
         builder = builder
             .menu(|app| macos_menu::default_menu(app))
-            .on_menu_event(|app, event| {
-                match event.id().as_ref() {
-                    "blackslate.quit" => {
-                        let _ = app.emit("blackslate://confirm-quit", ());
-                    }
-                    "blackslate.settings" => {
-                        app.emit("blackslate://open-settings", ()).ok();
-                    }
-                    _ => {}
+            .on_menu_event(|app, event| match event.id().as_ref() {
+                "blackslate.quit" => {
+                    let _ = app.emit("blackslate://confirm-quit", ());
                 }
+                "blackslate.settings" => {
+                    app.emit("blackslate://open-settings", ()).ok();
+                }
+                _ => {}
             });
     }
 

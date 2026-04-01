@@ -55,16 +55,32 @@ impl SessionLogger {
 
         let mut log = BufWriter::new(log_file);
         // Header — written once so you always know what session a log belongs to.
-        writeln!(log, "# ── Blackslate session log ─────────────────────────────────────────────").ok()?;
+        writeln!(
+            log,
+            "# ── Blackslate session log ─────────────────────────────────────────────"
+        )
+        .ok()?;
         writeln!(log, "# session : {session_id}").ok()?;
         writeln!(log, "# shell   : {shell}").ok()?;
         writeln!(log, "# started : {} UTC", human_ts()).ok()?;
         writeln!(log, "# raw     : {}", raw_path.display()).ok()?;
         writeln!(log, "#").ok()?;
         writeln!(log, "# Timestamps are UTC (HH:MM:SS).").ok()?;
-        writeln!(log, "# OUT lines are PTY output with ANSI stripped (approximate for TUI apps).").ok()?;
-        writeln!(log, "# IN  lines are user keystrokes / pastes sent to the PTY.").ok()?;
-        writeln!(log, "# ────────────────────────────────────────────────────────────────────").ok()?;
+        writeln!(
+            log,
+            "# OUT lines are PTY output with ANSI stripped (approximate for TUI apps)."
+        )
+        .ok()?;
+        writeln!(
+            log,
+            "# IN  lines are user keystrokes / pastes sent to the PTY."
+        )
+        .ok()?;
+        writeln!(
+            log,
+            "# ────────────────────────────────────────────────────────────────────"
+        )
+        .ok()?;
         writeln!(log).ok()?;
 
         Some(SessionLogger {
@@ -241,9 +257,7 @@ fn strip_ansi(bytes: &[u8]) -> String {
                     // CSI: ESC [ <param bytes 0x30–0x3f> <intermediate 0x20–0x2f>* <final 0x40–0x7e>
                     b'[' => {
                         i += 1;
-                        while i < bytes.len()
-                            && !(bytes[i] >= 0x40 && bytes[i] <= 0x7e)
-                        {
+                        while i < bytes.len() && !(bytes[i] >= 0x40 && bytes[i] <= 0x7e) {
                             i += 1;
                         }
                         if i < bytes.len() {
@@ -273,10 +287,7 @@ fn strip_ansi(bytes: &[u8]) -> String {
                     b'P' | b'X' | b'^' | b'_' => {
                         i += 1;
                         while i < bytes.len() {
-                            if bytes[i] == 0x1b
-                                && i + 1 < bytes.len()
-                                && bytes[i + 1] == b'\\'
-                            {
+                            if bytes[i] == 0x1b && i + 1 < bytes.len() && bytes[i + 1] == b'\\' {
                                 i += 2;
                                 break;
                             }

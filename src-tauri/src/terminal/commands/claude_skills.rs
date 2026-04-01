@@ -20,9 +20,10 @@ pub struct SkillInfo {
 fn walk_skill_dir(dir: &std::path::Path) -> Vec<String> {
     let mut out = Vec::new();
     fn recurse(dir: &std::path::Path, out: &mut Vec<String>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
-        let mut children: Vec<std::path::PathBuf> =
-            entries.flatten().map(|e| e.path()).collect();
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        let mut children: Vec<std::path::PathBuf> = entries.flatten().map(|e| e.path()).collect();
         children.sort();
         for path in children {
             if path.is_dir() {
@@ -58,7 +59,10 @@ fn parse_frontmatter(content: &str) -> std::collections::HashMap<String, String>
 fn skill_from_path(skill_md: &std::path::Path, source: &str, kind: &str) -> Option<SkillInfo> {
     let content = std::fs::read_to_string(skill_md).ok()?;
     let fm = parse_frontmatter(&content);
-    let is_skill_md = skill_md.file_name().map(|n| n == "SKILL.md").unwrap_or(false);
+    let is_skill_md = skill_md
+        .file_name()
+        .map(|n| n == "SKILL.md")
+        .unwrap_or(false);
     let fallback_name = if is_skill_md {
         skill_md
             .parent()
@@ -88,7 +92,9 @@ fn skill_from_path(skill_md: &std::path::Path, source: &str, kind: &str) -> Opti
 }
 
 fn collect_skills_dir(dir: &std::path::Path, source: &str, out: &mut Vec<SkillInfo>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let skill_dir = entry.path();
         if !skill_dir.is_dir() {
@@ -104,7 +110,9 @@ fn collect_skills_dir(dir: &std::path::Path, source: &str, out: &mut Vec<SkillIn
 }
 
 fn collect_commands_dir(dir: &std::path::Path, source: &str, out: &mut Vec<SkillInfo>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) != Some("md") {
@@ -132,15 +140,25 @@ pub async fn list_global_skills() -> Vec<SkillInfo> {
 
     collect_skills_dir(&claude_dir.join("skills"), "personal", &mut skills);
 
-    collect_commands_dir(&claude_dir.join("commands"), "personal (command)", &mut skills);
+    collect_commands_dir(
+        &claude_dir.join("commands"),
+        "personal (command)",
+        &mut skills,
+    );
 
     let manifest = claude_dir.join("plugins").join("installed_plugins.json");
     if let Ok(content) = std::fs::read_to_string(&manifest) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(plugins) = json.get("plugins").and_then(|v| v.as_object()) {
                 for (plugin_key, installs) in plugins {
-                    let source = plugin_key.split('@').next().unwrap_or(plugin_key).to_string();
-                    let Some(arr) = installs.as_array() else { continue };
+                    let source = plugin_key
+                        .split('@')
+                        .next()
+                        .unwrap_or(plugin_key)
+                        .to_string();
+                    let Some(arr) = installs.as_array() else {
+                        continue;
+                    };
                     for install in arr {
                         let Some(install_path) =
                             install.get("installPath").and_then(|v| v.as_str())
@@ -181,7 +199,9 @@ pub async fn list_claude_projects() -> Vec<ClaudeProject> {
         Err(_) => return vec![],
     };
 
-    let projects_dir = std::path::PathBuf::from(&home).join(".claude").join("projects");
+    let projects_dir = std::path::PathBuf::from(&home)
+        .join(".claude")
+        .join("projects");
     let Ok(entries) = std::fs::read_dir(&projects_dir) else {
         return vec![];
     };
@@ -199,7 +219,12 @@ pub async fn list_claude_projects() -> Vec<ClaudeProject> {
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_else(|| path.clone());
             let exists = std::path::Path::new(&path).is_dir();
-            Some(ClaudeProject { key: name, path, display_name, exists })
+            Some(ClaudeProject {
+                key: name,
+                path,
+                display_name,
+                exists,
+            })
         })
         .collect();
 

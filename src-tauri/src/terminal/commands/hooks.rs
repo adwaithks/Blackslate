@@ -86,7 +86,10 @@ pub async fn list_global_hooks() -> Vec<HookInfo> {
     let mut result = Vec::new();
     let paths = [
         (base.join("settings.json"), "~/.claude/settings.json"),
-        (base.join("settings.local.json"), "~/.claude/settings.local.json"),
+        (
+            base.join("settings.local.json"),
+            "~/.claude/settings.local.json",
+        ),
     ];
     for (path, label) in paths {
         if let Ok(content) = std::fs::read_to_string(&path) {
@@ -96,12 +99,11 @@ pub async fn list_global_hooks() -> Vec<HookInfo> {
     result
 }
 
-fn collect_project_settings_hook_paths(root: &std::path::Path) -> Vec<(std::path::PathBuf, &'static str)> {
+fn collect_project_settings_hook_paths(
+    root: &std::path::Path,
+) -> Vec<(std::path::PathBuf, &'static str)> {
     vec![
-        (
-            root.join(".claude/settings.json"),
-            ".claude/settings.json",
-        ),
+        (root.join(".claude/settings.json"), ".claude/settings.json"),
         (
             root.join(".claude/settings.local.json"),
             ".claude/settings.local.json",

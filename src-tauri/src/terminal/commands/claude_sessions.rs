@@ -105,7 +105,9 @@ pub async fn list_claude_sessions(cwd: String) -> Vec<ClaudeSessionSummary> {
 
             let stripped = if raw.starts_with("<local-command-caveat>") {
                 if let Some(end) = raw.find("</local-command-caveat>") {
-                    raw[end + "</local-command-caveat>".len()..].trim().to_string()
+                    raw[end + "</local-command-caveat>".len()..]
+                        .trim()
+                        .to_string()
                 } else {
                     raw
                 }

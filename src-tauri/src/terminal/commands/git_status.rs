@@ -191,8 +191,16 @@ pub async fn get_git_status(cwd: String) -> Option<GitStatusResult> {
     let mut unstaged: Vec<GitFile> = unstaged_map
         .into_iter()
         .map(|(path, (additions, deletions))| {
-            let status = unstaged_ns.get(&path).cloned().unwrap_or_else(|| "modified".to_string());
-            GitFile { path, additions, deletions, status }
+            let status = unstaged_ns
+                .get(&path)
+                .cloned()
+                .unwrap_or_else(|| "modified".to_string());
+            GitFile {
+                path,
+                additions,
+                deletions,
+                status,
+            }
         })
         .collect();
 
@@ -203,7 +211,12 @@ pub async fn get_git_status(cwd: String) -> Option<GitStatusResult> {
                 continue;
             }
             let (additions, deletions) = numstat_untracked(&cwd_str, &path).await;
-            unstaged.push(GitFile { path, additions, deletions, status: "added".to_string() });
+            unstaged.push(GitFile {
+                path,
+                additions,
+                deletions,
+                status: "added".to_string(),
+            });
         }
     }
 
@@ -212,8 +225,16 @@ pub async fn get_git_status(cwd: String) -> Option<GitStatusResult> {
     let mut staged: Vec<GitFile> = staged_map
         .into_iter()
         .map(|(path, (additions, deletions))| {
-            let status = staged_ns.get(&path).cloned().unwrap_or_else(|| "modified".to_string());
-            GitFile { path, additions, deletions, status }
+            let status = staged_ns
+                .get(&path)
+                .cloned()
+                .unwrap_or_else(|| "modified".to_string());
+            GitFile {
+                path,
+                additions,
+                deletions,
+                status,
+            }
         })
         .collect();
     staged.sort_by(|a, b| a.path.cmp(&b.path));
@@ -228,7 +249,10 @@ pub async fn get_git_status(cwd: String) -> Option<GitStatusResult> {
 /// Poll-friendly variant: returns a stable `hash` and `changed` flag. When unchanged, `status` is `None`
 /// so the frontend can avoid re-rendering.
 #[tauri::command]
-pub async fn get_git_status_poll(cwd: String, prev_hash: Option<String>) -> Option<GitStatusPollResult> {
+pub async fn get_git_status_poll(
+    cwd: String,
+    prev_hash: Option<String>,
+) -> Option<GitStatusPollResult> {
     let status = get_git_status(cwd).await?;
     let hash = hash_status(&status);
     let changed = prev_hash.as_deref() != Some(hash.as_str());
