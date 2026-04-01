@@ -277,6 +277,21 @@ html.dark #root {
 	body {
 		@apply bg-transparent font-sans text-foreground;
 	}
+
+	/* Native controls + icon hit targets: hand cursor unless a utility sets otherwise */
+	button:not(:disabled):not([disabled]),
+	summary,
+	[role="button"]:not([aria-disabled="true"]):not([data-disabled]) {
+		cursor: pointer;
+	}
+	button:disabled,
+	button[disabled],
+	[role="button"][aria-disabled="true"] {
+		cursor: not-allowed;
+	}
+	a[href] {
+		cursor: pointer;
+	}
 	[data-slot="sidebar-wrapper"],
 	[data-slot="sidebar"] {
 		font-family: var(--font-sans);
