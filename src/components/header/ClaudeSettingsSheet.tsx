@@ -3,6 +3,7 @@ import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { IoClose } from "react-icons/io5";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlobalTab } from "./claudeSettings/GlobalTab";
 import { HooksGlobalTab } from "./claudeSettings/HooksGlobalTab";
 import { HooksProjectTab } from "./claudeSettings/HooksProjectTab";
@@ -31,75 +32,83 @@ export function ClaudeSettingsSheet({
 				showCloseButton={false}
 				className="mt-8 flex flex-col gap-0 p-0 border-l-0 bg-background"
 			>
-				<SheetTitle className="sr-only">Claude Code resources</SheetTitle>
+				<SheetTitle className="sr-only">
+					Claude Code resources
+				</SheetTitle>
 
-				<div className="shrink-0 flex items-center justify-between gap-2 border-b border-border px-4 bg-background">
-					<div className="flex min-w-0 items-center gap-0">
-						{(["skills", "commands", "hooks"] as TopTab[]).map((t) => (
+				<Tabs
+					value={tab}
+					onValueChange={(v) => setTab(v as TopTab)}
+					className="flex flex-col gap-0"
+				>
+					<div className="shrink-0 flex items-center justify-between gap-2 border-b border-border px-4 bg-background">
+						<TabsList
+							variant="line"
+							className="w-fit min-w-0 flex-1 justify-start gap-4 bg-transparent p-0"
+						>
+							{(["skills", "commands", "hooks"] as TopTab[]).map(
+								(t) => (
+									<TabsTrigger
+										key={t}
+										value={t}
+										className="flex-none px-0 pb-2 pt-2.5 text-xs font-medium capitalize"
+									>
+										{t}
+									</TabsTrigger>
+								),
+							)}
+						</TabsList>
+						<SheetPrimitive.Close
+							render={
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className="shrink-0 -mr-1"
+								/>
+							}
+						>
+							<IoClose className="size-4" />
+							<span className="sr-only">Close</span>
+						</SheetPrimitive.Close>
+					</div>
+
+					<div className="shrink-0 flex items-center gap-1 border-b border-border bg-background px-3 py-1.5">
+						{(["global", "project"] as Scope[]).map((s) => (
 							<button
-								key={t}
+								key={s}
 								type="button"
-								onClick={() => setTab(t)}
-								className={`mr-4 cursor-pointer capitalize pb-2 pt-2.5 text-xs font-medium transition-colors border-b-2 ${
-									tab === t
-										? "border-border text-foreground/80"
-										: "border-transparent text-muted-foreground/50 hover:text-muted-foreground"
+								onClick={() => setScope(s)}
+								className={`cursor-pointer rounded-sm px-2.5 py-1 text-[11px] font-medium capitalize transition-colors ${
+									scope === s
+										? "bg-muted/50 text-foreground/90"
+										: "text-muted-foreground/50 hover:text-muted-foreground"
 								}`}
 							>
-								{t}
+								{s}
 							</button>
 						))}
 					</div>
-					<SheetPrimitive.Close
-						render={
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								className="shrink-0 -mr-1"
-							/>
-						}
-					>
-						<IoClose className="size-4" />
-						<span className="sr-only">Close</span>
-					</SheetPrimitive.Close>
-				</div>
 
-				<div className="shrink-0 flex items-center gap-1 border-b border-border bg-background px-3 py-1.5">
-					{(["global", "project"] as Scope[]).map((s) => (
-						<button
-							key={s}
-							type="button"
-							onClick={() => setScope(s)}
-							className={`cursor-pointer rounded-sm px-2.5 py-1 text-[11px] font-medium capitalize transition-colors ${
-								scope === s
-									? "bg-muted/50 text-foreground/90"
-									: "text-muted-foreground/50 hover:text-muted-foreground"
-							}`}
-						>
-							{s}
-						</button>
-					))}
-				</div>
-
-				<div className="flex flex-1 min-h-0 flex-col">
-					{tab === "hooks" ? (
-						scope === "global" ? (
-							<HooksGlobalTab />
+					<div className="flex flex-1 min-h-0 flex-col">
+						{tab === "hooks" ? (
+							scope === "global" ? (
+								<HooksGlobalTab />
+							) : (
+								<HooksProjectTab />
+							)
+						) : tab === "skills" ? (
+							scope === "global" ? (
+								<GlobalTab kind="skill" />
+							) : (
+								<ProjectTab kind="skill" />
+							)
+						) : scope === "global" ? (
+							<GlobalTab kind="command" />
 						) : (
-							<HooksProjectTab />
-						)
-					) : tab === "skills" ? (
-						scope === "global" ? (
-							<GlobalTab kind="skill" />
-						) : (
-							<ProjectTab kind="skill" />
-						)
-					) : scope === "global" ? (
-						<GlobalTab kind="command" />
-					) : (
-						<ProjectTab kind="command" />
-					)}
-				</div>
+							<ProjectTab kind="command" />
+						)}
+					</div>
+				</Tabs>
 			</SheetContent>
 		</Sheet>
 	);
