@@ -6,6 +6,19 @@ pub struct GitInfo {
     pub dirty: bool,
 }
 
+/// Branch label from `.git/HEAD` file contents (trimmed). `None` when not a branch ref and
+/// the hash is too short to display (mirrors `git_info` behaviour).
+fn branch_label_from_git_head(content: &str) -> Option<String> {
+    let content = content.trim();
+    if let Some(b) = content.strip_prefix("ref: refs/heads/") {
+        return Some(b.to_string());
+    }
+    if content.len() >= 7 {
+        return Some(format!("({}…)", &content[..7]));
+    }
+    None
+}
+
 /// Walk up from `cwd` to find `.git/HEAD`, parse the branch, and check dirty
 /// status. Returns `None` when not inside a git repository.
 ///
@@ -20,15 +33,7 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
         let head = search.join(".git").join("HEAD");
         if head.is_file() {
             let content = std::fs::read_to_string(&head).ok()?;
-            let content = content.trim().to_string();
-
-            let branch = if let Some(b) = content.strip_prefix("ref: refs/heads/") {
-                b.to_string()
-            } else if content.len() >= 7 {
-                format!("({}…)", &content[..7]) // detached HEAD
-            } else {
-                return None;
-            };
+            let branch = branch_label_from_git_head(&content)?;
 
             let cwd_str = search.to_string_lossy().into_owned();
             let dirty = tokio::process::Command::new("git")
@@ -46,3 +51,7 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
     }
     None
 }
+
+#[cfg(test)]
+#[path = "tests/git_info.test.rs"]
+mod git_info_tests;

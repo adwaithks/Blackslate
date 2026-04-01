@@ -148,3 +148,7 @@ pub async fn get_git_diff_bundle(
         new_content,
     })
 }
+
+#[cfg(test)]
+#[path = "tests/git_diff.test.rs"]
+mod git_diff_tests;

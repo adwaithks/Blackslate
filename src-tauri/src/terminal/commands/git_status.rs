@@ -349,3 +349,7 @@ pub async fn discard_all(cwd: String) -> CommandResult<()> {
         Err("discard_all failed".into())
     }
 }
+
+#[cfg(test)]
+#[path = "tests/git_status.test.rs"]
+mod git_status_tests;
