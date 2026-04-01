@@ -246,14 +246,17 @@ export function GitDiffViewerSheet({
 		[status.unstaged, status.staged],
 	);
 
-	const { ref: sidebarRef, width: sidebarWidth, onResizeMouseDown } =
-		useResizableWidth({
-			storageKey: GIT_DIFF_SIDEBAR_WIDTH_KEY,
-			defaultWidth: GIT_DIFF_SIDEBAR_DEFAULT_W,
-			minWidth: GIT_DIFF_SIDEBAR_MIN_W,
-			maxWidth: GIT_DIFF_SIDEBAR_MAX_W,
-			dragEdge: "right",
-		});
+	const {
+		ref: sidebarRef,
+		width: sidebarWidth,
+		onResizeMouseDown,
+	} = useResizableWidth({
+		storageKey: GIT_DIFF_SIDEBAR_WIDTH_KEY,
+		defaultWidth: GIT_DIFF_SIDEBAR_DEFAULT_W,
+		minWidth: GIT_DIFF_SIDEBAR_MIN_W,
+		maxWidth: GIT_DIFF_SIDEBAR_MAX_W,
+		dragEdge: "right",
+	});
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -274,7 +277,12 @@ export function GitDiffViewerSheet({
 						<span className="min-w-0 shrink truncate text-foreground/85">
 							{repoDisplayName}
 						</span>
-						<span className="shrink-0 text-muted-foreground/35" aria-hidden>·</span>
+						<span
+							className="shrink-0 text-muted-foreground/35"
+							aria-hidden
+						>
+							·
+						</span>
 						<TbGitBranch
 							className="size-4 shrink-0 text-muted-foreground/60"
 							aria-hidden
@@ -284,7 +292,12 @@ export function GitDiffViewerSheet({
 						</span>
 						{(totalStats.add > 0 || totalStats.del > 0) && (
 							<>
-								<span className="shrink-0 text-muted-foreground/35" aria-hidden>·</span>
+								<span
+									className="shrink-0 text-muted-foreground/35"
+									aria-hidden
+								>
+									·
+								</span>
 								<span className="shrink-0 tabular-nums text-green-500/75">
 									+{totalStats.add}
 								</span>
@@ -616,11 +629,18 @@ export function GitDiffViewerSheet({
 												data={{
 													oldFile: {
 														fileName: t.path,
-														content: t.oldContent,
+														// null = no prior revision (new/untracked);
+														content:
+															t.oldContent === ""
+																? null
+																: t.oldContent,
 													},
 													newFile: {
 														fileName: t.path,
-														content: t.newContent,
+														content:
+															t.newContent === ""
+																? null
+																: t.newContent,
 													},
 													hunks: [t.diff ?? ""],
 												}}

@@ -23,9 +23,20 @@ pub struct GitDiffBundle {
 
 async fn git_cmd(cwd: &str, args: &[&str]) -> std::io::Result<std::process::Output> {
     tokio::process::Command::new("git")
-        .args(std::iter::once("-C").chain(std::iter::once(cwd)).chain(args.iter().copied()))
+        .args(
+            std::iter::once("-C")
+                .chain(std::iter::once(cwd))
+                .chain(args.iter().copied()),
+        )
         .output()
         .await
+}
+
+/// `git diff` uses exit **1** when there are differences, **0** when there is no diff.
+/// Other codes indicate errors. Treating only `success()` as OK breaks new files and
+/// any change that produces a non-empty patch.
+fn git_diff_exited_ok(status: &std::process::ExitStatus) -> bool {
+    status.success() || status.code() == Some(1)
 }
 
 async fn is_tracked(cwd: &str, path: &str) -> bool {
@@ -93,13 +104,15 @@ async fn git_diff_inner(
 ) -> CommandResult<String> {
     let args: Vec<&str> = match (mode, tracked) {
         (GitDiffMode::HeadToWorktree, true) => vec!["diff", "--no-color", "HEAD", "--", path],
-        (GitDiffMode::HeadToIndex, true) => vec!["diff", "--no-color", "--cached", "HEAD", "--", path],
+        (GitDiffMode::HeadToIndex, true) => {
+            vec!["diff", "--no-color", "--cached", "HEAD", "--", path]
+        }
         (GitDiffMode::IndexToWorktree, true) => vec!["diff", "--no-color", "--", path],
         (_, false) => vec!["diff", "--no-color", "--no-index", "--", "/dev/null", path],
     };
 
     let out = git_cmd(cwd_str, &args).await.map_err(cmd_err)?;
-    if !out.status.success() {
+    if !git_diff_exited_ok(&out.status) {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
