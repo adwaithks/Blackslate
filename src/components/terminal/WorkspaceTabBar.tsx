@@ -39,22 +39,29 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 			value={activeId}
 			onValueChange={(id) => activateSession(workspace.id, id as string)}
 		>
-			<div className="flex items-center flex-row border-b border-white/4">
-				<TabsList className="rounded-md" variant="line">
-					{workspace.sessions.map((session) => (
-						<SessionTabTrigger
-							key={session.id}
-							session={session}
-							onClose={() => requestCloseSession(session.id)}
-						/>
-					))}
-				</TabsList>
+			<div className="flex min-w-0 items-center border-b border-white/4">
+				{/* Scrollable tab strip — fills available width, scrolls when tabs overflow */}
+				<div className="workspace-tabs-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+					<TabsList
+						variant="line"
+						className="w-max min-w-full flex-nowrap rounded-none justify-start"
+					>
+						{workspace.sessions.map((session) => (
+							<SessionTabTrigger
+								key={session.id}
+								session={session}
+								onClose={() => requestCloseSession(session.id)}
+							/>
+						))}
+					</TabsList>
+				</div>
 
+				{/* + button always pinned to the right, never scrolls away */}
 				<Button
 					type="button"
 					variant="ghost"
 					size="sm"
-					className="ml-1 h-6 shrink-0 px-1 text-muted-foreground rounded-sm"
+					className="h-6 shrink-0 px-1 text-muted-foreground rounded-sm border-l border-white/4"
 					onClick={() => createSessionInWorkspace(workspace.id)}
 					title="New tab (⌘T)"
 					aria-label="New tab"

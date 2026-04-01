@@ -95,6 +95,16 @@ html.dark #root {
 	background: var(--scrollbar-thumb-hover);
 }
 
+/* Workspace tab bar + git diff tab bar — scrollable but no visible scrollbar */
+.workspace-tabs-scroll,
+.git-diff-tabs-scroll {
+	scrollbar-width: none;
+}
+.workspace-tabs-scroll::-webkit-scrollbar,
+.git-diff-tabs-scroll::-webkit-scrollbar {
+	display: none;
+}
+
 /* Sidebar: track matches chrome surface */
 [data-slot="sidebar-content"]::-webkit-scrollbar-track {
 	background: var(--chrome-sidebar-surface);
