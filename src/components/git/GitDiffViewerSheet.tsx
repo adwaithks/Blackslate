@@ -345,7 +345,7 @@ export function GitDiffViewerSheet({
 								>
 									<TabsTrigger
 										value="changes"
-										className="h-6 rounded-sm px-2.5 text-xs"
+										className="h-full rounded-none px-2.5 text-xs"
 									>
 										Changes
 										{changesFiles.length > 0 && (
@@ -356,7 +356,7 @@ export function GitDiffViewerSheet({
 									</TabsTrigger>
 									<TabsTrigger
 										value="staged"
-										className="h-6 rounded-sm px-2.5 text-xs"
+										className="h-full rounded-none px-2.5 text-xs"
 									>
 										Staged
 										{stagedFiles.length > 0 && (
@@ -534,7 +534,7 @@ export function GitDiffViewerSheet({
 							<>
 								<TabsList
 									variant="line"
-									className="git-diff-tabs-scroll w-full max-w-full min-w-0 rounded-none bg-transparent justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap flex-nowrap"
+									className="git-diff-tabs-scroll h-8 w-full max-w-full min-w-0 shrink-0 flex-nowrap justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-b border-border bg-transparent"
 								>
 									{tabs.map((t) => (
 										<TabsTrigger
@@ -542,9 +542,7 @@ export function GitDiffViewerSheet({
 											value={t.id}
 											title={t.path}
 											className={cn(
-												"group/tab rounded-none px-2 text-xs max-w-60",
-												"border-b-2 border-b-transparent",
-												"data-active:text-foreground data-active:border-b-border",
+												"group/tab h-full max-w-60 rounded-none px-2 text-xs",
 												"justify-between",
 											)}
 										>

@@ -46,7 +46,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 				 */}
 				<div className="workspace-tabs-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
 					<div className="flex w-max min-h-8 flex-nowrap items-stretch">
-						<TabsList variant="line" className="h-auto min-h-8 flex-nowrap">
+						<TabsList variant="line" className="h-8 flex-nowrap rounded-none">
 							{workspace.sessions.map((session) => (
 								<SessionTabTrigger
 									key={session.id}
@@ -90,7 +90,7 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 				render={
 					<TabsTrigger
 						className={cn(
-							"group/tab w-48 max-w-68",
+							"group/tab h-full w-48 max-w-68 rounded-none",
 							"justify-between gap-1 px-2",
 						)}
 						value={session.id}

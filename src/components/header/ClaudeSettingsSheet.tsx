@@ -44,14 +44,14 @@ export function ClaudeSettingsSheet({
 					<div className="shrink-0 flex items-center justify-between gap-2 border-b border-border px-4 bg-background">
 						<TabsList
 							variant="line"
-							className="w-fit min-w-0 flex-1 justify-start gap-4 bg-transparent p-0"
+							className="h-8 w-fit min-w-0 flex-1 justify-start gap-4 rounded-none bg-transparent"
 						>
 							{(["skills", "commands", "hooks"] as TopTab[]).map(
 								(t) => (
 									<TabsTrigger
 										key={t}
 										value={t}
-										className="flex-none px-0 pb-2 pt-2.5 text-xs font-medium capitalize"
+										className="h-full flex-none rounded-none px-0 text-xs font-medium capitalize"
 									>
 										{t}
 									</TabsTrigger>
