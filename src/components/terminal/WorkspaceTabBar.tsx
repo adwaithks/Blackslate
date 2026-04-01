@@ -39,35 +39,35 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 			value={activeId}
 			onValueChange={(id) => activateSession(workspace.id, id as string)}
 		>
-			<div className="flex min-w-0 items-center border-b border-white/4">
-				{/* Scrollable tab strip — fills available width, scrolls when tabs overflow */}
+			<div className="flex min-w-0 items-stretch border-b border-white/4 bg-background">
+				{/*
+				 * Tabs + new tab in one row: hugs the left when there is room.
+				 * When tabs overflow, + stays sticky to the viewport-right of this strip.
+				 */}
 				<div className="workspace-tabs-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-					<TabsList
-						variant="line"
-						className="w-max min-w-full flex-nowrap rounded-none justify-start"
-					>
-						{workspace.sessions.map((session) => (
-							<SessionTabTrigger
-								key={session.id}
-								session={session}
-								onClose={() => requestCloseSession(session.id)}
-							/>
-						))}
-					</TabsList>
+					<div className="flex w-max min-h-8 flex-nowrap items-stretch">
+						<TabsList variant="line" className="h-auto min-h-8 flex-nowrap">
+							{workspace.sessions.map((session) => (
+								<SessionTabTrigger
+									key={session.id}
+									session={session}
+									onClose={() => requestCloseSession(session.id)}
+								/>
+							))}
+						</TabsList>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm border-l border-white/4"
+							onClick={() => createSessionInWorkspace(workspace.id)}
+							title="New tab (⌘T)"
+							aria-label="New tab"
+						>
+							<IoAdd className="size-4 shrink-0" />
+						</Button>
+					</div>
 				</div>
-
-				{/* + button always pinned to the right, never scrolls away */}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className="h-6 shrink-0 px-1 text-muted-foreground rounded-sm border-l border-white/4"
-					onClick={() => createSessionInWorkspace(workspace.id)}
-					title="New tab (⌘T)"
-					aria-label="New tab"
-				>
-					<IoAdd className="size-4 shrink-0" />
-				</Button>
 			</div>
 		</Tabs>
 	);
@@ -86,7 +86,7 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
-				className="inline-flex min-w-0 flex-1"
+				className="inline-flex min-w-0 shrink-0"
 				render={
 					<TabsTrigger
 						className={cn(
