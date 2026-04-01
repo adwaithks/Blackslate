@@ -62,7 +62,7 @@ export function AppLayout() {
 				onOpenChange={setSidebarOpen}
 				style={{ "--sidebar-width": "270px" } as CSSProperties}
 			>
-				<div className="flex flex-col h-screen w-screen overflow-hidden border-b-2">
+				<div className="flex h-screen w-screen flex-col overflow-hidden border-b-2 border-border">
 					<AppTitlebar
 						sidebarOpen={sidebarOpen}
 						headerPwd={resolvedCwd}

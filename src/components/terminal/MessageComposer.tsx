@@ -57,7 +57,7 @@ export function MessageComposer() {
 			onSubmit={handleSubmit}
 			className="mb-3 mt-2 mx-auto w-full px-3 md:px-0 md:w-[70%] lg:w-[60%]"
 		>
-			<div className="overflow-hidden rounded-xl border border-white/8 bg-background shadow-sm">
+			<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 				<Textarea
 					value={value}
 					onChange={(event) => setValue(event.target.value)}
@@ -65,7 +65,7 @@ export function MessageComposer() {
 					rows={3}
 					className="w-full resize-none bg-transparent px-3 py-2.5 text-xs leading-snug text-foreground outline-none placeholder:text-muted-foreground"
 				/>
-				<div className="flex items-center justify-between gap-2 border-t border-white/8 px-2.5 py-2">
+				<div className="flex items-center justify-between gap-2 border-t border-border px-2.5 py-2">
 					<div className="flex min-w-0 items-center gap-2">
 						<ClaudeModelSelect />
 					</div>
@@ -75,10 +75,10 @@ export function MessageComposer() {
 						variant="ghost"
 						disabled={!canSend}
 						className={cn(
-							"h-7 w-7 shrink-0 rounded-md border border-white/8 text-xs",
+							"h-7 w-7 shrink-0 rounded-md border border-border text-xs",
 							canSend
 								? "bg-white text-black"
-								: "bg-white/5 text-white/60",
+								: "bg-muted/40 text-muted-foreground",
 						)}
 						aria-label="Send message"
 					>

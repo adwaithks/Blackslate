@@ -18,7 +18,7 @@ export function HookViewer({ hook }: { hook: HookInfo | null }) {
 					{hook.event}
 				</span>
 				{hook.matcher && (
-					<span className="rounded px-1.5 py-0.5 text-[10px] font-mono bg-white/8 text-muted-foreground/70">
+					<span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/70">
 						{hook.matcher}
 					</span>
 				)}
@@ -30,7 +30,7 @@ export function HookViewer({ hook }: { hook: HookInfo | null }) {
 				)}
 			</div>
 
-			<div className="flex flex-col divide-y divide-white/5">
+			<div className="flex flex-col divide-y divide-border/60">
 				{hook.command && (
 					<HookDetailRow label="Command" value={hook.command} mono />
 				)}

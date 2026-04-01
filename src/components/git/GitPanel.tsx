@@ -85,7 +85,7 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 		>
 			<div
 				onMouseDown={onResizeMouseDown}
-				className="absolute left-0 top-0 bottom-0 z-10 w-1 cursor-col-resize transition-colors hover:bg-white/15"
+				className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize transition-colors hover:bg-foreground/10"
 				aria-hidden
 			/>
 			<GitPanelToolbar

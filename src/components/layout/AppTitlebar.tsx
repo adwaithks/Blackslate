@@ -111,7 +111,7 @@ export function AppTitlebar({
 				</Button>
 			</div>
 
-			<div className="@container/titlebar border-b border-white/3 flex min-w-0 w-full items-center gap-2 bg-background px-3">
+			<div className="@container/titlebar flex min-w-0 w-full items-center gap-2 border-b border-border/40 bg-background px-3">
 				<span
 					data-tauri-drag-region
 					title={
@@ -157,7 +157,7 @@ export function AppTitlebar({
 					{lastTurnUsage && (
 						<Tooltip>
 							<TooltipTrigger>
-								<div className="flex items-center gap-1 px-1.5 py-1 text-[11px] text-muted-foreground rounded-sm bg-white/4 cursor-pointer">
+								<div className="flex cursor-pointer items-center gap-1 rounded-sm bg-muted/40 px-1.5 py-1 text-[11px] text-muted-foreground">
 									<LuArrowUp
 										className="size-3 shrink-0"
 										aria-hidden
@@ -177,19 +177,18 @@ export function AppTitlebar({
 							<TooltipContent
 								side="bottom"
 								sideOffset={8}
-								arrowClassName="bg-[#2a2a2d]"
-								className="flex flex-col items-start gap-1.5 border border-white/[0.08] bg-[#2a2a2d] px-3 py-2 text-[#eceae6] shadow-lg"
+								className="flex max-w-xs flex-col items-start gap-1.5 px-3 py-2 shadow-lg"
 							>
-								<div className="text-[10px] font-medium text-[#f2f0eb]">
+								<div className="text-[10px] font-medium text-popover-foreground">
 									Input tokens: {lastTurnUsage.inputTokens}
 								</div>
-								<div className="text-[10px] font-medium text-[#f2f0eb]">
+								<div className="text-[10px] font-medium text-popover-foreground">
 									Output tokens: {lastTurnUsage.outputTokens}
 								</div>
-								<div className="text-[10px] font-medium text-[#f2f0eb]">
+								<div className="text-[10px] font-medium text-popover-foreground">
 									Cache read: {lastTurnUsage.cacheRead}
 								</div>
-								<div className="text-[10px] font-medium text-[#f2f0eb]">
+								<div className="text-[10px] font-medium text-popover-foreground">
 									Cache write: {lastTurnUsage.cacheWrite}
 								</div>
 							</TooltipContent>
@@ -198,7 +197,7 @@ export function AppTitlebar({
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							type="button"
-							className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-white/6 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+							className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
 							aria-label="Claude Code: resources and sessions"
 						>
 							<LuSettings

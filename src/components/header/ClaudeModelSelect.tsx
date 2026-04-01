@@ -20,7 +20,7 @@ import { requestActiveTerminalFocus } from "@/lib/focusActiveTerminal";
 import { cn } from "@/lib/utils";
 
 const triggerClassName =
-	"h-6.5 min-w-[4.25rem] shrink-0 gap-1 rounded-sm border border-white/6 bg-white/3 px-2 py-0.5 text-[10px] font-medium text-[#D97757]/90 outline-none transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-ring/40 data-[size=sm]:h-6.5 data-[size=sm]:rounded-sm";
+	"h-6.5 min-w-[4.25rem] shrink-0 gap-1 rounded-sm border border-border bg-muted/35 px-2 py-0.5 text-[10px] font-medium text-claude-accent/90 outline-none transition-colors hover:bg-muted/55 focus-visible:ring-2 focus-visible:ring-ring/40 data-[size=sm]:h-6.5 data-[size=sm]:rounded-sm";
 
 /**
  * Header control: when Claude Code is active in the active session, pick a model

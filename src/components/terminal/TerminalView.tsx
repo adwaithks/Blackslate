@@ -67,7 +67,7 @@ export function TerminalView() {
 					);
 				})}
 			</div>
-			<div className="bg-black">
+			<div className="bg-background">
 				{showMessageComposer && <MessageComposer />}
 			</div>
 		</div>

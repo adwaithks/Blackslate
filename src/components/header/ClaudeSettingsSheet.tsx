@@ -60,7 +60,7 @@ export function ClaudeSettingsSheet({
 							onClick={() => setScope(s)}
 							className={`cursor-pointer rounded-sm px-2.5 py-1 text-[11px] font-medium capitalize transition-colors ${
 								scope === s
-									? "bg-white/10 text-foreground/90"
+									? "bg-muted/50 text-foreground/90"
 									: "text-muted-foreground/50 hover:text-muted-foreground"
 							}`}
 						>

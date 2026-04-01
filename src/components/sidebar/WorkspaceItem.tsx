@@ -71,8 +71,8 @@ export function WorkspaceItem({
 									"rounded-sm transition-colors",
 									"[&_svg]:!size-2.5",
 									isActive
-										? "data-active:bg-white/6! hover:data-active:bg-white/28!"
-										: "hover:bg-white/10!",
+										? "data-active:bg-muted/45! hover:data-active:bg-muted/75!"
+										: "hover:bg-muted/55",
 								)}
 							>
 								{/* Row 1: dot, title, tab pill, Claude pill */}
@@ -82,14 +82,14 @@ export function WorkspaceItem({
 											"size-1.5 shrink-0 rounded-full transition-colors",
 											isActive
 												? "bg-green-300"
-												: "bg-white/30",
+												: "bg-muted-foreground/35",
 										)}
 									/>
 									<span className="min-w-0 flex-1 truncate text-xs leading-none tracking-tight">
 										{dirName}
 									</span>
 									{tabCount > 1 && (
-										<span className="shrink-0 rounded-full px-1 py-px text-[9px] tabular-nums text-muted-foreground bg-white/5">
+										<span className="shrink-0 rounded-full bg-muted/50 px-1 py-px text-[9px] tabular-nums text-muted-foreground">
 											{tabCount}
 										</span>
 									)}
@@ -155,9 +155,9 @@ export function WorkspaceItem({
 						</TooltipTrigger>
 					</ContextMenuTrigger>
 
-					<ContextMenuContent className="min-w-48 border-white/[0.08] bg-[#1c1c1f] text-[#eceae6]">
+					<ContextMenuContent className="min-w-48">
 						<ContextMenuItem
-							className="gap-2 text-xs focus:bg-white/[0.08]"
+							className="gap-2 text-xs"
 							onClick={() => openRenameWorkspace(workspace.id)}
 						>
 							<IoPencil
@@ -165,12 +165,12 @@ export function WorkspaceItem({
 								aria-hidden
 							/>
 							Rename
-							<ContextMenuShortcut className="text-white/35">
+							<ContextMenuShortcut className="text-muted-foreground">
 								⌘⇧R
 							</ContextMenuShortcut>
 						</ContextMenuItem>
 						<ContextMenuItem
-							className="gap-2 text-xs focus:bg-white/[0.08]"
+							className="gap-2 text-xs"
 							onClick={() => onClose()}
 						>
 							<IoClose
@@ -178,7 +178,7 @@ export function WorkspaceItem({
 								aria-hidden
 							/>
 							Close workspace
-							<ContextMenuShortcut className="text-white/35">
+							<ContextMenuShortcut className="text-muted-foreground">
 								⌘⇧W
 							</ContextMenuShortcut>
 						</ContextMenuItem>
@@ -201,13 +201,12 @@ export function WorkspaceItem({
 			<TooltipContent
 				side="right"
 				sideOffset={8}
-				arrowClassName="bg-[#2a2a2d]"
-				className="flex max-w-sm flex-col items-start gap-1.5 border border-white/[0.08] bg-[#2a2a2d] px-3 py-2 text-[#eceae6] shadow-lg"
+				className="flex max-w-sm flex-col items-start gap-1.5 px-3 py-2 shadow-lg"
 			>
-				<span className="text-xs font-medium leading-none tracking-tight text-[#f2f0eb]">
+				<span className="text-xs font-medium leading-none tracking-tight text-popover-foreground">
 					{dirName}
 					{tabCount > 1 && (
-						<span className="ml-2 text-[10px] font-normal text-[#eceae6]/40">
+						<span className="ml-2 text-[10px] font-normal text-muted-foreground">
 							{tabCount} tabs
 						</span>
 					)}
@@ -217,14 +216,14 @@ export function WorkspaceItem({
 					{git && (
 						<>
 							<PiGitBranchDuotone
-								className="size-2.5 shrink-0 text-[#eceae6]/55"
+								className="size-2.5 shrink-0 text-muted-foreground/70"
 								aria-hidden
 							/>
-							<span className="max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide text-[#d8d6d0]/90">
+							<span className="max-w-[42%] shrink truncate text-[10px] leading-none tracking-wide text-popover-foreground/90">
 								{git.branch}
 							</span>
 							<span
-								className="shrink-0 px-0.5 text-[10px] text-[#eceae6]/35"
+								className="shrink-0 px-0.5 text-[10px] text-muted-foreground/50"
 								aria-hidden
 							>
 								·
@@ -232,10 +231,10 @@ export function WorkspaceItem({
 						</>
 					)}
 					<IoFolder
-						className="size-2.5 shrink-0 text-[#eceae6]/55"
+						className="size-2.5 shrink-0 text-muted-foreground/70"
 						aria-hidden
 					/>
-					<span className="min-w-0 flex-1 break-all text-[10px] leading-snug tracking-wide text-[#d8d6d0]/85">
+					<span className="min-w-0 flex-1 break-all text-[10px] leading-snug tracking-wide text-popover-foreground/85">
 						{session.cwd}
 					</span>
 				</div>

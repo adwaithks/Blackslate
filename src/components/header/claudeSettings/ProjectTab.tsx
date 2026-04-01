@@ -33,7 +33,7 @@ export function ProjectTab({ kind }: { kind: "skill" | "command" }) {
 
 	return (
 		<div className="flex flex-1 min-h-0 flex-col">
-			<div className="shrink-0 border-b border-white/8 px-3 py-2">
+			<div className="shrink-0 border-b border-border px-3 py-2">
 				<ProjectPicker
 					selected={selectedProject}
 					onSelect={(p) => {
@@ -44,8 +44,8 @@ export function ProjectTab({ kind }: { kind: "skill" | "command" }) {
 			</div>
 			{selectedProject ? (
 				<div className="flex flex-1 min-h-0 gap-0">
-					<div className="flex w-[240px] shrink-0 flex-col border-r border-white/8">
-						<div className="flex items-center gap-2 border-b border-white/8 px-3 py-2">
+					<div className="flex w-[240px] shrink-0 flex-col border-r border-border">
+						<div className="flex items-center gap-2 border-b border-border px-3 py-2">
 							<LuSearch className="size-3 shrink-0 text-muted-foreground/40" />
 							<input
 								value={query}

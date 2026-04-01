@@ -39,7 +39,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 			value={activeId}
 			onValueChange={(id) => activateSession(workspace.id, id as string)}
 		>
-			<div className="flex min-w-0 items-stretch border-b border-white/4 bg-background">
+			<div className="flex min-w-0 items-stretch border-b border-border/40 bg-background">
 				{/*
 				 * Tabs + new tab in one row: hugs the left when there is room.
 				 * When tabs overflow, + stays sticky to the viewport-right of this strip.
@@ -59,7 +59,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm border-l border-white/4"
+							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border/40 bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm"
 							onClick={() => createSessionInWorkspace(workspace.id)}
 							title="New tab (⌘T)"
 							aria-label="New tab"
@@ -100,8 +100,8 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 								className={cn(
 									"size-2.5 shrink-0",
 									session.claudeState === "thinking"
-										? "text-[#D97757] animate-pulse"
-										: "text-[#D97757]",
+										? "animate-pulse text-claude-accent"
+										: "text-claude-accent",
 								)}
 								aria-hidden
 							/>
@@ -116,7 +116,7 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 							className={cn(
 								"ml-0.5 shrink-0 rounded p-0.5 text-muted-foreground/50 transition-opacity",
 								"opacity-0 group-hover/tab:opacity-100",
-								"hover:bg-white/10 hover:text-muted-foreground",
+								"hover:bg-muted/50 hover:text-muted-foreground",
 							)}
 							onMouseDown={(e) => e.preventDefault()}
 							onClick={(e) => {
@@ -132,24 +132,24 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 				}
 			/>
 
-			<ContextMenuContent className="min-w-44 border-white/[0.08] bg-[#1c1c1f] text-[#eceae6]">
+			<ContextMenuContent className="min-w-44">
 				<ContextMenuItem
-					className="gap-2 text-xs focus:bg-white/[0.08]"
+					className="gap-2 text-xs"
 					onClick={() => openRenameSession(session.id)}
 				>
 					<IoPencil className="size-3.5 opacity-70" aria-hidden />
 					Rename
-					<ContextMenuShortcut className="text-white/35">
+					<ContextMenuShortcut className="text-muted-foreground">
 						⌘R
 					</ContextMenuShortcut>
 				</ContextMenuItem>
 				<ContextMenuItem
-					className="gap-2 text-xs focus:bg-white/[0.08]"
+					className="gap-2 text-xs"
 					onClick={() => onClose()}
 				>
 					<IoClose className="size-3.5 opacity-70" aria-hidden />
 					Close tab
-					<ContextMenuShortcut className="text-white/35">
+					<ContextMenuShortcut className="text-muted-foreground">
 						⌘W
 					</ContextMenuShortcut>
 				</ContextMenuItem>

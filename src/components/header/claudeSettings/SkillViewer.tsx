@@ -28,7 +28,7 @@ export function SkillViewer({ skill }: { skill: SkillInfo | null }) {
 
 	return (
 		<div className="flex h-full flex-col min-h-0">
-			<div className="shrink-0 border-b border-white/8 px-4 py-3">
+			<div className="shrink-0 border-b border-border px-4 py-3">
 				<div className="text-xs font-semibold leading-snug">
 					{skill.name}
 				</div>
@@ -49,7 +49,7 @@ export function SkillViewer({ skill }: { skill: SkillInfo | null }) {
 
 			<div className="flex flex-1 min-h-0">
 				{hasFiles && (
-					<div className="w-[260px] shrink-0 border-r border-white/8 overflow-y-auto">
+					<div className="w-[260px] shrink-0 border-r border-border overflow-y-auto">
 						<SkillFileTree
 							files={skill.files}
 							rootDir={rootDir}

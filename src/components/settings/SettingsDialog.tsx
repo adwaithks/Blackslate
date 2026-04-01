@@ -40,8 +40,8 @@ function ThemePreview({ bg, fg, accent }: { bg: string; fg: string; accent: stri
 function SidebarSwatch({ color }: { color: string }) {
 	return (
 		<span
-			className="h-6 w-6 shrink-0 rounded"
-			style={{ background: color, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+			className="h-6 w-6 shrink-0 rounded ring-1 ring-inset ring-border"
+			style={{ background: color }}
 		/>
 	);
 }
@@ -121,15 +121,17 @@ export function SettingsDialog() {
 										className={cn(
 											"flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
 											active
-												? "bg-white/[0.07]"
-												: "bg-transparent hover:bg-white/[0.04]",
+												? "bg-muted/50"
+												: "bg-transparent hover:bg-muted/30",
 										)}
 									>
 										<ThemePreview {...opt.preview} />
 										<span
 											className={cn(
 												"flex-1 text-xs font-medium",
-												active ? "text-[#eceae6]" : "text-white/40",
+												active
+													? "text-foreground"
+													: "text-muted-foreground/70",
 											)}
 										>
 											{opt.label}
@@ -137,7 +139,9 @@ export function SettingsDialog() {
 										<span
 											className={cn(
 												"size-1.5 shrink-0 rounded-full transition-colors",
-												active ? "bg-white/50" : "bg-transparent",
+												active
+													? "bg-foreground/45"
+													: "bg-transparent",
 											)}
 										/>
 									</button>
@@ -163,15 +167,17 @@ export function SettingsDialog() {
 									className={cn(
 											"flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
 											active
-												? "bg-white/[0.07]"
-												: "bg-transparent hover:bg-white/[0.04]",
+												? "bg-muted/50"
+												: "bg-transparent hover:bg-muted/30",
 										)}
 									>
 										<SidebarSwatch color={opt.value} />
 											<span
 												className={cn(
 													"text-xs font-medium",
-													active ? "text-[#eceae6]" : "text-white/40",
+													active
+													? "text-foreground"
+													: "text-muted-foreground/70",
 												)}
 											>
 												{opt.label}
@@ -179,7 +185,9 @@ export function SettingsDialog() {
 											<span
 												className={cn(
 													"ml-auto size-1.5 shrink-0 rounded-full transition-colors",
-													active ? "bg-white/50" : "bg-transparent",
+													active
+													? "bg-foreground/45"
+													: "bg-transparent",
 												)}
 											/>
 										</button>

@@ -10,7 +10,7 @@ interface ClaudeIndicatorProps {
 export function ClaudeIndicator({ model }: ClaudeIndicatorProps) {
 	return (
 		<span
-			className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-[#D97757]"
+			className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-claude-accent"
 			title="Claude Code active"
 		>
 			<SiClaude className="!size-2.5 shrink-0" aria-hidden />

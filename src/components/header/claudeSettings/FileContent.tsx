@@ -17,7 +17,7 @@ export function FileContent({
 
 	return (
 		<div className="flex h-full flex-col min-h-0">
-			<div className="shrink-0 flex items-center gap-1 border-b border-white/8 px-4 py-2 text-[11px] text-muted-foreground/50">
+			<div className="shrink-0 flex items-center gap-1 border-b border-border px-4 py-2 text-[11px] text-muted-foreground/50">
 				{parts.map((part, i) => (
 					<span key={i} className="flex items-center gap-1">
 						{i > 0 && (

@@ -33,7 +33,7 @@ export function ProjectPicker({
 			<button
 				type="button"
 				onClick={() => setOpen((o) => !o)}
-				className="flex w-full cursor-pointer items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/8 transition-colors"
+				className="flex w-full cursor-pointer items-center gap-2 rounded-sm border border-border bg-muted/30 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/50"
 			>
 				<LuFolder className="size-3 shrink-0 text-muted-foreground/50" />
 				<span className="flex-1 text-left truncate">
@@ -54,8 +54,8 @@ export function ProjectPicker({
 				</span>
 			</button>
 			{open && (
-				<div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-white/10 bg-popover shadow-xl">
-					<div className="flex items-center gap-2 border-b border-white/8 px-2.5 py-1.5">
+				<div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-xl">
+					<div className="flex items-center gap-2 border-b border-border px-2.5 py-1.5">
 						<LuSearch className="size-3 shrink-0 text-muted-foreground/40" />
 						<input
 							autoFocus
@@ -80,7 +80,7 @@ export function ProjectPicker({
 									setOpen(false);
 									setQuery("");
 								}}
-								className="flex w-full cursor-pointer items-start gap-2 rounded-sm px-2.5 py-1.5 text-left hover:bg-white/8 transition-colors"
+								className="flex w-full cursor-pointer items-start gap-2 rounded-sm px-2.5 py-1.5 text-left transition-colors hover:bg-muted/45"
 							>
 								<LuFolder className="mt-0.5 size-3 shrink-0 text-muted-foreground/40" />
 								<div>

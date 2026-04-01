@@ -68,17 +68,17 @@ export interface SidebarColorOption {
 
 export const SIDEBAR_COLOR_OPTIONS: SidebarColorOption[] = [
 	// Pure & neutral
-	{ id: "void",     label: "Void",       value: "#00000090" },
-	{ id: "carbon",   label: "Carbon",     value: "#0f0f0f"   },
-	{ id: "ember",    label: "Ember",      value: "#120a00e0" },
+	{ id: "void", label: "Void", value: "#00000090" },
+	{ id: "carbon", label: "Carbon", value: "#060606" },
+	{ id: "ember", label: "Ember", value: "#120a00e0" },
 	// Cool
-	{ id: "aurora",   label: "Aurora",     value: "#050d1ae0" },
-	{ id: "deep-sea", label: "Deep Sea",   value: "#021014e0" },
+	{ id: "aurora", label: "Aurora", value: "#050d1ae0" },
+	{ id: "deep-sea", label: "Deep Sea", value: "#021014e0" },
 	// Vivid-dark
-	{ id: "toxic",    label: "Toxic",      value: "#061200e0" },
-	{ id: "dusk",     label: "Dusk",       value: "#0e0518e0" },
+	{ id: "toxic", label: "Toxic", value: "#061200e0" },
+	{ id: "dusk", label: "Dusk", value: "#0e0518e0" },
 	// Warm
-	{ id: "crimson",  label: "Crimson",    value: "#140005e0" },
-	{ id: "rose",     label: "Rose",       value: "#1a0510e0" },
-	{ id: "slate",    label: "Slate",      value: "#0a0d12e0" },
+	{ id: "crimson", label: "Crimson", value: "#140005e0" },
+	{ id: "rose", label: "Rose", value: "#1a0510e0" },
+	{ id: "slate", label: "Slate", value: "#0a0d12e0" },
 ];

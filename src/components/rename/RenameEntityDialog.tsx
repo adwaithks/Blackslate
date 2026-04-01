@@ -15,7 +15,7 @@ import { useRenameUiStore } from "@/store/renameUiStore";
 /** Same treatment as `SectionLabel` in {@link SettingsDialog}. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (
-		<p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/30 pb-0.5">
+		<p className="pb-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50">
 			{children}
 		</p>
 	);
@@ -76,20 +76,19 @@ export function RenameEntityDialog() {
 				<Dialog.Popup
 					className={cn(
 						"fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2",
-						"bg-[#0a0a0a] border border-white/[0.07] rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
-						"flex flex-col overflow-hidden",
+						"flex flex-col overflow-hidden rounded-xl border border-border/25 bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
 						"data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98]",
 						"data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.98]",
 						"duration-150",
 					)}
 				>
-					<div className="flex h-9 shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
-						<Dialog.Title className="text-xs font-medium tracking-wide text-white/60">
+					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border/25 px-4">
+						<Dialog.Title className="text-xs font-medium tracking-wide text-muted-foreground">
 							Rename
 						</Dialog.Title>
 						<button
 							type="button"
-							className="flex size-5 cursor-pointer items-center justify-center rounded text-white/25 transition-colors hover:text-white/60"
+							className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground"
 							aria-label="Close"
 							onClick={() => closeUi()}
 						>
@@ -111,14 +110,14 @@ export function RenameEntityDialog() {
 									}
 								}}
 								placeholder="Name"
-								className="h-9 border-white/10 bg-white/[0.03] text-[#eceae6] placeholder:text-white/25"
+								className="h-9 border-border bg-input/30 text-foreground placeholder:text-muted-foreground/50"
 							/>
 						</section>
 
 						<div className="flex justify-end gap-2">
 							<button
 								type="button"
-								className="rounded-md px-3 py-1.5 text-xs text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+								className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
 								onClick={() => closeUi()}
 							>
 								Cancel
@@ -126,7 +125,7 @@ export function RenameEntityDialog() {
 							<Button
 								type="button"
 								size="sm"
-								className="bg-white/12 text-[#eceae6] hover:bg-white/18"
+								className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
 								onClick={handleSave}
 							>
 								Save

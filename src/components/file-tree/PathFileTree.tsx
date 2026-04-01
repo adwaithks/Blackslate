@@ -82,7 +82,7 @@ function PathTreeRow({
 						"flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
 						isSelected
 							? "bg-accent text-accent-foreground"
-							: "text-foreground/70 hover:bg-white/5",
+							: "text-foreground/70 hover:bg-muted/35",
 					)}
 				>
 					<LuFile className="size-3 shrink-0 opacity-60" />
@@ -98,7 +98,7 @@ function PathTreeRow({
 				<CollapsibleTrigger
 					className={cn(
 						"flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5",
-						"text-left text-xs text-foreground/80 transition-colors hover:bg-white/5",
+						"text-left text-xs text-foreground/80 transition-colors hover:bg-muted/35",
 					)}
 				>
 					<LuChevronRight

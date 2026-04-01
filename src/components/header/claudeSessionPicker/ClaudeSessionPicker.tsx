@@ -68,7 +68,7 @@ export function ClaudeSessionPicker({
 					onClick={() => setOpen(!open)}
 					aria-expanded={open}
 					aria-haspopup="listbox"
-					className="h-auto gap-1 px-2 py-1 text-[10px] font-medium text-muted-foreground/70 hover:text-foreground rounded-sm hover:bg-white/6"
+					className="h-auto gap-1 rounded-sm px-2 py-1 text-[10px] font-medium text-muted-foreground/70 hover:bg-muted/45 hover:text-foreground"
 					title="Browse past Claude Code conversations (/resume)"
 				>
 					<LuHistory className="size-3 shrink-0" aria-hidden />
