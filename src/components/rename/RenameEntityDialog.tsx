@@ -76,13 +76,13 @@ export function RenameEntityDialog() {
 				<Dialog.Popup
 					className={cn(
 						"fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2",
-						"flex flex-col overflow-hidden rounded-xl border border-border/25 bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
+						"flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
 						"data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98]",
 						"data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.98]",
 						"duration-150",
 					)}
 				>
-					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border/25 px-4">
+					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
 						<Dialog.Title className="text-xs font-medium tracking-wide text-muted-foreground">
 							Rename
 						</Dialog.Title>

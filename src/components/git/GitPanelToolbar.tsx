@@ -35,7 +35,7 @@ export function GitPanelToolbar({
 	const disabled = addingFolders || addingCurrent;
 
 	return (
-		<header className="shrink-0 border-b border-border/20 bg-background px-1.5 py-1">
+		<header className="shrink-0 border-b border-border bg-background px-1.5 py-1">
 			<div className="flex min-w-0 flex-wrap justify-end gap-1">
 				{sessionRepoRoot !== undefined && showAddSessionRepo ? (
 					<Button

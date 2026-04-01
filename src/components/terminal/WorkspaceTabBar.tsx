@@ -39,7 +39,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 			value={activeId}
 			onValueChange={(id) => activateSession(workspace.id, id as string)}
 		>
-			<div className="flex min-w-0 items-stretch border-b border-border/40 bg-background">
+			<div className="flex min-w-0 items-stretch border-b border-border bg-background">
 				{/*
 				 * Tabs + new tab in one row: hugs the left when there is room.
 				 * When tabs overflow, + stays sticky to the viewport-right of this strip.
@@ -59,7 +59,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border/40 bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm"
+							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm"
 							onClick={() => createSessionInWorkspace(workspace.id)}
 							title="New tab (⌘T)"
 							aria-label="New tab"

@@ -211,10 +211,10 @@ export function RepoSection({
 		<Collapsible
 			open={open}
 			onOpenChange={setOpen}
-			className="border-b pb-2 border-border/20"
+			className="border-b pb-2 border-border"
 		>
 			<div className="group/header relative">
-				<div className="relative overflow-hidden border border-border/25 bg-muted/35 dark:bg-muted/20">
+				<div className="relative overflow-hidden border border-border bg-muted/35 dark:bg-muted/20">
 					<CollapsibleTrigger className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 pr-8 text-left transition-colors hover:bg-muted/50 dark:hover:bg-muted/30">
 						<TbChevronDown
 							className={cn(

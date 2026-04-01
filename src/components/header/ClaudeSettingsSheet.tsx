@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { LuBrain } from "react-icons/lu";
+import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
+import { IoClose } from "react-icons/io5";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { GlobalTab } from "./claudeSettings/GlobalTab";
 import { HooksGlobalTab } from "./claudeSettings/HooksGlobalTab";
 import { HooksProjectTab } from "./claudeSettings/HooksProjectTab";
@@ -26,33 +28,43 @@ export function ClaudeSettingsSheet({
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="right"
+				showCloseButton={false}
 				className="mt-8 flex flex-col gap-0 p-0 border-l-0 bg-background"
 			>
-				<div className="shrink-0 flex items-center gap-2 border-b border-border/25 px-4 py-3 bg-background">
-					<LuBrain className="size-4 shrink-0 text-muted-foreground/60" />
-					<SheetTitle className="text-sm font-semibold">
-						Claude Code resources
-					</SheetTitle>
+				<SheetTitle className="sr-only">Claude Code resources</SheetTitle>
+
+				<div className="shrink-0 flex items-center justify-between gap-2 border-b border-border px-4 bg-background">
+					<div className="flex min-w-0 items-center gap-0">
+						{(["skills", "commands", "hooks"] as TopTab[]).map((t) => (
+							<button
+								key={t}
+								type="button"
+								onClick={() => setTab(t)}
+								className={`mr-4 cursor-pointer capitalize pb-2 pt-2.5 text-xs font-medium transition-colors border-b-2 ${
+									tab === t
+										? "border-border text-foreground/80"
+										: "border-transparent text-muted-foreground/50 hover:text-muted-foreground"
+								}`}
+							>
+								{t}
+							</button>
+						))}
+					</div>
+					<SheetPrimitive.Close
+						render={
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="shrink-0 -mr-1"
+							/>
+						}
+					>
+						<IoClose className="size-4" />
+						<span className="sr-only">Close</span>
+					</SheetPrimitive.Close>
 				</div>
 
-				<div className="shrink-0 flex items-center gap-0 border-b border-border/25 px-4 bg-background">
-					{(["skills", "commands", "hooks"] as TopTab[]).map((t) => (
-						<button
-							key={t}
-							type="button"
-							onClick={() => setTab(t)}
-							className={`mr-4 cursor-pointer capitalize pb-2 pt-2.5 text-xs font-medium transition-colors border-b-2 ${
-								tab === t
-									? "border-foreground/80 text-foreground/80"
-									: "border-transparent text-muted-foreground/50 hover:text-muted-foreground"
-							}`}
-						>
-							{t}
-						</button>
-					))}
-				</div>
-
-				<div className="shrink-0 flex items-center gap-1 border-b border-border/25 bg-background px-3 py-1.5">
+				<div className="shrink-0 flex items-center gap-1 border-b border-border bg-background px-3 py-1.5">
 					{(["global", "project"] as Scope[]).map((s) => (
 						<button
 							key={s}

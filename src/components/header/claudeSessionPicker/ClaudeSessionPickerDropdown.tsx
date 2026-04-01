@@ -36,10 +36,10 @@ export function ClaudeSessionPickerDropdown({
 		<div
 			role="dialog"
 			aria-label="Claude Code session picker"
-			className={`${positionClass} w-[500px] overflow-hidden rounded-md border border-border/25 bg-background shadow-xl ring-1 ring-black/20`}
+			className={`${positionClass} w-[500px] overflow-hidden rounded-md border border-border bg-background shadow-xl ring-1 ring-border`}
 		>
 			<Command className="rounded-none bg-transparent">
-				<div className="flex items-center justify-between gap-2 border-b border-border/25 px-3 py-2 bg-background">
+				<div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 bg-background">
 					<div className="flex items-center gap-2">
 						<LuHistory className="size-3.5 shrink-0 text-muted-foreground/60" />
 						<span className="text-xs font-medium text-muted-foreground/70 select-none">

@@ -265,7 +265,7 @@ export function GitDiffViewerSheet({
 				className="mt-8 w-[min(1100px,calc(100vw-260px))] p-0 overflow-hidden border-l-0 flex flex-col min-h-0 gap-0 bg-background"
 				showCloseButton={false}
 			>
-				<div className="shrink-0 flex min-h-12 items-center justify-between gap-3 border-b border-border/25 px-3 py-2">
+				<div className="shrink-0 flex min-h-12 items-center justify-between gap-3 border-b border-border px-3 py-2">
 					<div
 						className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-xs font-medium leading-none text-muted-foreground/80"
 						title={`${repoDisplayName} · ${branch}`}
@@ -323,7 +323,7 @@ export function GitDiffViewerSheet({
 					<div
 						ref={sidebarRef}
 						style={{ width: sidebarWidth }}
-						className="relative flex min-h-0 shrink-0 flex-col border-r border-border/20"
+						className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
 					>
 						<div
 							onMouseDown={onResizeMouseDown}
@@ -338,7 +338,7 @@ export function GitDiffViewerSheet({
 							className="flex min-h-0 flex-1 flex-col gap-0"
 						>
 							{/* Tab strip + bulk action buttons */}
-							<div className="flex shrink-0 items-center border-b border-border/20">
+							<div className="flex shrink-0 items-center border-b border-border">
 								<TabsList
 									variant="line"
 									className="h-8 flex-1 min-w-0 rounded-none bg-transparent justify-start gap-0 px-1"
@@ -544,7 +544,7 @@ export function GitDiffViewerSheet({
 											className={cn(
 												"group/tab rounded-none px-2 text-xs max-w-60",
 												"border-b-2 border-b-transparent",
-												"data-active:text-foreground data-active:border-b-foreground/55",
+												"data-active:text-foreground data-active:border-b-border",
 												"justify-between",
 											)}
 										>

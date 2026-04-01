@@ -80,7 +80,7 @@ export function SettingsDialog() {
 					// Size
 					"w-[460px]",
 						// Surface — match app surfaces
-						"bg-background border border-border/25 rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
+						"bg-background border border-border rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.8)]",
 						// Layout
 						"flex flex-col overflow-hidden",
 						// Animation
@@ -90,7 +90,7 @@ export function SettingsDialog() {
 					)}
 				>
 					{/* Title bar strip — matches the app titlebar height */}
-					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border/25 px-4 bg-background">
+					<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4 bg-background">
 						<Dialog.Title className="text-xs font-medium text-muted-foreground tracking-wide">
 							Settings
 						</Dialog.Title>

@@ -111,7 +111,7 @@ export function AppTitlebar({
 				</Button>
 			</div>
 
-			<div className="@container/titlebar flex min-w-0 w-full items-center gap-2 border-b border-border/40 bg-background px-3">
+			<div className="@container/titlebar flex min-w-0 w-full items-center gap-2 border-b border-border bg-background px-3">
 				<span
 					data-tauri-drag-region
 					title={

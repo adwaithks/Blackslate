@@ -13,8 +13,8 @@ export function GitPanelScrollSkeleton() {
 
 export function GitPanelRepoBlockSkeleton() {
 	return (
-		<div className="border-b border-border/20 pb-2">
-			<div className="relative overflow-hidden border border-border/25 bg-muted/35 dark:bg-muted/20">
+		<div className="border-b border-border pb-2">
+			<div className="relative overflow-hidden border border-border bg-muted/35 dark:bg-muted/20">
 				<div className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 pr-8">
 					<Skeleton className="size-3 shrink-0 rounded-sm" />
 					<div className="flex min-w-0 flex-1 items-center gap-1">
