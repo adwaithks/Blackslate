@@ -7,6 +7,7 @@ import {
 } from "@/lib/closeConfirm";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
 import {
+	cmdLetter,
 	modBracketKey,
 	modDigitKey,
 	modLetter,
@@ -20,6 +21,8 @@ import {
 // Handlers use useSessionStore.getState() so workspace list is always current.
 
 export interface AppLayoutShortcutDeps {
+	/** When false, ⌘1–9 switch terminal tabs instead of workspaces. */
+	sidebarOpen: boolean;
 	setSidebarOpen: Dispatch<SetStateAction<boolean>>;
 	setGitPanelOpen: Dispatch<SetStateAction<boolean>>;
 	increaseFontSize: () => void;
@@ -30,18 +33,20 @@ export function buildAppLayoutShortcuts(
 	deps: AppLayoutShortcutDeps,
 ): ShortcutDefinition[] {
 	const {
+		sidebarOpen,
 		setSidebarOpen,
 		setGitPanelOpen,
 		increaseFontSize,
 		decreaseFontSize,
 	} = deps;
 
-	// ⌘1–9 — focus workspace N in sidebar order
+	// ⌘1–9 — workspace N when sidebar is open; terminal tab N when sidebar is hidden
 	const gotoWorkspaceShortcuts = Array.from({ length: 9 }, (_, i) => {
 		const n = i + 1;
 		return {
 			id: `goto-workspace-${n}`,
-			when: (e: KeyboardEvent) => modDigitKey(e) === n,
+			when: (e: KeyboardEvent) =>
+				sidebarOpen && modDigitKey(e) === n,
 			run: () => {
 				const s = useSessionStore.getState();
 				const ws = s.workspaces[n - 1];
@@ -49,6 +54,27 @@ export function buildAppLayoutShortcuts(
 			},
 		};
 	});
+
+	const gotoTabShortcutsWhenSidebarClosed = Array.from(
+		{ length: 9 },
+		(_, i) => {
+			const n = i + 1;
+			return {
+				id: `goto-tab-cmd-${n}`,
+				when: (e: KeyboardEvent) =>
+					!sidebarOpen && modDigitKey(e) === n,
+				run: () => {
+					const s = useSessionStore.getState();
+					const ws = s.workspaces.find(
+						(w) => w.id === s.activeWorkspaceId,
+					);
+					if (!ws) return;
+					const target = ws.sessions[n - 1];
+					if (target) s.activateSession(ws.id, target.id);
+				},
+			};
+		},
+	);
 
 	// ⌘⌥1–9 — focus session tab N inside the active workspace (horizontal tabs)
 	const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
@@ -70,6 +96,7 @@ export function buildAppLayoutShortcuts(
 
 	return [
 		...gotoWorkspaceShortcuts,
+		...gotoTabShortcutsWhenSidebarClosed,
 		...gotoTabShortcuts,
 		{
 			// ⌘N
@@ -141,9 +168,9 @@ export function buildAppLayoutShortcuts(
 			},
 		},
 		{
-			// ⌘B
+			// ⌘B (not Ctrl+B — terminal / tmux)
 			id: "toggle-sidebar",
-			when: (e: KeyboardEvent) => modLetter(e, "b"),
+			when: (e: KeyboardEvent) => cmdLetter(e, "b"),
 			run: () => setSidebarOpen((o) => !o),
 		},
 		{

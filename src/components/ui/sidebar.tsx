@@ -96,10 +96,7 @@ function SidebarProvider({
 	// Adds a keyboard shortcut to toggle the sidebar.
 	React.useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (
-				event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-				(event.metaKey || event.ctrlKey)
-			) {
+			if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && event.metaKey) {
 				event.preventDefault();
 				toggleSidebar();
 			}
@@ -371,7 +368,10 @@ function SidebarSeparator({
 		<Separator
 			data-slot="sidebar-separator"
 			data-sidebar="separator"
-			className={cn("mx-2 w-auto bg-transparent-border", className)}
+			className={cn(
+				"mx-2 w-auto bg-transparent-border border-border",
+				className,
+			)}
 			{...props}
 		/>
 	);

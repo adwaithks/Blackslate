@@ -42,6 +42,7 @@ export function AppLayout() {
 	useChromeSidebarSurface(sidebarColorValue);
 
 	useAppLayoutShortcuts({
+		sidebarOpen,
 		setSidebarOpen,
 		setGitPanelOpen,
 		increaseFontSize,
@@ -71,6 +72,7 @@ export function AppLayout() {
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}
 						onToggleGitPanel={() => setGitPanelOpen((o) => !o)}
+						cumulativeUsage={activeSession?.cumulativeUsage ?? null}
 						lastTurnUsage={activeSession?.lastTurnUsage ?? null}
 					/>
 					<AppMainArea

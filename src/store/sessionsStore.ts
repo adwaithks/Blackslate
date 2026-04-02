@@ -1,7 +1,12 @@
 import { create } from "zustand";
 
 import { selectActiveSession } from "@/store/sessionsSelectors";
-import type { Session, SessionStore, Workspace } from "@/store/sessionsTypes";
+import type {
+	Session,
+	SessionStore,
+	TurnUsage,
+	Workspace,
+} from "@/store/sessionsTypes";
 
 function makeSession(cwd = "~"): Session {
 	return {
@@ -18,6 +23,7 @@ function makeSession(cwd = "~"): Session {
 		shellState: "idle",
 		currentTool: null,
 		lastTurnUsage: null,
+		cumulativeUsage: null,
 	};
 }
 
@@ -287,13 +293,44 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	},
 
 	setLastTurnUsage(sessionId, lastTurnUsage) {
-		set((s) => ({
-			workspaces: patchSessionById(
-				s.workspaces,
-				sessionId,
-				"lastTurnUsage",
-				lastTurnUsage,
-			),
-		}));
+		set((s) => {
+			const exists = s.workspaces.some((ws) =>
+				ws.sessions.some((sess) => sess.id === sessionId),
+			);
+			if (!exists) return s;
+
+			return {
+				workspaces: s.workspaces.map((ws) => ({
+					...ws,
+					sessions: ws.sessions.map((sess) => {
+						if (sess.id !== sessionId) return sess;
+						if (lastTurnUsage === null) {
+							return { ...sess, lastTurnUsage: null };
+						}
+						const prev = sess.cumulativeUsage;
+						const cumulative: TurnUsage = prev
+							? {
+									inputTokens:
+										prev.inputTokens +
+										lastTurnUsage.inputTokens,
+									outputTokens:
+										prev.outputTokens +
+										lastTurnUsage.outputTokens,
+									cacheRead:
+										prev.cacheRead + lastTurnUsage.cacheRead,
+									cacheWrite:
+										prev.cacheWrite +
+										lastTurnUsage.cacheWrite,
+								}
+							: { ...lastTurnUsage };
+						return {
+							...sess,
+							lastTurnUsage,
+							cumulativeUsage: cumulative,
+						};
+					}),
+				})),
+			};
+		});
 	},
 }));

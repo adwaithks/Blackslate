@@ -20,6 +20,7 @@ import {
 	TooltipTrigger,
 	TooltipContent,
 } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -34,6 +35,10 @@ import {
 	HEADER_REPO_TEXT,
 } from "@/lib/headerRepoLineStyles";
 
+function formatWithLocaleSeparators(n: number): string {
+	return n.toLocaleString();
+}
+
 interface AppTitlebarProps {
 	/** Whether the left sidebar column is expanded (drives titlebar grid + toggle icon). */
 	sidebarOpen: boolean;
@@ -45,7 +50,9 @@ interface AppTitlebarProps {
 	onToggleSidebar: () => void;
 	gitPanelOpen: boolean;
 	onToggleGitPanel: () => void;
-	/** Token usage from last completed Claude turn, if available. */
+	/** Running total of token usage for this terminal session (sum of completed turns). */
+	cumulativeUsage: TurnUsage | null;
+	/** Most recent completed turn only (tooltip detail). */
 	lastTurnUsage: TurnUsage | null;
 }
 
@@ -61,6 +68,7 @@ export function AppTitlebar({
 	onToggleSidebar,
 	gitPanelOpen,
 	onToggleGitPanel,
+	cumulativeUsage,
 	lastTurnUsage,
 }: AppTitlebarProps) {
 	const [claudeSettingsOpen, setClaudeSettingsOpen] = useState(false);
@@ -154,7 +162,7 @@ export function AppTitlebar({
 					className="flex shrink-0 items-center gap-1"
 					data-tauri-drag-region="false"
 				>
-					{lastTurnUsage && (
+					{cumulativeUsage && (
 						<Tooltip>
 							<TooltipTrigger>
 								<div className="flex cursor-pointer items-center gap-1 rounded-sm bg-muted/40 px-1.5 py-1 text-[11px] text-muted-foreground">
@@ -163,14 +171,18 @@ export function AppTitlebar({
 										aria-hidden
 									/>
 									<span className="tabular-nums">
-										{lastTurnUsage.inputTokens}
+										{formatWithLocaleSeparators(
+											cumulativeUsage.inputTokens,
+										)}
 									</span>
 									<LuArrowDown
 										className="size-3 shrink-0"
 										aria-hidden
 									/>
 									<span className="tabular-nums">
-										{lastTurnUsage.outputTokens}
+										{formatWithLocaleSeparators(
+											cumulativeUsage.outputTokens,
+										)}
 									</span>
 								</div>
 							</TooltipTrigger>
@@ -179,18 +191,65 @@ export function AppTitlebar({
 								sideOffset={8}
 								className="flex max-w-xs flex-col items-start gap-1.5 px-3 py-2 shadow-lg"
 							>
-								<div className="text-[10px] font-medium text-popover-foreground">
-									Input tokens: {lastTurnUsage.inputTokens}
+								<div className="text-[12px] font-bold text-popover-foreground">
+									Session total
 								</div>
 								<div className="text-[10px] font-medium text-popover-foreground">
-									Output tokens: {lastTurnUsage.outputTokens}
+									Input:{" "}
+									{formatWithLocaleSeparators(
+										cumulativeUsage.inputTokens,
+									)}
 								</div>
 								<div className="text-[10px] font-medium text-popover-foreground">
-									Cache read: {lastTurnUsage.cacheRead}
+									Output:{" "}
+									{formatWithLocaleSeparators(
+										cumulativeUsage.outputTokens,
+									)}
 								</div>
 								<div className="text-[10px] font-medium text-popover-foreground">
-									Cache write: {lastTurnUsage.cacheWrite}
+									Cache read:{" "}
+									{formatWithLocaleSeparators(
+										cumulativeUsage.cacheRead,
+									)}
 								</div>
+								<div className="text-[10px] font-medium text-popover-foreground">
+									Cache write:{" "}
+									{formatWithLocaleSeparators(
+										cumulativeUsage.cacheWrite,
+									)}
+								</div>
+								{lastTurnUsage ? (
+									<>
+										<Separator className="my-2 border border-white/20" />
+										<div className="text-[12px] font-bold text-popover-foreground">
+											Last turn
+										</div>
+										<div className="text-[10px] font-medium text-popover-foreground">
+											Input:{" "}
+											{formatWithLocaleSeparators(
+												lastTurnUsage.inputTokens,
+											)}
+										</div>
+										<div className="text-[10px] font-medium text-popover-foreground">
+											Output:{" "}
+											{formatWithLocaleSeparators(
+												lastTurnUsage.outputTokens,
+											)}
+										</div>
+										<div className="text-[10px] font-medium text-popover-foreground">
+											Cache read:{" "}
+											{formatWithLocaleSeparators(
+												lastTurnUsage.cacheRead,
+											)}
+										</div>
+										<div className="text-[10px] font-medium text-popover-foreground">
+											Cache write:{" "}
+											{formatWithLocaleSeparators(
+												lastTurnUsage.cacheWrite,
+											)}
+										</div>
+									</>
+								) : null}
 							</TooltipContent>
 						</Tooltip>
 					)}

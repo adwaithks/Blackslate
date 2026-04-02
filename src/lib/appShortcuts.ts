@@ -32,6 +32,19 @@ export function modLetter(e: KeyboardEvent, letter: string): boolean {
 	return modPrimary(e) && !e.altKey && !e.shiftKey && e.code === code;
 }
 
+/** ⌘ + letter only (no Ctrl) — leaves Ctrl+combinations for the terminal (e.g. tmux). */
+export function cmdLetter(e: KeyboardEvent, letter: string): boolean {
+	const upper = letter.length === 1 ? letter.toUpperCase() : letter;
+	const code = `Key${upper}`;
+	return (
+		e.metaKey &&
+		!e.ctrlKey &&
+		!e.altKey &&
+		!e.shiftKey &&
+		e.code === code
+	);
+}
+
 /** ⌘/Ctrl + Shift + letter, no Alt. */
 export function modShiftLetter(e: KeyboardEvent, letter: string): boolean {
 	const upper = letter.length === 1 ? letter.toUpperCase() : letter;

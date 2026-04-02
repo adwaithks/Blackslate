@@ -63,6 +63,8 @@ export interface Session {
 	currentTool: string | null;
 	/** Token usage from the most recently completed turn (OSC 6976 from Stop hook). */
 	lastTurnUsage: TurnUsage | null;
+	/** Sum of token usage across all completed turns in this terminal session (same source as lastTurnUsage). */
+	cumulativeUsage: TurnUsage | null;
 }
 
 /**
