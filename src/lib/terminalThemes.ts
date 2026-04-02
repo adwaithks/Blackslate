@@ -135,6 +135,37 @@ export function nord(background = "#2e3440"): ITheme {
 	};
 }
 
+// ─── One Dark ────────────────────────────────────────────────────────────────
+// Atom / VS Code lineage — warm gray fg, gold dirs, soft green exes, coral errors.
+// Palette aligned with common editor One Dark syntax colours (ANSI mapping).
+export function oneDark(background = "#1e1e1e"): ITheme {
+	return {
+		background,
+		foreground:          "#abb2bf",
+		cursor:              "#abb2bf",
+		cursorAccent:        "#000000",
+		selectionBackground: "#61afef44",
+
+		black:         "#1e1e1e",
+		red:           "#e06c75",
+		green:         "#98c379",
+		yellow:        "#e5c07b",
+		blue:          "#61afef",
+		magenta:       "#c678dd",
+		cyan:          "#56b6c2",
+		white:         "#abb2bf",
+
+		brightBlack:   "#5c6370",
+		brightRed:     "#be5046",
+		brightGreen:   "#98c379",
+		brightYellow:  "#e5c07b",
+		brightBlue:    "#61afef",
+		brightMagenta: "#c678dd",
+		brightCyan:    "#56b6c2",
+		brightWhite:   "#abb2bf",
+	};
+}
+
 // ─── Solarized Dark ──────────────────────────────────────────────────────────
 // https://github.com/altercation/solarized
 // Canonical teal-base palette — one of the most widely adopted terminal themes.

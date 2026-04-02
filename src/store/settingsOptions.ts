@@ -10,6 +10,7 @@ export type TerminalThemeId =
 	| "dracula"
 	| "tokyoNight"
 	| "nord"
+	| "oneDark"
 	| "solarizedDark";
 
 export interface TerminalThemeOption {
@@ -38,6 +39,11 @@ export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 		id: "nord",
 		label: "Nord",
 		preview: { bg: "#2e3440", fg: "#d8dee9", accent: "#88c0d0" }, // arctic blue
+	},
+	{
+		id: "oneDark",
+		label: "One Dark",
+		preview: { bg: "#000000", fg: "#abb2bf", accent: "#e5c07b" }, // warm gray + gold
 	},
 	{
 		id: "solarizedDark",

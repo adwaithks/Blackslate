@@ -29,13 +29,8 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 
 <div align="center">
 
-<img src="screenshots/main-terminal.png" alt="Blackslate — terminal workspace" width="100%" />
-<p align="center"><em>Workspaces in the sidebar, each with its own horizontal <strong>tabs</strong> — multiple terminals per workspace.</em></p>
-
-<br />
-
 <img src="screenshots/main-claude.png" alt="Blackslate — Claude Code active" width="100%" />
-<p align="center"><em>Claude Code running: <strong>input / output tokens</strong> in the title bar, live indicators on tabs and workspaces.</em></p>
+<p align="center"><em><strong>Workspaces</strong> and horizontal <strong>tabs</strong> in the sidebar, with Claude Code running — <strong>input / output tokens</strong> in the title bar and live indicators on tabs and rows.</em></p>
 
 <br />
 
@@ -55,7 +50,7 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 <br />
 
 <img src="screenshots/themeconfig.png" alt="Blackslate — theme configuration" width="100%" />
-<p align="center"><em>Five terminal themes, ten sidebar palettes — switch live via <code>⌘,</code></em></p>
+<p align="center"><em>Six terminal themes, ten sidebar palettes — switch live via <code>⌘,</code></em></p>
 
 </div>
 
@@ -136,7 +131,7 @@ The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, 
 
 **Personalisation**
 
-- **5 terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord, Solarized Dark
+- **6 terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord, One Dark, Solarized Dark
 - **10 sidebar palettes** — Void, Carbon, Ember, Aurora, Deep Sea, Toxic, Dusk, Crimson, Rose, Slate
 - Settings via `⌘,` — more coming via `blackslate.config`
 
