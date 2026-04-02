@@ -106,22 +106,87 @@ fn setup_zsh_integration() -> Option<std::path::PathBuf> {
     // Hook scripts — Claude Code runs these as subprocesses; they write OSC sequences
     // directly to /dev/tty (the controlling PTY) so Blackslate sees them in the stream.
     //
-    //  slate-thinking  UserPromptSubmit + PreToolUse
+    //  blackslate-thinking  UserPromptSubmit + PreToolUse
     //                  OSC 6974;thinking  — start pulsing
     //                  OSC 6975;{label}   — current tool description (or empty to clear)
     //
-    //  slate-waiting   Notification
+    //  blackslate-waiting   Notification
     //                  OSC 6974;waiting   — pause pulse, clear tool label
     //
-    //  slate-complete  Stop
+    //  blackslate-complete  Stop
     //                  OSC 6974;complete  — stop pulsing
     //                  OSC 6975;          — clear tool label
     //                  OSC 6976;{usage}   — token counts from transcript JSONL
+    //
+    //  blackslate-session-start  SessionStart
+    //                  OSC 6977;{model}  — API model id from hook JSON (startup / resume / clear / compact)
+    //
+    //  blackslate-cwd-changed  CwdChanged
+    //                  OSC 7 (file://…) — same as zsh precmd; Claude `cd` without a new shell prompt
 
-    // slate-thinking: Python — parses tool_name/tool_input from stdin.
+    // blackslate-session-start: Python — SessionStart JSON includes `model` when Claude provides it.
+    let hook_session_start = zdotdir.join("blackslate-session-start");
+    std::fs::write(
+        &hook_session_start,
+        r#"#!/usr/bin/env python3
+import sys, json
+
+try:
+    d = json.load(sys.stdin)
+    model = d.get("model") or ""
+    if isinstance(model, str) and model:
+        safe = "".join(c for c in model if c not in "\x07\x1b;")
+        if safe:
+            with open("/dev/tty", "wb", buffering=0) as tty:
+                tty.write(("\033]6977;" + safe + "\007").encode())
+except Exception:
+    pass
+"#,
+    )
+    .ok()?;
+    std::fs::set_permissions(
+        &hook_session_start,
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .ok()?;
+
+    // blackslate-cwd-changed: Python — CwdChanged provides new_cwd; emit OSC 7 for existing PTY parser.
+    let hook_cwd_changed = zdotdir.join("blackslate-cwd-changed");
+    std::fs::write(
+        &hook_cwd_changed,
+        r#"#!/usr/bin/env python3
+import json
+import os
+import sys
+
+try:
+    d = json.load(sys.stdin)
+    raw = d.get("new_cwd") or ""
+    if not isinstance(raw, str) or not raw.startswith("/"):
+        sys.exit(0)
+    path = "".join(c for c in raw if ord(c) >= 32 and c not in "\x07\x1b")
+    if not path.startswith("/"):
+        sys.exit(0)
+    host = os.uname().nodename
+    host = "".join(c for c in host if ord(c) >= 32 and c not in "\x07\x1b")
+    payload = "file://" + host + path
+    with open("/dev/tty", "wb", buffering=0) as tty:
+        tty.write(("\033]7;" + payload + "\007").encode())
+except Exception:
+    pass
+"#,
+    )
+    .ok()?;
+    std::fs::set_permissions(
+        &hook_cwd_changed,
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .ok()?;
+
+    // blackslate-thinking: Python — parses tool_name/tool_input from stdin.
     // Works for both UserPromptSubmit (no tool_name → emits clear) and
     // PreToolUse (has tool_name → emits human-readable description).
-    let hook_thinking = zdotdir.join("slate-thinking");
+    let hook_thinking = zdotdir.join("blackslate-thinking");
     std::fs::write(
         &hook_thinking,
         r#"#!/usr/bin/env python3
@@ -169,12 +234,12 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
     )
     .ok()?;
 
-    // slate-waiting: simple shell — pause + clear tool label.
-    let hook_waiting = zdotdir.join("slate-waiting");
+    // blackslate-waiting: simple shell — pause + clear tool label.
+    let hook_waiting = zdotdir.join("blackslate-waiting");
     std::fs::write(&hook_waiting, "#!/bin/sh\nprintf '\\033]6974;waiting\\007' >/dev/tty\nprintf '\\033]6975;\\007' >/dev/tty\n").ok()?;
 
-    // slate-complete: Python — emits complete + reads transcript for token usage.
-    let hook_complete = zdotdir.join("slate-complete");
+    // blackslate-complete: Python — emits complete + reads transcript for token usage.
+    let hook_complete = zdotdir.join("blackslate-complete");
     std::fs::write(
         &hook_complete,
         r#"#!/usr/bin/env python3
@@ -257,7 +322,7 @@ claude() {{
     case "${{1:-}}" in
         mcp|config|api-key|doctor|update) command claude "$@"; return ;;
     esac
-    local _hooks='{{"hooks":{{"UserPromptSubmit":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-thinking","timeout":5}}]}}],"PreToolUse":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-thinking","timeout":5,"run_in_background":true}}]}}],"Notification":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-waiting","timeout":5}}]}}],"Stop":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/slate-complete","timeout":5}}]}}]}}}}'
+    local _hooks='{{"hooks":{{"SessionStart":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-session-start","timeout":5}}]}}],"CwdChanged":[{{"hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-cwd-changed","timeout":5}}]}}],"UserPromptSubmit":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-thinking","timeout":5}}]}}],"PreToolUse":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-thinking","timeout":5,"run_in_background":true}}]}}],"Notification":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-waiting","timeout":5}}]}}],"Stop":[{{"matcher":"","hooks":[{{"type":"command","command":"{zdotdir_str}/blackslate-complete","timeout":5}}]}}]}}}}'
     command claude --settings "$_hooks" "$@"
 }}
 "#

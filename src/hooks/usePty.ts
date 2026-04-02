@@ -3,6 +3,18 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import { findSession, useSessionStore } from "@/store/sessions";
+import {
+	OSC_ROLLING_BUFFER_MAX,
+	stripShellCursorShapeSequences,
+	parseOsc7WorkingDirectory,
+	parseOsc6973ShellState,
+	parseOsc6974ClaudeLifecycle,
+	parseOsc6975ToolLabel,
+	parseOsc6976Usage,
+	parseOsc6977SessionModel,
+	eachOscWindowTitle,
+	stripClaudeWindowTitlePrefix,
+} from "@/lib/ptyStreamOsc";
 
 // ---------------------------------------------------------------------------
 // Home dir — fetched once, shared across all callers.
@@ -22,70 +34,6 @@ export function getHomeDir(): Promise<string> {
 const TEXT_DECODER = new TextDecoder();
 const TEXT_ENCODER = new TextEncoder();
 
-// OSC 7 format: ESC ] 7 ; file://[host]/path BEL  or  ESC ] 7 ; ... ESC \
-const OSC7_RE = /\x1b\]7;([^\x07\x1b]*?)(?:\x07|\x1b\\)/g;
-
-// OSC 0/2 window title — captures the title string.
-const OSC_TITLE_RE = /\x1b\](?:0|2);([^\x07\x1b]*)(?:\x07|\x1b\\)/g;
-
-// Strips any leading spinner/icon char + whitespace from a Claude Code OSC 0 title.
-// e.g. "✳ New coding session" → "New coding session"
-const TITLE_PREFIX_RE = /^[\s✳✻✽✶✢·⠂⠄⠆⠇⠏⠟⠿⠽⠹⠸⠼⠴⠤⠠⠐⠁]+/;
-
-// Strips CSI sequences including private-mode variants (e.g. \x1b[?2026h).
-const STRIP_CSI_RE = /\x1b\[[?!>]?[0-9;]*[A-Za-z]/g;
-
-// Two patterns that surface the active model name, applied to CSI-stripped chunks:
-//
-//  DOT      — splash banner: "Sonnet4.6·ClaudePro"  (U+00B7 · separator)
-//             Fires on first open. Model name has no space e.g. "Sonnet4.6".
-//
-//  CURRENTLY — /model switch confirmation in the autocomplete description line:
-//              "Set the AI model for Claude Code (currently Sonnet 4.6)"
-//             Also fires on first open when the hint is visible.
-//             Model name already has a space e.g. "Sonnet 4.6".
-const CLAUDE_MODEL_DOT_RE = /([A-Za-z][a-zA-Z0-9.]+)\u00B7Claude/;
-const CLAUDE_MODEL_CURRENTLY_RE =
-	/\(Set model to ([A-Za-z][a-zA-Z]+ \d+\.\d+)\)/;
-
-// CSI SP q (DECSCUSR) — shells set block/underline/bar; strip so xterm `cursorStyle` wins.
-const DECSCUSR_RE = /\x1b\[[0-9;]* ?q/g;
-
-// OSC 6973 — Blackslate shell state: \e]6973;running\a or \e]6973;prompt\a
-const OSC_SHELL_STATE_RE = /\x1b\]6973;(running|prompt)\x07/g;
-
-// OSC 6974 — Claude Code lifecycle hooks, written to /dev/tty by injected hook scripts:
-//   thinking  UserPromptSubmit / PreToolUse  — Claude is actively working
-//   waiting   Notification                   — paused for permission or input
-//   complete  Stop                           — Claude finished its entire turn
-const OSC_CLAUDE_HOOK_RE = /\x1b\]6974;(thinking|waiting|complete)\x07/g;
-
-// OSC 6975 — current tool label from PreToolUse (empty payload = clear).
-// e.g. \e]6975;Reading App.tsx\a
-const OSC_TOOL_RE = /\x1b\]6975;([^\x07]*)\x07/g;
-
-// OSC 6976 — token usage from Stop hook after reading transcript JSONL.
-// e.g. \e]6976;in=1234;out=567;cache_read=890;cache_write=0;model=claude-sonnet-4-5\a
-const OSC_USAGE_RE = /\x1b\]6976;([^\x07]+)\x07/g;
-
-// OSC buffer cap: OSC 7 sequences are short; 2 KB is enough to span any chunk boundary.
-const MAX_OSC_BUF = 2048;
-
-function parseOsc7(chunk: string, homePath: string): string | null {
-	OSC7_RE.lastIndex = 0;
-	const match = OSC7_RE.exec(chunk);
-	if (!match) return null;
-	try {
-		// new URL handles both file:///path and file://hostname/path correctly.
-		const path = decodeURIComponent(new URL(match[1]).pathname);
-		return path.startsWith(homePath)
-			? "~" + path.slice(homePath.length)
-			: path;
-	} catch {
-		return null;
-	}
-}
-
 interface UsePtyOptions {
 	terminal: Terminal | null;
 	sessionId: string;
@@ -104,7 +52,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 	const setCurrentTool = useSessionStore((s) => s.setCurrentTool);
 	const setLastTurnUsage = useSessionStore((s) => s.setLastTurnUsage);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
-	// Rolling buffer for OSC sequences that span chunk boundaries.
+	/** Trailing slice of decoded output so OSC 7 can complete across chunk boundaries. */
 	const oscBufRef = useRef("");
 
 	const sendResize = useCallback((cols: number, rows: number) => {
@@ -132,15 +80,11 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			);
 		};
 
-		// Set to true when we've seen Claude-specific OSC signatures (hook or title).
-		// Guards setClaudeSessionTitle so shell window-title updates don't bleed in.
-		// Cleared when Claude sends an empty title (its explicit exit signal).
+		// True after we see Claude-specific OSC (6974 or titled session); gates OSC 0 session names.
+		// Cleared when Claude sends an empty window title (explicit exit).
 		let claudeOscActive = false;
-		// Last title written to the store — skips redundant writes on repeated OSC.
 		let lastSessionTitle: string | null = null;
 
-		// Resets all stream-parsed Claude state back to "not active".
-		// Called on OSC exit signal, on poll exit, on poll error, and on cleanup.
 		const clearClaudeOscState = () => {
 			claudeOscActive = false;
 			lastSessionTitle = null;
@@ -164,92 +108,70 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				(event) => {
 					if (!active) return;
 
-					// Decode base64 → bytes without per-chunk allocations.
 					const raw = atob(event.payload);
 					const bytes = new Uint8Array(raw.length);
 					for (let i = 0; i < raw.length; i++)
 						bytes[i] = raw.charCodeAt(i);
 					const chunk = TEXT_DECODER.decode(bytes);
 
-					const withoutCursor = chunk.replace(DECSCUSR_RE, "");
+					// DECSCUSR: strip before paint so xterm cursor style wins (see `ptyStreamOsc.ts`).
+					const withoutCursor = stripShellCursorShapeSequences(chunk);
 					term.write(
 						withoutCursor === chunk
 							? bytes
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// Shell state (OSC 6973) — running vs idle, from preexec/precmd hooks.
-					OSC_SHELL_STATE_RE.lastIndex = 0;
-					const stateMatch = OSC_SHELL_STATE_RE.exec(withoutCursor);
-					if (stateMatch) {
-						setShellState(
-							sessionId,
-							stateMatch[1] === "running" ? "running" : "idle",
-						);
+					// --- OSC 6973: zsh preexec/precmd (Rust-injected ZDOTDIR) → running vs idle ---
+					const shellState = parseOsc6973ShellState(withoutCursor);
+					if (shellState) {
+						setShellState(sessionId, shellState);
 					}
 
-					// OSC 7 cwd tracking — scan the decoded chunk plus any leftover buffer,
-					// bounded to MAX_OSC_BUF to prevent unbounded growth on ESC-free output.
+					// --- OSC 7: cwd from shell integration; may span chunks → rolling tail buffer ---
 					const combined = oscBufRef.current + withoutCursor;
 					const buf =
-						combined.length > MAX_OSC_BUF
-							? combined.slice(-MAX_OSC_BUF)
+						combined.length > OSC_ROLLING_BUFFER_MAX
+							? combined.slice(-OSC_ROLLING_BUFFER_MAX)
 							: combined;
-					const cwd = parseOsc7(buf, home);
+					const cwd = parseOsc7WorkingDirectory(buf, home);
 					const lastEsc = buf.lastIndexOf("\x1b");
 					oscBufRef.current =
 						lastEsc !== -1 ? buf.slice(lastEsc) : "";
 					if (cwd !== null) setCwd(sessionId, cwd);
 
-					// OSC 6974 — Claude Code lifecycle hooks (most reliable signal).
-					// UserPromptSubmit fires when the user submits → thinking.
-					// Stop fires when Claude finishes responding → waiting.
-					OSC_CLAUDE_HOOK_RE.lastIndex = 0;
-					const hookMatch = OSC_CLAUDE_HOOK_RE.exec(withoutCursor);
-					if (hookMatch) {
+					// --- OSC 6974: Claude hook scripts (blackslate-*) → thinking / waiting / complete ---
+					const lifecycle = parseOsc6974ClaudeLifecycle(withoutCursor);
+					if (lifecycle) {
 						claudeOscActive = true;
-						setClaudeState(
-							sessionId,
-							hookMatch[1] as "thinking" | "waiting" | "complete",
-						);
+						setClaudeState(sessionId, lifecycle);
 					}
 
-					// OSC 6975 — tool label from PreToolUse (empty = clear).
-					OSC_TOOL_RE.lastIndex = 0;
-					const toolMatch = OSC_TOOL_RE.exec(withoutCursor);
-					if (toolMatch !== null) {
-						setCurrentTool(sessionId, toolMatch[1] || null);
+					// --- OSC 6975: PreToolUse tool label (empty clears) ---
+					const toolLabel = parseOsc6975ToolLabel(withoutCursor);
+					if (toolLabel !== undefined) {
+						setCurrentTool(sessionId, toolLabel);
 					}
 
-					// OSC 6976 — token usage from Stop hook (key=value pairs).
-					OSC_USAGE_RE.lastIndex = 0;
-					const usageMatch = OSC_USAGE_RE.exec(withoutCursor);
-					if (usageMatch) {
-						const pairs = Object.fromEntries(
-							usageMatch[1].split(";").map((p) => p.split("=")),
-						);
-						const usage = {
-							inputTokens: parseInt(pairs.in ?? "0", 10) || 0,
-							outputTokens: parseInt(pairs.out ?? "0", 10) || 0,
-							cacheRead:
-								parseInt(pairs.cache_read ?? "0", 10) || 0,
-							cacheWrite:
-								parseInt(pairs.cache_write ?? "0", 10) || 0,
-						};
-						setLastTurnUsage(sessionId, usage);
-						// If transcript provided a model name, prefer it over OSC title.
-						if (pairs.model) setClaudeModel(sessionId, pairs.model);
+					// --- OSC 6977: SessionStart → initial `model` from Claude hook JSON ---
+					const sessionModel = parseOsc6977SessionModel(withoutCursor);
+					if (sessionModel) {
+						setClaudeModel(sessionId, sessionModel);
 					}
 
-					// OSC 0/2 window title — session name only (no longer drives thinking state).
-					OSC_TITLE_RE.lastIndex = 0;
-					let titleMatch: RegExpExecArray | null;
-					while (
-						(titleMatch = OSC_TITLE_RE.exec(withoutCursor)) !== null
-					) {
-						const title = titleMatch[1];
-						if (title.length > 0) {
-							const name = title.replace(TITLE_PREFIX_RE, "");
+					// --- OSC 6976: Stop hook → last-turn tokens (+ optional model) ---
+					const usageParsed = parseOsc6976Usage(withoutCursor);
+					if (usageParsed) {
+						setLastTurnUsage(sessionId, usageParsed.usage);
+						if (usageParsed.model) {
+							setClaudeModel(sessionId, usageParsed.model);
+						}
+					}
+
+					// --- OSC 0/2: window title — Claude session name; empty title = exit ---
+					for (const rawTitle of eachOscWindowTitle(withoutCursor)) {
+						if (rawTitle.length > 0) {
+							const name = stripClaudeWindowTitlePrefix(rawTitle);
 							if (name === "Claude Code") {
 								claudeOscActive = true;
 							} else if (
@@ -260,32 +182,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 								lastSessionTitle = name;
 								setClaudeSessionTitle(sessionId, name);
 							}
-						} else {
-							// Empty title: Claude's explicit exit signal — clear immediately.
-							if (claudeOscActive) clearClaudeOscState();
-						}
-					}
-
-					// Model name — two patterns checked on every chunk:
-					//   CURRENTLY: autocomplete hint "(currently Sonnet 4.6)" — fires on
-					//              first open AND after every /model switch. Most reliable.
-					//   DOT: splash banner "Sonnet4.6·Claude" — fallback for first open.
-					{
-						const stripped = chunk.replace(STRIP_CSI_RE, "");
-						const mCurrent =
-							CLAUDE_MODEL_CURRENTLY_RE.exec(stripped);
-						const mDot = mCurrent
-							? null
-							: CLAUDE_MODEL_DOT_RE.exec(stripped);
-						const m = mCurrent ?? mDot;
-						if (m) {
-							// CURRENTLY already has a space e.g. "Sonnet 4.6".
-							// DOT does not e.g. "Sonnet4.6" → insert space before digit.
-							const raw = m[1];
-							const name = mCurrent
-								? raw
-								: raw.replace(/([A-Za-z])(\d)/, "$1 $2");
-							setClaudeModel(sessionId, name);
+						} else if (claudeOscActive) {
+							clearClaudeOscState();
 						}
 					}
 				},
@@ -327,8 +225,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 			setPtyId(sessionId, ptyId);
 
-			// Track last-known value to skip store writes when nothing changed,
-			// preventing spurious re-renders in subscribed components every poll tick.
+			// Skip store writes when the polled value is unchanged (avoids UI churn every second).
 			let lastClaudeActive: boolean | undefined;
 			const pollClaude = async () => {
 				if (!active) return;
@@ -340,8 +237,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					if (on !== lastClaudeActive) {
 						lastClaudeActive = on;
 						setClaudeCodeActive(sessionId, on);
-						// Clear stream-parsed state when Claude exits so stale
-						// 'thinking'/'waiting' indicators don't linger.
 						if (!on) clearClaudeOscState();
 					}
 				} catch {
@@ -363,7 +258,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 				);
 			});
 
-			// Re-focus after async setup so the user can type immediately.
 			term.focus();
 			console.log(`[pty] ready — id=${ptyId}`);
 		};

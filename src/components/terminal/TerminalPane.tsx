@@ -76,7 +76,7 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 
 	return (
 		<div
-			className="w-full h-full bg-black pl-2 pb-2 pt-2"
+			className="w-full h-full bg-black pl-2 pt-2"
 			onClick={() => terminal?.focus()}
 		>
 			<div ref={containerRef} className="w-full h-full" />

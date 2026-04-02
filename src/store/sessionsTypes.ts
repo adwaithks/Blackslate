@@ -1,7 +1,7 @@
 /**
  * Workspace / session model for Blackslate.
  *
- * Not persisted — in-memory only. PTY wiring and OSC parsing live in `usePty`;
+ * Not persisted — in-memory only. PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
  * this store is the single source of truth for cwd, git, Claude UI state, etc.
  */
 
@@ -47,7 +47,7 @@ export interface Session {
 	claudeState: ClaudeState;
 	/** AI-generated session name from Claude Code's OSC 0 window title (e.g. "New coding session"). */
 	claudeSessionTitle: string | null;
-	/** Claude model parsed from the splash screen (e.g. "Sonnet 4.6"). */
+	/** API model id: SessionStart OSC 6977, then Stop OSC 6976 `model=` when present. */
 	claudeModel: string | null;
 	/**
 	 * Shell activity state from preexec/precmd hooks (OSC 6973):
