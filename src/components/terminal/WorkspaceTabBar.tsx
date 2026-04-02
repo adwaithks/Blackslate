@@ -46,12 +46,17 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 				 */}
 				<div className="workspace-tabs-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
 					<div className="flex w-max min-h-8 flex-nowrap items-stretch">
-						<TabsList variant="line" className="h-8 flex-nowrap rounded-none">
+						<TabsList
+							variant="line"
+							className="h-8 flex-nowrap rounded-none"
+						>
 							{workspace.sessions.map((session) => (
 								<SessionTabTrigger
 									key={session.id}
 									session={session}
-									onClose={() => requestCloseSession(session.id)}
+									onClose={() =>
+										requestCloseSession(session.id)
+									}
 								/>
 							))}
 						</TabsList>
@@ -59,8 +64,10 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border bg-background px-1 text-muted-foreground shadow-[-10px_0_18px_-6px_rgb(0_0_0/0.55)] rounded-sm"
-							onClick={() => createSessionInWorkspace(workspace.id)}
+							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border bg-background px-1 text-muted-foreground rounded-sm"
+							onClick={() =>
+								createSessionInWorkspace(workspace.id)
+							}
 							title="New tab (⌘T)"
 							aria-label="New tab"
 						>

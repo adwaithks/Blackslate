@@ -7,7 +7,7 @@ import {
 	selectActiveSession,
 	useSessionStore,
 } from "@/store/sessions";
-import { useSettingsStore, SIDEBAR_COLOR_OPTIONS } from "@/store/settings";
+import { useSettingsStore, sidebarColorValue } from "@/store/settings";
 import { useHomeDir } from "@/hooks/useHomeDir";
 import { useChromeSidebarSurface } from "@/hooks/useChromeSidebarSurface";
 import { useAppLayoutShortcuts } from "@/hooks/useAppLayoutShortcuts";
@@ -35,11 +35,8 @@ export function AppLayout() {
 
 	const { increaseFontSize, decreaseFontSize, sidebarColor } =
 		useSettingsStore();
-	const sidebarColorValue =
-		SIDEBAR_COLOR_OPTIONS.find((o) => o.id === sidebarColor)?.value ??
-		SIDEBAR_COLOR_OPTIONS[0].value;
 
-	useChromeSidebarSurface(sidebarColorValue);
+	useChromeSidebarSurface(sidebarColorValue(sidebarColor));
 
 	useAppLayoutShortcuts({
 		sidebarOpen,

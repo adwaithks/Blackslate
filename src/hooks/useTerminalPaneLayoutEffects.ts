@@ -9,6 +9,7 @@ interface UseTerminalPaneLayoutEffectsParams {
 	terminal: Terminal | null;
 	fontSize: number;
 	terminalThemeId: string;
+	terminalSurface: string;
 	containerRef: RefObject<HTMLDivElement | null>;
 	debouncedFitAndResizeRef: RefObject<DebouncedFitResize>;
 	isActive: boolean;
@@ -24,6 +25,7 @@ export function useTerminalPaneLayoutEffects({
 	terminal,
 	fontSize,
 	terminalThemeId,
+	terminalSurface,
 	containerRef,
 	debouncedFitAndResizeRef,
 	isActive,
@@ -43,8 +45,8 @@ export function useTerminalPaneLayoutEffects({
 
 	useEffect(() => {
 		if (!terminal) return;
-		terminal.options.theme = resolveTerminalTheme(terminalThemeId);
-	}, [terminalThemeId, terminal]);
+		terminal.options.theme = resolveTerminalTheme(terminalThemeId, terminalSurface);
+	}, [terminalThemeId, terminalSurface, terminal]);
 
 	useEffect(() => {
 		const container = containerRef.current;

@@ -1,13 +1,19 @@
-import { useEffect } from "react";
-
-const CSS_VAR = "--chrome-sidebar-surface";
+import { useLayoutEffect } from "react";
+import { deriveThemeVars } from "@/lib/colorUtils";
 
 /**
- * Pushes the chosen sidebar tint from settings into a document CSS variable so
- * the titlebar strip next to the traffic-light area matches the shadcn sidebar.
+ * Derives the entire app theme from the chosen sidebar color and pushes it
+ * into document CSS variables before paint, so CSS-var surfaces update in the
+ * same frame as inline terminal backgrounds.
  */
 export function useChromeSidebarSurface(color: string): void {
-	useEffect(() => {
-		document.documentElement.style.setProperty(CSS_VAR, color);
+	useLayoutEffect(() => {
+		const root = document.documentElement.style;
+		root.setProperty("--chrome-sidebar-surface", color);
+
+		const vars = deriveThemeVars(color);
+		for (const [prop, value] of Object.entries(vars)) {
+			root.setProperty(prop, value);
+		}
 	}, [color]);
 }

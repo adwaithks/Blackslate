@@ -23,6 +23,7 @@ interface RepoSectionProps {
 	repoPath: string;
 	panelOpen: boolean;
 	onRemove: () => void;
+	isFirst?: boolean;
 }
 
 const STATUS_DOT_COLORS: Record<GitFileStatus, [string, string]> = {
@@ -104,6 +105,7 @@ export function RepoSection({
 	repoPath,
 	panelOpen,
 	onRemove,
+	isFirst = false,
 }: RepoSectionProps) {
 	const [state, setState] = useState<StatusState>({ kind: "loading" });
 	const [open, setOpen] = useState(true);
@@ -214,8 +216,11 @@ export function RepoSection({
 			className="border-b pb-2 border-border"
 		>
 			<div className="group/header relative">
-				<div className="relative overflow-hidden border border-border bg-muted/35 dark:bg-muted/20">
-					<CollapsibleTrigger className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 pr-8 text-left transition-colors hover:bg-muted/50 dark:hover:bg-muted/30">
+				<div className={cn(
+					"relative overflow-hidden bg-muted/20 border-border",
+					isFirst ? "border-b" : "border-y",
+				)}>
+					<CollapsibleTrigger className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 pr-8 text-left transition-colors hover:bg-muted/30">
 						<TbChevronDown
 							className={cn(
 								"size-3 shrink-0 text-muted-foreground/50 transition-transform duration-150",
@@ -267,7 +272,7 @@ export function RepoSection({
 							onRemove();
 						}}
 						title="Remove repository"
-						className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:bg-muted/50 hover:text-foreground group-hover/header:opacity-100 dark:hover:bg-muted/40"
+						className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:bg-muted/40 hover:text-foreground group-hover/header:opacity-100"
 					>
 						<TbX className="size-3" aria-hidden />
 					</button>

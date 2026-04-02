@@ -43,11 +43,11 @@ html.dark #root {
 /* xterm: root + legacy viewport fill the pane. Do NOT set height on `.xterm-screen` — the
    renderer sets buffer height inline; `height: 100% !important` overrides that and breaks scrollback
    metrics (wrong thumb size, drag on the real scrollbar). */
-.xterm,
+/* .xterm,
 .xterm-viewport {
 	width: 100% !important;
 	height: 100% !important;
-}
+} */
 
 /* Modern xterm scrolls inside `.xterm-scrollable-element` (custom scrollbar). The empty
    `.xterm-viewport` still has `overflow-y: scroll` from xterm.css — that shows a bogus native
@@ -170,6 +170,7 @@ html.dark #root {
 	--color-card: var(--card);
 	--color-foreground: var(--foreground);
 	--color-background: var(--background);
+	--color-terminal: var(--terminal);
 	/* Claude Code brand accent (tabs, model chip) */
 	--color-claude-accent: var(--claude-accent);
 	--radius-sm: calc(var(--radius) * 0.6);
@@ -223,6 +224,7 @@ html.dark #root {
 .dark {
 	/* Sidebar shell: a step above pitch black (#000) */
 	--chrome-sidebar-surface: #1e1e1e19;
+	--terminal: #040404;
 	--background: #060606;
 	--foreground: oklch(0.985 0 0);
 	--card: oklch(0.205 0 0);
@@ -275,7 +277,7 @@ html.dark #root {
 		@apply font-sans;
 	}
 	body {
-		@apply bg-transparent font-sans text-foreground;
+		@apply font-sans text-foreground;
 	}
 
 	/* Native controls + icon hit targets: hand cursor unless a utility sets otherwise */

@@ -6,12 +6,12 @@
 // ─── Terminal themes ──────────────────────────────────────────────────────────
 
 export type TerminalThemeId =
-	| "gruvboxDark"
+	| "gruvbox"
 	| "dracula"
 	| "tokyoNight"
 	| "nord"
-	| "oneDark"
-	| "solarizedDark";
+	| "one"
+	| "solarized";
 
 export interface TerminalThemeOption {
 	id: TerminalThemeId;
@@ -21,34 +21,34 @@ export interface TerminalThemeOption {
 
 export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 	{
-		id: "gruvboxDark",
-		label: "Gruvbox Dark",
-		preview: { bg: "#1d2021", fg: "#ebdbb2", accent: "#fabd2f" }, // warm amber
+		id: "gruvbox",
+		label: "Gruvbox",
+		preview: { bg: "#1d2021", fg: "#ebdbb2", accent: "#fabd2f" },
 	},
 	{
 		id: "tokyoNight",
 		label: "Tokyo Night",
-		preview: { bg: "#1a1b26", fg: "#c0caf5", accent: "#7aa2f7" }, // deep blue
+		preview: { bg: "#1a1b26", fg: "#c0caf5", accent: "#7aa2f7" },
 	},
 	{
 		id: "dracula",
 		label: "Dracula",
-		preview: { bg: "#282a36", fg: "#f8f8f2", accent: "#bd93f9" }, // vivid purple
+		preview: { bg: "#282a36", fg: "#f8f8f2", accent: "#bd93f9" },
 	},
 	{
 		id: "nord",
 		label: "Nord",
-		preview: { bg: "#2e3440", fg: "#d8dee9", accent: "#88c0d0" }, // arctic blue
+		preview: { bg: "#2e3440", fg: "#d8dee9", accent: "#88c0d0" },
 	},
 	{
-		id: "oneDark",
-		label: "One Dark",
-		preview: { bg: "#000000", fg: "#abb2bf", accent: "#e5c07b" }, // warm gray + gold
+		id: "one",
+		label: "One",
+		preview: { bg: "#000000", fg: "#abb2bf", accent: "#e5c07b" },
 	},
 	{
-		id: "solarizedDark",
-		label: "Solarized Dark",
-		preview: { bg: "#002b36", fg: "#839496", accent: "#268bd2" }, // teal base, blue accent
+		id: "solarized",
+		label: "Solarized",
+		preview: { bg: "#002b36", fg: "#839496", accent: "#268bd2" },
 	},
 ];
 
@@ -56,15 +56,14 @@ export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 
 export type SidebarColorId =
 	| "void"
-	| "carbon"
-	| "ember"
+	| "slate"
 	| "aurora"
-	| "deep-sea"
-	| "toxic"
+	| "ember"
 	| "dusk"
-	| "crimson"
-	| "rose"
-	| "slate";
+	| "bone"
+	| "blush"
+	| "fog"
+	| "pearl";
 
 export interface SidebarColorOption {
 	id: SidebarColorId;
@@ -72,19 +71,22 @@ export interface SidebarColorOption {
 	value: string; // CSS color applied to --chrome-sidebar-surface
 }
 
+/** Resolve a sidebar color id to its raw CSS hex value. */
+export function sidebarColorValue(id: SidebarColorId): string {
+	return SIDEBAR_COLOR_OPTIONS.find((o) => o.id === id)?.value
+		?? SIDEBAR_COLOR_OPTIONS[0].value;
+}
+
 export const SIDEBAR_COLOR_OPTIONS: SidebarColorOption[] = [
-	// Pure & neutral
+	// Dark
 	{ id: "void", label: "Void", value: "#00000090" },
-	{ id: "carbon", label: "Carbon", value: "#060606" },
-	{ id: "ember", label: "Ember", value: "#120a00e0" },
-	// Cool
-	{ id: "aurora", label: "Aurora", value: "#050d1ae0" },
-	{ id: "deep-sea", label: "Deep Sea", value: "#021014e0" },
-	// Vivid-dark
-	{ id: "toxic", label: "Toxic", value: "#061200e0" },
-	{ id: "dusk", label: "Dusk", value: "#0e0518e0" },
-	// Warm
-	{ id: "crimson", label: "Crimson", value: "#140005e0" },
-	{ id: "rose", label: "Rose", value: "#1a0510e0" },
 	{ id: "slate", label: "Slate", value: "#0a0d12e0" },
+	{ id: "aurora", label: "Aurora", value: "#050d1ae0" },
+	{ id: "ember", label: "Ember", value: "#120a00e0" },
+	{ id: "dusk", label: "Dusk", value: "#0e0518e0" },
+	// Light
+	{ id: "bone", label: "Bone", value: "#e8e4df" },
+	{ id: "blush", label: "Blush", value: "#ecdde0" },
+	{ id: "fog", label: "Fog", value: "#dfe3ea" },
+	{ id: "pearl", label: "Pearl", value: "#f0f0f0" },
 ];

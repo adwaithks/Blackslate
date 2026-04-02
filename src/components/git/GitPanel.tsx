@@ -111,14 +111,15 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 						</p>
 					)
 				) : (
-					repos.map((repoPath) => (
-						<RepoSection
-							key={repoPath}
-							repoPath={repoPath}
-							panelOpen={open}
-							onRemove={() => removeRepo(repoPath)}
-						/>
-					))
+				repos.map((repoPath, i) => (
+					<RepoSection
+						key={repoPath}
+						repoPath={repoPath}
+						panelOpen={open}
+						onRemove={() => removeRepo(repoPath)}
+						isFirst={i === 0}
+					/>
+				))
 				)}
 			</div>
 		</div>

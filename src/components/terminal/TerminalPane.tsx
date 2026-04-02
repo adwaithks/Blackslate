@@ -16,6 +16,7 @@ interface TerminalPaneProps {
 	 * after switching from another session.
 	 */
 	isActive: boolean;
+	terminalSurface: string;
 }
 
 /**
@@ -27,12 +28,16 @@ interface TerminalPaneProps {
  * `visibility: hidden` so `fit()` still sees real dimensions. Activation
  * refits and focuses (see `useTerminalPaneLayoutEffects`).
  */
-export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
+export function TerminalPane({
+	sessionId,
+	isActive,
+	terminalSurface,
+}: TerminalPaneProps) {
 	const fontSize = useSettingsStore((s) => s.fontSize);
 	const terminalThemeId = useSettingsStore((s) => s.terminalTheme);
 
 	const { containerRef, terminal, terminalRef, fitAddonRef } =
-		useTerminalBootstrap(fontSize, terminalThemeId);
+		useTerminalBootstrap(fontSize, terminalThemeId, terminalSurface);
 
 	const { sendResize } = usePty({ terminal, sessionId });
 
@@ -51,6 +56,7 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 		terminal,
 		fontSize,
 		terminalThemeId,
+		terminalSurface,
 		containerRef,
 		debouncedFitAndResizeRef,
 		isActive,
@@ -76,7 +82,8 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
 
 	return (
 		<div
-			className="w-full h-full bg-black pl-2 pt-2"
+			className="w-full h-full pl-2 pt-2"
+			style={{ backgroundColor: terminalSurface }}
 			onClick={() => terminal?.focus()}
 		>
 			<div ref={containerRef} className="w-full h-full" />

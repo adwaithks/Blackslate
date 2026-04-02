@@ -12,7 +12,7 @@ import { attachTerminalUrlLinking } from "@/components/terminal/terminalUrlLink"
  * `fontSize` / `themeId` are read only from the first render — same as a mount-only
  * effect: later changes are handled by `useTerminalPaneLayoutEffects` (font/theme).
  */
-export function useTerminalBootstrap(fontSize: number, themeId: string) {
+export function useTerminalBootstrap(fontSize: number, themeId: string, surface: string) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [terminal, setTerminal] = useState<Terminal | null>(null);
 	const fitAddonRef = useRef<FitAddon | null>(null);
@@ -24,7 +24,7 @@ export function useTerminalBootstrap(fontSize: number, themeId: string) {
 		if (!container) return;
 
 		const term = new Terminal({
-			theme: resolveTerminalTheme(themeId),
+			theme: resolveTerminalTheme(themeId, surface),
 			fontFamily: getThemeFont("--font-mono"),
 			fontSize,
 			lineHeight: 1.1,

@@ -6,9 +6,12 @@ import type { ITheme } from "@xterm/xterm";
  * Each function accepts a `background` override so the caller can force pure
  * black (or any other surface) without touching the rest of the palette.
  *
+ * Dark themes have light foregrounds; light themes have dark foregrounds.
+ * `resolveTerminalTheme` picks the correct variant based on surface luminance.
+ *
  * Usage in TerminalPane.tsx:
  *   import { gruvboxDark } from "@/lib/terminalThemes";
- *   theme: gruvboxDark(TERMINAL_SURFACE),
+ *   theme: gruvboxDark(surfaceColor),
  */
 
 // ─── Gruvbox Dark ────────────────────────────────────────────────────────────
@@ -194,5 +197,99 @@ export function solarizedDark(background = "#002b36"): ITheme {
 		brightMagenta: "#6c71c4", // violet
 		brightCyan:    "#93a1a1", // base1
 		brightWhite:   "#fdf6e3", // base3
+	};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Light variants — dark text on light surfaces
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Gruvbox Light ───────────────────────────────────────────────────────────
+// https://github.com/morhetz/gruvbox (light palette)
+export function gruvboxLight(background = "#fbf1c7"): ITheme {
+	return {
+		background,
+		foreground:          "#3c3836", // fg1
+		cursor:              "#3c3836",
+		cursorAccent:        "#fbf1c7",
+		selectionBackground: "#d5c4a155",
+
+		black:         "#fbf1c7", // bg
+		red:           "#cc241d",
+		green:         "#79740e",
+		yellow:        "#b57614",
+		blue:          "#076678",
+		magenta:       "#8f3f71",
+		cyan:          "#427b58",
+		white:         "#3c3836", // fg1
+
+		brightBlack:   "#928374", // gray
+		brightRed:     "#9d0006",
+		brightGreen:   "#79740e",
+		brightYellow:  "#b57614",
+		brightBlue:    "#076678",
+		brightMagenta: "#8f3f71",
+		brightCyan:    "#427b58",
+		brightWhite:   "#282828", // fg0
+	};
+}
+
+// ─── Solarized Light ─────────────────────────────────────────────────────────
+// https://github.com/altercation/solarized (light palette)
+export function solarizedLight(background = "#fdf6e3"): ITheme {
+	return {
+		background,
+		foreground:          "#657b83", // base00
+		cursor:              "#657b83",
+		cursorAccent:        "#fdf6e3",
+		selectionBackground: "#eee8d580",
+
+		black:         "#eee8d5", // base2
+		red:           "#dc322f",
+		green:         "#859900",
+		yellow:        "#b58900",
+		blue:          "#268bd2",
+		magenta:       "#d33682",
+		cyan:          "#2aa198",
+		white:         "#073642", // base02
+
+		brightBlack:   "#93a1a1", // base1
+		brightRed:     "#cb4b16", // orange
+		brightGreen:   "#586e75", // base01
+		brightYellow:  "#657b83", // base00
+		brightBlue:    "#839496", // base0
+		brightMagenta: "#6c71c4", // violet
+		brightCyan:    "#93a1a1", // base1
+		brightWhite:   "#002b36", // base03
+	};
+}
+
+// ─── One Light ───────────────────────────────────────────────────────────────
+// Atom One Light palette — dark foreground, muted ANSI, gold dirs.
+export function oneLight(background = "#fafafa"): ITheme {
+	return {
+		background,
+		foreground:          "#383a42",
+		cursor:              "#383a42",
+		cursorAccent:        "#fafafa",
+		selectionBackground: "#bfceff77",
+
+		black:         "#fafafa",
+		red:           "#e45649",
+		green:         "#50a14f",
+		yellow:        "#c18401",
+		blue:          "#4078f2",
+		magenta:       "#a626a4",
+		cyan:          "#0184bc",
+		white:         "#383a42",
+
+		brightBlack:   "#a0a1a7",
+		brightRed:     "#e45649",
+		brightGreen:   "#50a14f",
+		brightYellow:  "#c18401",
+		brightBlue:    "#4078f2",
+		brightMagenta: "#a626a4",
+		brightCyan:    "#0184bc",
+		brightWhite:   "#090a0b",
 	};
 }

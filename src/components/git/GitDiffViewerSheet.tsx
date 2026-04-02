@@ -18,6 +18,7 @@ import "@git-diff-view/react/styles/diff-view-pure.css";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { GitFileRow } from "@/components/git/GitFileRow";
 import { useResizableWidth } from "@/hooks/useResizableWidth";
+import { useIsLightTheme } from "@/hooks/useIsLightTheme";
 
 type DiffMode = "head_to_worktree" | "head_to_index" | "index_to_worktree";
 
@@ -71,6 +72,7 @@ export function GitDiffViewerSheet({
 	pendingOpen: { path: string; source: "changes" | "staged" } | null;
 	onConsumePendingOpen: () => void;
 }) {
+	const isLight = useIsLightTheme();
 	const [tabs, setTabs] = useState<DiffTab[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [sidebarListTab, setSidebarListTab] = useState<"changes" | "staged">(
@@ -341,7 +343,7 @@ export function GitDiffViewerSheet({
 							<div className="flex shrink-0 items-center border-b border-border">
 								<TabsList
 									variant="line"
-									className="h-8 flex-1 min-w-0 rounded-none bg-transparent justify-start gap-0 px-1"
+									className="h-8 flex-1 min-w-0 rounded-none justify-start gap-0 px-1"
 								>
 									<TabsTrigger
 										value="changes"
@@ -534,7 +536,7 @@ export function GitDiffViewerSheet({
 							<>
 								<TabsList
 									variant="line"
-									className="git-diff-tabs-scroll h-8 w-full max-w-full min-w-0 shrink-0 flex-nowrap justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-b border-border bg-transparent"
+									className="git-diff-tabs-scroll h-8 w-full max-w-full min-w-0 shrink-0 flex-nowrap justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-b border-border"
 								>
 									{tabs.map((t) => (
 										<TabsTrigger
@@ -557,10 +559,10 @@ export function GitDiffViewerSheet({
 											</div>
 											<button
 												type="button"
-												className={cn(
-													"ml-1 shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/55 transition-opacity",
-													"opacity-0 group-hover/tab:opacity-100 hover:bg-muted/40 hover:text-foreground",
-												)}
+											className={cn(
+												"ml-1 shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/55",
+												"invisible group-hover/tab:visible hover:bg-muted/40 hover:text-foreground",
+											)}
 												onMouseDown={(e) =>
 													e.preventDefault()
 												}
@@ -645,7 +647,7 @@ export function GitDiffViewerSheet({
 												diffViewMode={
 													DiffModeEnum.Unified
 												}
-												diffViewTheme="dark"
+												diffViewTheme={isLight ? "light" : "dark"}
 												diffViewHighlight
 												diffViewWrap
 												diffViewFontSize={12}

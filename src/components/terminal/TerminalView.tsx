@@ -3,6 +3,7 @@ import { useSessionStore, selectActiveWorkspace } from "@/store/sessions";
 import { TerminalPane } from "./TerminalPane";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
 import { MessageComposer } from "./MessageComposer";
+import { useTerminalSurface } from "@/hooks/useTerminalSurface";
 
 /**
  * Renders a TerminalPane for every session across every workspace simultaneously.
@@ -41,6 +42,8 @@ export function TerminalView() {
 
 	const showMessageComposer = false; // on the way
 
+	const terminalSurface = useTerminalSurface();
+
 	return (
 		<div className="flex h-full w-full flex-col">
 			{activeWorkspace && <WorkspaceTabBar workspace={activeWorkspace} />}
@@ -55,6 +58,7 @@ export function TerminalView() {
 							key={session.id}
 							className="absolute inset-0"
 							style={{
+								backgroundColor: terminalSurface,
 								visibility: isActive ? "visible" : "hidden",
 							}}
 							inert={!isActive}
@@ -62,6 +66,7 @@ export function TerminalView() {
 							<TerminalPane
 								sessionId={session.id}
 								isActive={isActive}
+								terminalSurface={terminalSurface}
 							/>
 						</div>
 					);
