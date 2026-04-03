@@ -1,0 +1,55 @@
+# Runs on every push to an open PR. Enable merge blocking in GitHub:
+# Settings → Branches → branch protection → Require status checks →
+# select "frontend-unit-tests" and "rust-unit-tests".
+
+name: PR preflight
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-preflight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-unit-tests:
+    name: Frontend unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Vitest
+        run: bun run test
+
+  rust-unit-tests:
+    name: Rust unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies (Tauri / native build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            librsvg2-dev \
+            patchelf \
+            pkg-config \
+            wget
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
