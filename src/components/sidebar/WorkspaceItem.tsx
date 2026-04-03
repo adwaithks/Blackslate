@@ -71,7 +71,10 @@ export function WorkspaceItem({
 									"rounded-sm transition-colors",
 									"[&_svg]:!size-2.5",
 									isActive
-										? "data-active:bg-muted/45! hover:data-active:bg-muted/75!"
+										? [
+												"data-active:bg-accent!",
+												"hover:data-active:bg-secondary/90!",
+											]
 										: "hover:bg-muted/55",
 								)}
 							>

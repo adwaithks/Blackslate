@@ -35,7 +35,7 @@ export function FileContent({
 					</span>
 				))}
 			</div>
-			<div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+			<div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-8">
 				{loading ? (
 					<div className="text-xs text-muted-foreground/40">
 						Loading…

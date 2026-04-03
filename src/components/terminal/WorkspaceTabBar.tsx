@@ -8,7 +8,12 @@ import {
 } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	lineTabsStripMinHeightClass,
+} from "@/components/ui/tabs";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -45,10 +50,15 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 				 * When tabs overflow, + stays sticky to the viewport-right of this strip.
 				 */}
 				<div className="workspace-tabs-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-					<div className="flex w-max min-h-8 flex-nowrap items-stretch">
+					<div
+						className={cn(
+							"flex w-max flex-nowrap items-stretch",
+							lineTabsStripMinHeightClass,
+						)}
+					>
 						<TabsList
 							variant="line"
-							className="h-8 flex-nowrap rounded-none"
+							className="flex-nowrap rounded-none"
 						>
 							{workspace.sessions.map((session) => (
 								<SessionTabTrigger
@@ -64,7 +74,7 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="sticky right-0 z-10 h-6 shrink-0 cursor-pointer self-center border-l border-border bg-background px-1 text-muted-foreground rounded-sm"
+							className="sticky right-0 z-10 h-8 w-8 shrink-0 cursor-pointer self-center border-l border-border bg-background px-1 text-muted-foreground rounded-sm"
 							onClick={() =>
 								createSessionInWorkspace(workspace.id)
 							}
@@ -97,7 +107,7 @@ function SessionTabTrigger({ session, onClose }: SessionTabTriggerProps) {
 				render={
 					<TabsTrigger
 						className={cn(
-							"group/tab h-full w-48 max-w-68 rounded-none",
+							"group/tab  w-48 max-w-68 rounded-none",
 							"justify-between gap-1 px-2",
 						)}
 						value={session.id}
