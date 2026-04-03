@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSessionStore, findSession } from "@/store/sessions";
-import { useSettingsStore } from "@/store/settings";
+import { useAppConfigStore } from "@/store/appConfig";
 import { usePty } from "@/hooks/usePty";
 import { useTerminalBootstrap } from "@/hooks/useTerminalBootstrap";
 import { useDebouncedTerminalFitResize } from "@/hooks/useDebouncedTerminalFitResize";
@@ -33,8 +33,8 @@ export function TerminalPane({
 	isActive,
 	terminalSurface,
 }: TerminalPaneProps) {
-	const fontSize = useSettingsStore((s) => s.fontSize);
-	const terminalThemeId = useSettingsStore((s) => s.terminalTheme);
+	const fontSize = useAppConfigStore((s) => s.fontSize);
+	const terminalThemeId = useAppConfigStore((s) => s.terminalTheme);
 
 	const { containerRef, terminal, terminalRef, fitAddonRef } =
 		useTerminalBootstrap(fontSize, terminalThemeId, terminalSurface);

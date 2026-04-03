@@ -1,6 +1,11 @@
 import type { Session, Workspace } from "@/store/sessionsTypes";
 
-/** Display name for a session: the last path segment of cwd, or "~" / "/". */
+/** NOTE: session is equivalent to a terminal inside a workspace. */
+
+/**
+ * display name for a session: the last path segment of cwd, or "~" / "/"
+ * displayed in the tab bar of each terminal
+ */
 export function sessionDisplayName(session: Session): string {
 	if (session.cwd === "~" || session.cwd === "/") return session.cwd;
 	return session.cwd.split("/").filter(Boolean).pop() ?? "~";

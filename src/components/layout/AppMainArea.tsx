@@ -14,9 +14,9 @@ interface AppMainAreaProps {
  */
 export function AppMainArea({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
 	return (
-		<div className="flex flex-1">
+		<div className="flex min-h-0 flex-1">
 			<AppSidebar />
-			<main className="flex-1">
+			<main className="min-h-0 flex-1">
 				<TerminalView />
 			</main>
 			<GitPanel open={gitPanelOpen} activeCwd={gitActiveCwd} />

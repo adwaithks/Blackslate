@@ -3,12 +3,12 @@ import { Dialog } from "@base-ui/react/dialog";
 import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
 import {
-	useSettingsStore,
+	useAppConfigStore,
 	TERMINAL_THEME_OPTIONS,
-	SIDEBAR_COLOR_OPTIONS,
+	APP_THEME_OPTIONS,
 	type TerminalThemeId,
-	type SidebarColorId,
-} from "@/store/settings";
+	type AppThemeId,
+} from "@/store/appConfig";
 
 // ─── Mini terminal preview strip ──────────────────────────────────────────────
 // Mimics a few lines of coloured terminal output to give a sense of the palette.
@@ -59,8 +59,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function SettingsDialog() {
 	const [open, setOpen] = useState(false);
 
-	const { terminalTheme, sidebarColor, setTerminalTheme, setSidebarColor } =
-		useSettingsStore();
+	const { terminalTheme, appTheme, setTerminalTheme, setAppTheme } =
+		useAppConfigStore();
 
 	useEffect(() => {
 		const unlisten = listen("blackslate://open-settings", () => setOpen(true));
@@ -153,17 +153,17 @@ export function SettingsDialog() {
 						{/* Divider */}
 						<div className="h-px bg-border/30" />
 
-						{/* ── Sidebar Color ── */}
+						{/* ── App Theme ── */}
 						<section className="flex flex-col gap-2">
-							<SectionLabel>Sidebar Color</SectionLabel>
+							<SectionLabel>App Theme</SectionLabel>
 							<div className="grid grid-cols-2 gap-1">
-								{SIDEBAR_COLOR_OPTIONS.map((opt) => {
-									const active = sidebarColor === opt.id;
+								{APP_THEME_OPTIONS.map((opt) => {
+									const active = appTheme === opt.id;
 									return (
 										<button
 											key={opt.id}
 											type="button"
-											onClick={() => setSidebarColor(opt.id as SidebarColorId)}
+											onClick={() => setAppTheme(opt.id as AppThemeId)}
 									className={cn(
 											"flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
 											active

@@ -1,6 +1,6 @@
 /**
- * Static option lists for the Settings UI and their id types.
- * The Zustand store (`settings.ts`) holds the selected ids; this file has no runtime state.
+ * Static appearance option lists (terminal theme, app theme) and their id types.
+ * `useAppConfigStore` in `store/appConfig.ts` holds the selected ids; this module has no runtime state.
  */
 
 // ─── Terminal themes ──────────────────────────────────────────────────────────
@@ -52,9 +52,9 @@ export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 	},
 ];
 
-// ─── Sidebar colours ──────────────────────────────────────────────────────────
+// ─── App theme (base chrome colour → derived UI surfaces via `deriveThemeVars`) ─
 
-export type SidebarColorId =
+export type AppThemeId =
 	| "void"
 	| "slate"
 	| "aurora"
@@ -65,19 +65,19 @@ export type SidebarColorId =
 	| "fog"
 	| "pearl";
 
-export interface SidebarColorOption {
-	id: SidebarColorId;
+export interface AppThemeOption {
+	id: AppThemeId;
 	label: string;
-	value: string; // CSS color applied to --chrome-sidebar-surface
+	value: string; // Base hex; applied to `--chrome-sidebar-surface` and theme ladder
 }
 
-/** Resolve a sidebar color id to its raw CSS hex value. */
-export function sidebarColorValue(id: SidebarColorId): string {
-	return SIDEBAR_COLOR_OPTIONS.find((o) => o.id === id)?.value
-		?? SIDEBAR_COLOR_OPTIONS[0].value;
+/** Resolve an app theme id to its raw CSS hex value. */
+export function appThemeValue(id: AppThemeId): string {
+	return APP_THEME_OPTIONS.find((o) => o.id === id)?.value
+		?? APP_THEME_OPTIONS[0].value;
 }
 
-export const SIDEBAR_COLOR_OPTIONS: SidebarColorOption[] = [
+export const APP_THEME_OPTIONS: AppThemeOption[] = [
 	// Dark
 	{ id: "void", label: "Void", value: "#00000090" },
 	{ id: "slate", label: "Slate", value: "#0a0d12e0" },

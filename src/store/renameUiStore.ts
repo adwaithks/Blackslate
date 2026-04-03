@@ -11,6 +11,9 @@ type RenameUiState = {
 	close: () => void;
 };
 
+// When i want to rename a session or workspace, i can use this store to set the target
+// which can be either a session or a workspace. And then i can use the target
+// to open the rename dialog and now i know what i want to rename - workspace or session.
 export const useRenameUiStore = create<RenameUiState>((set) => ({
 	target: null,
 	openSession: (sessionId) => set({ target: { kind: "session", sessionId } }),

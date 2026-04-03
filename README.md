@@ -265,9 +265,10 @@ blackslate/
 │   │   └── settings/               # SettingsDialog
 │   ├── hooks/
 │   │   └── usePty.ts               # PTY ↔ xterm.js bridge + OSC 7 parser
+│   ├── appconfig.constants.ts      # Terminal + app theme option lists
 │   ├── store/
 │   │   ├── sessions.ts             # Zustand session store
-│   │   └── settings.ts             # Preferences — theme, sidebar colour, font
+│   │   └── appConfig.ts            # Preferences — terminal/app theme, font
 │   └── lib/
 │       ├── terminalThemes.ts       # xterm.js colour theme definitions
 │       └── appShortcuts.ts         # Global keyboard shortcut registry

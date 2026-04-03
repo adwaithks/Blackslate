@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSettingsStore, sidebarColorValue } from "@/store/settings";
+import { useAppConfigStore, appThemeValue } from "@/store/appConfig";
 import { deriveThemeVars } from "@/lib/colorUtils";
 
 /**
@@ -7,7 +7,7 @@ import { deriveThemeVars } from "@/lib/colorUtils";
  * ladder. Delegates to `deriveThemeVars` so the offset is defined in one place.
  */
 export function useTerminalSurface(): string {
-	const sidebarColorId = useSettingsStore((s) => s.sidebarColor);
-	const raw = sidebarColorValue(sidebarColorId);
+	const appThemeId = useAppConfigStore((s) => s.appTheme);
+	const raw = appThemeValue(appThemeId);
 	return useMemo(() => deriveThemeVars(raw)["--terminal"], [raw]);
 }

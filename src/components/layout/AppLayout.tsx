@@ -7,9 +7,9 @@ import {
 	selectActiveSession,
 	useSessionStore,
 } from "@/store/sessions";
-import { useSettingsStore, sidebarColorValue } from "@/store/settings";
+import { useAppConfigStore, appThemeValue } from "@/store/appConfig";
 import { useHomeDir } from "@/hooks/useHomeDir";
-import { useChromeSidebarSurface } from "@/hooks/useChromeSidebarSurface";
+import { useApplyAppTheme } from "@/hooks/useApplyAppTheme";
 import { useAppLayoutShortcuts } from "@/hooks/useAppLayoutShortcuts";
 import { useWindowAndQuitCloseGuard } from "@/hooks/useWindowAndQuitCloseGuard";
 import { AppTitlebar } from "@/components/layout/AppTitlebar";
@@ -33,10 +33,10 @@ export function AppLayout() {
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [gitPanelOpen, setGitPanelOpen] = useState(false);
 
-	const { increaseFontSize, decreaseFontSize, sidebarColor } =
-		useSettingsStore();
+	const { increaseFontSize, decreaseFontSize, appTheme } =
+		useAppConfigStore();
 
-	useChromeSidebarSurface(sidebarColorValue(sidebarColor));
+	useApplyAppTheme(appThemeValue(appTheme));
 
 	useAppLayoutShortcuts({
 		sidebarOpen,
@@ -60,7 +60,7 @@ export function AppLayout() {
 				onOpenChange={setSidebarOpen}
 				style={{ "--sidebar-width": "270px" } as CSSProperties}
 			>
-				<div className="flex h-screen w-screen flex-col overflow-hidden border-b-2 border-border">
+				<div className="flex h-screen min-h-0 w-screen flex-col overflow-hidden border-b-2 border-border">
 					<AppTitlebar
 						sidebarOpen={sidebarOpen}
 						headerPwd={resolvedCwd}

@@ -1,5 +1,5 @@
 /**
- * Minimal color math for deriving the app theme from a single sidebar color.
+ * Minimal color math for deriving the app theme from a single base chrome colour.
  * All inputs/outputs are hex strings (#RRGGBB or #RRGGBBAA).
  */
 
@@ -57,22 +57,22 @@ export function luminance({ r, g, b }: RGB): number {
 /** Surfaces above this luminance are treated as "light" for theme derivation. */
 export const LIGHT_SURFACE_THRESHOLD = 0.18;
 
-/** True when the resolved sidebar color is a "light" surface. */
-export function isLightSurface(sidebarHex: string): boolean {
-	return luminance(parseHexToOpaque(sidebarHex)) > LIGHT_SURFACE_THRESHOLD;
+/** True when the resolved app theme base colour is a "light" surface. */
+export function isLightSurface(baseHex: string): boolean {
+	return luminance(parseHexToOpaque(baseHex)) > LIGHT_SURFACE_THRESHOLD;
 }
 
 /**
- * Derive the full set of theme CSS variables from a single sidebar hex color.
+ * Derive the full set of theme CSS variables from a single base hex colour.
  * Returns a record of CSS property name → value string.
  *
  * Elevation ladder (dark mode, darkest → lightest):
  *   terminal (−4) < background (base) < card (+6) < border (+8)
  *   < muted (+12) < popover (+14) < accent (+16) < ring (+35)
  */
-export function deriveThemeVars(sidebarHex: string): Record<string, string> {
-	const base = parseHexToOpaque(sidebarHex);
-	const baseHex = rgbToHex(base);
+export function deriveThemeVars(baseHex: string): Record<string, string> {
+	const base = parseHexToOpaque(baseHex);
+	const backgroundHex = rgbToHex(base);
 	const isLight = luminance(base) > LIGHT_SURFACE_THRESHOLD;
 
 	const fg = isLight ? "#0a0a0a" : "#f5f5f5";
@@ -89,14 +89,14 @@ export function deriveThemeVars(sidebarHex: string): Record<string, string> {
 
 	return {
 		"--terminal": terminal,
-		"--background": baseHex,
+		"--background": backgroundHex,
 		"--foreground": fg,
 		"--card": card,
 		"--card-foreground": fg,
 		"--popover": popover,
 		"--popover-foreground": fg,
 		"--primary": fg,
-		"--primary-foreground": baseHex,
+		"--primary-foreground": backgroundHex,
 		"--secondary": muted,
 		"--secondary-foreground": fg,
 		"--muted": muted,

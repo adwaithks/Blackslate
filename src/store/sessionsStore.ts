@@ -44,19 +44,22 @@ function makeWorkspace(initialCwd = "~"): Workspace {
  * workspace closed), return the same `workspaces` reference — avoids allocating
  * a new array on every no-op patch and unnecessary subtree re-renders.
  */
-function patchSessionById<K extends keyof Session>(
+export function patchSessionById<K extends keyof Session>(
 	workspaces: Workspace[],
 	sessionId: string,
 	key: K,
 	value: Session[K],
 ): Workspace[] {
-	const exists = workspaces.some((ws) =>
-		ws.sessions.some((s) => s.id === sessionId),
-	);
-	if (!exists) return workspaces;
-	return workspaces.map((ws) => {
-		const hasSession = ws.sessions.some((s) => s.id === sessionId);
-		if (!hasSession) return ws;
+	let updated = false;
+	// iterate over each workspace
+	// find the index of the session in the workspace
+	// if the session is not found, return the workspace
+	// if the session is found, update the session with the new value
+	// return the updated workspace
+	const result = workspaces.map((ws) => {
+		const idx = ws.sessions.findIndex((s) => s.id === sessionId);
+		if (idx === -1) return ws;
+		updated = true;
 		return {
 			...ws,
 			sessions: ws.sessions.map((s) =>
@@ -64,6 +67,7 @@ function patchSessionById<K extends keyof Session>(
 			),
 		};
 	});
+	return updated ? result : workspaces;
 }
 
 function patchWorkspaceById<K extends keyof Workspace>(
@@ -100,16 +104,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
 			if (s.workspaces.length <= 1) return s;
 			const idx = s.workspaces.findIndex((w) => w.id === workspaceId);
 			const workspaces = s.workspaces.filter((w) => w.id !== workspaceId);
-			const activeWorkspaceId =
-				s.activeWorkspaceId === workspaceId
-					? workspaces[Math.max(0, idx - 1)].id
-					: s.activeWorkspaceId;
+			const isActiveWorkspace = s.activeWorkspaceId === workspaceId;
+			const activeWorkspaceId = isActiveWorkspace
+				? workspaces[Math.max(0, idx - 1)].id
+				: s.activeWorkspaceId;
 			return { workspaces, activeWorkspaceId };
 		});
 	},
 
 	activateWorkspace(workspaceId) {
-		set({ activeWorkspaceId: workspaceId });
+		set((s) => {
+			if (!s.workspaces.some((w) => w.id === workspaceId)) return s;
+			return { activeWorkspaceId: workspaceId };
+		});
 	},
 
 	createSessionInWorkspace(workspaceId) {
@@ -137,6 +144,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 		set((s) => {
 			const ws = s.workspaces.find((w) => w.id === workspaceId);
 			if (!ws) return s;
+			if (!ws.sessions.some((x) => x.id === sessionId)) return s;
 
 			// Last session in the workspace → close the whole workspace.
 			if (ws.sessions.length <= 1) {
@@ -171,12 +179,18 @@ export const useSessionStore = create<SessionStore>((set) => ({
 	},
 
 	activateSession(workspaceId, sessionId) {
-		set((s) => ({
-			workspaces: s.workspaces.map((w) =>
-				w.id === workspaceId ? { ...w, activeSessionId: sessionId } : w,
-			),
-			activeWorkspaceId: workspaceId,
-		}));
+		set((s) => {
+			const ws = s.workspaces.find((w) => w.id === workspaceId);
+			if (!ws || !ws.sessions.some((x) => x.id === sessionId)) return s;
+			return {
+				workspaces: s.workspaces.map((w) =>
+					w.id === workspaceId
+						? { ...w, activeSessionId: sessionId }
+						: w,
+				),
+				activeWorkspaceId: workspaceId,
+			};
+		});
 	},
 
 	setCwd(sessionId, cwd) {
@@ -317,7 +331,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
 										prev.outputTokens +
 										lastTurnUsage.outputTokens,
 									cacheRead:
-										prev.cacheRead + lastTurnUsage.cacheRead,
+										prev.cacheRead +
+										lastTurnUsage.cacheRead,
 									cacheWrite:
 										prev.cacheWrite +
 										lastTurnUsage.cacheWrite,
