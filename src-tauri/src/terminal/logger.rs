@@ -165,9 +165,14 @@ impl SessionLogger {
 // Path helpers
 // ---------------------------------------------------------------------------
 
-pub fn log_dir() -> Option<PathBuf> {
+/// `~/.blackslate` — shared root for logs, workspace layout, and future dotfiles.
+pub fn blackslate_data_root() -> Option<PathBuf> {
     let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".blackslate").join("logs"))
+    Some(PathBuf::from(home).join(".blackslate"))
+}
+
+pub fn log_dir() -> Option<PathBuf> {
+    blackslate_data_root().map(|p| p.join("logs"))
 }
 
 fn file_prefix(session_id: &str) -> String {

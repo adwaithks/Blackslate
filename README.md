@@ -176,37 +176,9 @@ Longer-term: **a full-stack developer workspace that lives inside the terminal**
 
 ## Roadmap
 
-Order reflects current priorities. **Foundation work** (tests, config, persistence) comes first so features can ship safely.
+**v1.0 release plan** (priorities, rationale, implementation notes): see **[ROADMAP.md](ROADMAP.md)**.
 
-#### Foundation
-
-| # | Feature |
-|:-:|:--------|
-| **1** | **Automated tests** — Vitest for critical Zustand stores on the frontend; grow toward broader React/TS and Rust coverage so refactors stay safe. |
-| **2** | **`blackslate.config`** — single user-owned config file for shortcuts, defaults, feature flags, paths. |
-| **3** | **Restore workspace on reopen** — persist layout (workspaces, tabs, order, active selection) across quit/relaunch. |
-
-#### Layout & terminals
-
-| Status | Feature |
-|:------:|:--------|
-| 🔲 | **Reorder** workspaces and tabs (drag-and-drop) |
-| 🔲 | **Vertical split** — two terminals stacked |
-| 🔲 | **Horizontal split** — two terminals side by side |
-
-#### Claude, composer & git
-
-| Status | Feature |
-|:------:|:--------|
-| 🔲 | **Message composer + model selection** |
-| 🔲 | **Claude events timeline** — tool use, lifecycle, file touchpoints |
-| 🔲 | **Commit and push** buttons in the git UI |
-
-#### Further out
-
-| Status | Feature |
-|:------:|:--------|
-| 🔲 | **Integrated code editor** — read–edit–run without leaving Blackslate |
+Post-v1 ideas (splits, composer, git actions, integrated editor) are summarised at the end of that file and in the vision section above.
 
 ---
 

@@ -1,4 +1,5 @@
 mod terminal;
+mod workspace_snapshot;
 
 #[cfg(target_os = "macos")]
 mod macos_menu;
@@ -13,6 +14,7 @@ use terminal::commands::{
     stage_file, unstage_all, unstage_file,
 };
 use terminal::AppState;
+use workspace_snapshot::{workspace_snapshot_read, workspace_snapshot_write};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tauri::command]
@@ -28,6 +30,8 @@ pub fn run() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             quit_app,
+            workspace_snapshot_read,
+            workspace_snapshot_write,
             pty_create,
             pty_write,
             pty_resize,

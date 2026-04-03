@@ -1,5 +1,9 @@
 import { create } from "zustand";
 
+import {
+	registerWorkspaceLayoutGetter,
+	scheduleFlushWorkspaceLayout,
+} from "@/lib/persistWorkspaceLayout";
 import { selectActiveSession } from "@/store/sessionsSelectors";
 import type {
 	Session,
@@ -110,6 +114,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 				: s.activeWorkspaceId;
 			return { workspaces, activeWorkspaceId };
 		});
+		scheduleFlushWorkspaceLayout();
 	},
 
 	activateWorkspace(workspaceId) {
@@ -176,6 +181,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 				),
 			};
 		});
+		scheduleFlushWorkspaceLayout();
 	},
 
 	activateSession(workspaceId, sessionId) {
@@ -270,6 +276,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 				v,
 			),
 		}));
+		scheduleFlushWorkspaceLayout();
 	},
 
 	setWorkspaceCustomName(workspaceId, name) {
@@ -282,6 +289,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 				v,
 			),
 		}));
+		scheduleFlushWorkspaceLayout();
 	},
 
 	setShellState(sessionId, shellState) {
@@ -349,3 +357,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
 		});
 	},
 }));
+
+registerWorkspaceLayoutGetter(() => {
+	const { workspaces, activeWorkspaceId } = useSessionStore.getState();
+	return { workspaces, activeWorkspaceId };
+});

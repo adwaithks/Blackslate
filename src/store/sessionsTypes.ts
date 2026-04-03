@@ -1,8 +1,9 @@
 /**
  * Workspace / session model for Blackslate.
  *
- * Not persisted — in-memory only. PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
- * this store is the single source of truth for cwd, git, Claude UI state, etc.
+ * Layout (workspaces, tabs, names, cwd) is persisted to `~/.blackslate/workspace-layout.json`
+ * via `persistWorkspaceLayout`; ephemeral PTY/Claude fields stay in memory only.
+ * PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
  */
 
 export interface GitInfo {

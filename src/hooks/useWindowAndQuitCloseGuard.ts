@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { confirmCloseWindow } from "@/lib/closeConfirm";
+import { flushWorkspaceLayoutNow } from "@/lib/persistWorkspaceLayout";
 
 /**
  * Intercepts window close and menu Quit (⌘⇧Q): always show a native confirm first.
@@ -27,6 +28,11 @@ export function useWindowAndQuitCloseGuard(): void {
 			const win = getCurrentWindow();
 
 			const finishClose = async () => {
+				try {
+					await flushWorkspaceLayoutNow();
+				} catch (e) {
+					console.error("[workspace layout] flush on quit failed", e);
+				}
 				await invoke("quit_app");
 			};
 
