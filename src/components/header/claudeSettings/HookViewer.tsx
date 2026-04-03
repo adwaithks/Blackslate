@@ -12,7 +12,7 @@ export function HookViewer({ hook }: { hook: HookInfo | null }) {
 	}
 
 	return (
-		<div className="flex h-full flex-col min-h-0 overflow-y-auto px-4 py-3">
+		<div className="flex h-full flex-col min-h-0 overflow-y-auto px-4 pt-3 pb-8">
 			<div className="mb-3 flex items-center gap-2 flex-wrap">
 				<span className="text-xs font-semibold font-mono">
 					{hook.event}

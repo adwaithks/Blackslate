@@ -9,7 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TbChevronDown, TbX } from "react-icons/tb";
 import { cn } from "@/lib/utils";
 import { TbFile } from "react-icons/tb";
-import type { GitFile, GitFileStatus, GitStatus } from "@/components/git/gitTypes";
+import type {
+	GitFile,
+	GitFileStatus,
+	GitStatus,
+} from "@/components/git/gitTypes";
 import { sumLineStats, repoName } from "@/components/git/gitPanelHelpers";
 import { RepoSectionInnerSkeleton } from "@/components/git/GitPanelSkeletons";
 import { GitDiffViewerSheet } from "@/components/git/GitDiffViewerSheet";
@@ -28,16 +32,20 @@ interface RepoSectionProps {
 
 const STATUS_DOT_COLORS: Record<GitFileStatus, [string, string]> = {
 	modified: ["border-orange-400/70", "bg-orange-400/70"],
-	added:    ["border-green-400/70",  "bg-green-400/70"],
-	deleted:  ["border-red-400/70",   "bg-red-400/70"],
-	renamed:  ["border-blue-400/70",  "bg-blue-400/70"],
+	added: ["border-green-400/70", "bg-green-400/70"],
+	deleted: ["border-red-400/70", "bg-red-400/70"],
+	renamed: ["border-blue-400/70", "bg-blue-400/70"],
 };
 
 function StatusDot({ status }: { status: GitFileStatus }) {
-	const [borderCls, dotCls] = STATUS_DOT_COLORS[status] ?? STATUS_DOT_COLORS.modified;
+	const [borderCls, dotCls] =
+		STATUS_DOT_COLORS[status] ?? STATUS_DOT_COLORS.modified;
 	return (
 		<div
-			className={cn("size-3 shrink-0 rounded-[2px] border flex items-center justify-center", borderCls)}
+			className={cn(
+				"size-3 shrink-0 rounded-[2px] border flex items-center justify-center",
+				borderCls,
+			)}
 			aria-label={status}
 		>
 			<div className={cn("size-1.5 rounded-full", dotCls)} />
@@ -67,7 +75,10 @@ function PanelFileRow({
 			title={file.path}
 			className="flex w-full cursor-pointer items-center gap-2 px-2 py-1 text-left hover:bg-muted/20"
 		>
-			<TbFile className="size-3.5 shrink-0 text-muted-foreground/45" aria-hidden />
+			<TbFile
+				className="size-3.5 shrink-0 text-muted-foreground/45"
+				aria-hidden
+			/>
 			<div className="flex min-w-0 flex-1 items-baseline gap-0.5 overflow-hidden">
 				{dir ? (
 					<span
@@ -125,10 +136,13 @@ export function RepoSection({
 
 	const refresh = useCallback(async () => {
 		try {
-			const polled = await invoke<GitStatusPoll | null>("get_git_status_poll", {
-				cwd: repoPath,
-				prev_hash: lastHashRef.current,
-			});
+			const polled = await invoke<GitStatusPoll | null>(
+				"get_git_status_poll",
+				{
+					cwd: repoPath,
+					prev_hash: lastHashRef.current,
+				},
+			);
 			if (polled === null) {
 				setState({ kind: "not-git" });
 			} else {
@@ -216,10 +230,12 @@ export function RepoSection({
 			className="border-b pb-2 border-border"
 		>
 			<div className="group/header relative">
-				<div className={cn(
-					"relative overflow-hidden bg-muted/20 border-border",
-					isFirst ? "border-b" : "border-y",
-				)}>
+				<div
+					className={cn(
+						"relative overflow-hidden bg-muted/20 border-border",
+						isFirst ? "border-b border-t" : "border-y",
+					)}
+				>
 					<CollapsibleTrigger className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 pr-8 text-left transition-colors hover:bg-muted/30">
 						<TbChevronDown
 							className={cn(
@@ -289,21 +305,21 @@ export function RepoSection({
 						</p>
 					) : (
 						<div className="pt-0.5">
-						{allFiles.map((f) => (
-							<PanelFileRow
-								key={f.path}
-								file={f.file}
-								onClick={() => {
-									setPendingDiffOpen({
-										path: f.path,
-										source: f.unstaged
-											? "changes"
-											: "staged",
-									});
-									setDiffOpen(true);
-								}}
-							/>
-						))}
+							{allFiles.map((f) => (
+								<PanelFileRow
+									key={f.path}
+									file={f.file}
+									onClick={() => {
+										setPendingDiffOpen({
+											path: f.path,
+											source: f.unstaged
+												? "changes"
+												: "staged",
+										});
+										setDiffOpen(true);
+									}}
+								/>
+							))}
 						</div>
 					)}
 				</div>

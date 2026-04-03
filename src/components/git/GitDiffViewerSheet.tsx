@@ -15,7 +15,13 @@ import {
 } from "react-icons/tb";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view-pure.css";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	TabsContent,
+	lineTabsStripHeightClass,
+} from "@/components/ui/tabs";
 import { GitFileRow } from "@/components/git/GitFileRow";
 import { useResizableWidth } from "@/hooks/useResizableWidth";
 import { useIsLightTheme } from "@/hooks/useIsLightTheme";
@@ -343,7 +349,7 @@ export function GitDiffViewerSheet({
 							<div className="flex shrink-0 items-center border-b border-border">
 								<TabsList
 									variant="line"
-									className="h-8 flex-1 min-w-0 rounded-none justify-start gap-0 px-1"
+									className="flex-1 min-w-0 rounded-none justify-start gap-0 px-1"
 								>
 									<TabsTrigger
 										value="changes"
@@ -369,7 +375,12 @@ export function GitDiffViewerSheet({
 									</TabsTrigger>
 								</TabsList>
 								{/* Bulk action buttons — contextual to active tab */}
-								<div className="flex h-8 w-[52px] shrink-0 items-center justify-end gap-0.5 px-1">
+								<div
+									className={cn(
+										"flex w-[52px] shrink-0 items-center justify-end gap-0.5 px-1",
+										lineTabsStripHeightClass,
+									)}
+								>
 									<Button
 										variant="ghost"
 										size="sm"
@@ -536,7 +547,7 @@ export function GitDiffViewerSheet({
 							<>
 								<TabsList
 									variant="line"
-									className="git-diff-tabs-scroll h-8 w-full max-w-full min-w-0 shrink-0 flex-nowrap justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-b border-border"
+									className="git-diff-tabs-scroll w-full max-w-full min-w-0 shrink-0 flex-nowrap justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-b border-border"
 								>
 									{tabs.map((t) => (
 										<TabsTrigger

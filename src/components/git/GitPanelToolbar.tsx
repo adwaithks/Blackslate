@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { lineTabsStripMinHeightClass } from "@/components/ui/tabs";
 import { LuFolderPlus } from "react-icons/lu";
 import { TbGitBranch } from "react-icons/tb";
 import { cn } from "@/lib/utils";
@@ -35,8 +36,13 @@ export function GitPanelToolbar({
 	const disabled = addingFolders || addingCurrent;
 
 	return (
-		<header className="shrink-0 border-b border-border bg-background px-1.5 py-1">
-			<div className="flex min-w-0 flex-wrap justify-end gap-1">
+		<header className="shrink-0 bg-background h-10 px-1.5 py-1">
+			<div
+				className={cn(
+					"flex min-w-0 flex-wrap items-center justify-end gap-1",
+					lineTabsStripMinHeightClass,
+				)}
+			>
 				{sessionRepoRoot !== undefined && showAddSessionRepo ? (
 					<Button
 						variant="ghost"
