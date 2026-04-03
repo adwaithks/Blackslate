@@ -17,12 +17,6 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 
 <br />
 
-<table><tr><td align="center">
-⚠️&nbsp; <strong>Active development</strong> — expect breaking changes between releases.&nbsp; PRs welcome.
-</td></tr></table>
-
-<br />
-
 </div>
 
 <!-- ───────────────────────────── SCREENSHOTS ──────────────────────────────── -->
