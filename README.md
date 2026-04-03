@@ -17,12 +17,6 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 
 <br />
 
-<table><tr><td align="center">
-⚠️&nbsp; <strong>Active development</strong> — expect breaking changes between releases.&nbsp; PRs welcome.
-</td></tr></table>
-
-<br />
-
 </div>
 
 <!-- ───────────────────────────── SCREENSHOTS ──────────────────────────────── -->
@@ -44,13 +38,18 @@ A macOS terminal that feels fast and familiar by default — then **transforms**
 
 <br />
 
-<img src="screenshots/sills-commands-hooks.png" alt="Blackslate — skills, commands, hooks" width="100%" />
-<p align="center"><em>Browse your Claude <strong>skills</strong>, <strong>slash commands</strong>, and <strong>hooks</strong> in a structured in-app view.</em></p>
+<img src="screenshots/skills-commands-hooks.png" alt="Blackslate — skills, commands, hooks" width="100%" />
+<p align="center"><em>Browse Claude <strong>skills</strong>, <strong>slash commands</strong>, and <strong>hooks</strong> in a dedicated sheet — global and per-project, with a readable file viewer.</em></p>
 
 <br />
 
-<img src="screenshots/themeconfig.png" alt="Blackslate — theme configuration" width="100%" />
-<p align="center"><em>Six terminal themes, ten sidebar palettes — switch live via <code>⌘,</code></em></p>
+<img src="screenshots/themeconfig.png" alt="Blackslate — appearance settings" width="100%" />
+<p align="center"><em><strong>Appearance</strong> (<code>⌘,</code>) — six <strong>terminal</strong> colour themes with a live mini-preview, nine <strong>app chrome</strong> palettes (dark and light), and font size. Everything updates instantly.</em></p>
+
+<br />
+
+<img src="screenshots/lighttheme.png" alt="Blackslate — light app theme" width="100%" />
+<p align="center"><em><strong>Light chrome</strong> — pair the same terminal themes with palettes like <strong>Bone</strong>, <strong>Blush</strong>, <strong>Fog</strong>, or <strong>Pearl</strong> for a full light UI without leaving the agent workflow.</em></p>
 
 </div>
 
@@ -131,9 +130,10 @@ The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, 
 
 **Personalisation**
 
-- **6 terminal themes** — Gruvbox Dark, Tokyo Night, Dracula, Nord, One Dark, Solarized Dark
-- **10 sidebar palettes** — Void, Carbon, Ember, Aurora, Deep Sea, Toxic, Dusk, Crimson, Rose, Slate
-- Settings via `⌘,` — more coming via `blackslate.config`
+- **6 terminal themes** — Gruvbox, Tokyo Night, Dracula, Nord, One, Solarized (each tuned for xterm.js)
+- **9 app chrome themes** — dark: Void, Slate, Aurora, Ember, Dusk · light: Bone, Blush, Fog, Pearl (base colours drive the whole UI via derived CSS variables, not just the sidebar)
+- **Font size** in the same dialog — zoom still available with `⌘=` / `⌘-`
+- Settings via `⌘,` — deeper prefs will land in `blackslate.config`
 
 </td>
 </tr>
@@ -176,13 +176,13 @@ Longer-term: **a full-stack developer workspace that lives inside the terminal**
 
 ## Roadmap
 
-Order reflects current priorities. **Test coverage is #1.**
+Order reflects current priorities. **Foundation work** (tests, config, persistence) comes first so features can ship safely.
 
 #### Foundation
 
 | # | Feature |
 |:-:|:--------|
-| **1** | **Test coverage** — Rust backend + React/TS frontend. Safe refactors, regression protection. |
+| **1** | **Automated tests** — Vitest for critical Zustand stores on the frontend; grow toward broader React/TS and Rust coverage so refactors stay safe. |
 | **2** | **`blackslate.config`** — single user-owned config file for shortcuts, defaults, feature flags, paths. |
 | **3** | **Restore workspace on reopen** — persist layout (workspaces, tabs, order, active selection) across quit/relaunch. |
 
@@ -262,7 +262,8 @@ blackslate/
 │   │   ├── layout/                 # AppLayout — titlebar, sidebar, main pane
 │   │   ├── sidebar/                # AppSidebar — session list + metadata
 │   │   ├── terminal/               # TerminalPane, TerminalView
-│   │   └── settings/               # SettingsDialog
+│   │   ├── header/                 # Titlebar, Claude menu, Claude settings sheet
+│   │   └── settings/               # SettingsDialog — terminal + app theme, font
 │   ├── hooks/
 │   │   └── usePty.ts               # PTY ↔ xterm.js bridge + OSC 7 parser
 │   ├── appconfig.constants.ts      # Terminal + app theme option lists
