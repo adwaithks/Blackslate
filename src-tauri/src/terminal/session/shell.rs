@@ -92,6 +92,7 @@ pub(super) fn build_shell_cmd(shell: &str, cwd: PathBuf) -> CommandBuilder {
 /// Create a temporary ZDOTDIR containing a `.zshrc` that:
 ///   1. Sources the user's real `~/.zshrc`
 ///   2. Appends OSC 7 / OSC 6973 shell hooks for cwd + running/idle tracking
+///      (`precmd` + `chpwd` so `cd foo && long-running-cmd` updates cwd before the cmd blocks)
 ///   3. Wraps the `claude` binary to inject UserPromptSubmit/Stop hooks that
 ///      emit OSC 6974 sequences so Blackslate can track thinking vs waiting state
 ///
@@ -298,11 +299,13 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
 # Source the user's real zshrc first.
 [ -f "{home}/.zshrc" ] && source "{home}/.zshrc"
 
-# OSC 7: emit cwd before each prompt so Blackslate can track directory changes.
+# OSC 7: emit cwd on each prompt and whenever $PWD changes (e.g. `cd dir && npm start`
+# updates the UI after `cd`, not only when the foreground job exits).
 _blackslate_report_cwd() {{
     printf '\033]7;file://%s%s\a' "${{HOST:-$(hostname)}}" "$PWD"
 }}
 precmd_functions+=(_blackslate_report_cwd)
+chpwd_functions+=(_blackslate_report_cwd)
 _blackslate_report_cwd
 
 # Shell state tracking: OSC 6973 signals running vs idle.

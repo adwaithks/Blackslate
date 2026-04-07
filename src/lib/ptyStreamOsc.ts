@@ -9,7 +9,7 @@
  *
  * | Signal | Source | Notes |
  * |--------|--------|--------|
- * | **OSC 7** (`\e]7;file://…\a`) | zsh/bash **precmd** + **CwdChanged** hook | Shell reports cwd each prompt; `blackslate-cwd-changed` repeats the same sequence when Claude’s session cwd changes (e.g. tool `cd`) before the next prompt. |
+ * | **OSC 7** (`\e]7;file://…\a`) | zsh **precmd** + **chpwd**, bash **PROMPT_COMMAND**, **CwdChanged** | zsh reports cwd each prompt and on every `cd` (so `cd dir && server` updates before the server blocks); bash only at prompt; Claude hook repeats on tool `cd`. |
  * | **OSC 6973** (`running` / `prompt`) | Same injected zsh hooks | `preexec` → running, `precmd` → idle at prompt. |
  * | **OSC 0 / 2** (window title) | Shell and Claude Code | Claude sets titled sessions and **empty title** to signal exit; we only trust session titles after we know Claude OSC is active. |
  * | **CSI … q** (DECSCUSR) | Shell | Cursor shape; stripped so xterm’s `cursorStyle` wins. |
