@@ -71,7 +71,6 @@ export function AppLayout() {
 						onToggleGitPanel={() => setGitPanelOpen((o) => !o)}
 						cumulativeUsage={activeSession?.cumulativeUsage ?? null}
 						lastTurnUsage={activeSession?.lastTurnUsage ?? null}
-						claudeModel={activeSession?.claudeModel ?? null}
 					/>
 					<AppMainArea
 						gitPanelOpen={gitPanelOpen}
