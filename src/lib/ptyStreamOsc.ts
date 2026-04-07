@@ -21,9 +21,6 @@
 
 import type { TurnUsage } from "@/store/sessions";
 
-/** OSC 7 spans are short; rolling buffer cap in `usePty` avoids unbounded growth. */
-export const OSC_ROLLING_BUFFER_MAX = 2048;
-
 // --- CSI: cursor shape (shell), stripped before write ---
 
 /** DECSCUSR — `\e[… q`. Shell sets block/underline/bar; xterm addon should own cursor style. */

@@ -219,6 +219,9 @@ html.dark #root {
 	--scrollbar-thumb: oklch(0.58 0 0);
 	--scrollbar-thumb-hover: oklch(0.48 0 0);
 	--claude-accent: #d97757;
+	/* Selected text: near-black glyphs on light UI */
+	--selection-background: oklch(0.5 0.05 264 / 0.32);
+	--selection-foreground: oklch(0 0 0);
 }
 
 .dark {
@@ -259,6 +262,9 @@ html.dark #root {
 	--scrollbar-thumb: oklch(0.34 0 0);
 	--scrollbar-thumb-hover: oklch(0.44 0 0);
 	--claude-accent: #d97757;
+	/* Selected text: almost-white highlight band on dark UI */
+	--selection-background: oklch(0.96 0.006 264);
+	--selection-foreground: oklch(0.12 0.02 264);
 }
 
 @layer base {
@@ -278,6 +284,11 @@ html.dark #root {
 	}
 	body {
 		@apply font-sans text-foreground;
+	}
+
+	::selection {
+		background-color: var(--selection-background);
+		color: var(--selection-foreground);
 	}
 
 	/* Native controls + icon hit targets: hand cursor unless a utility sets otherwise */

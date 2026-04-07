@@ -1,5 +1,6 @@
 import { TitlebarCwdBranchLine } from "@/components/layout/titlebar/TitlebarCwdBranchLine";
 import { TitlebarSessionUsageChip } from "@/components/layout/titlebar/TitlebarSessionUsageChip";
+import { TitlebarContextUsageChip } from "@/components/layout/titlebar/TitlebarContextUsageChip";
 import { TitlebarClaudeMenu } from "@/components/layout/titlebar/TitlebarClaudeMenu";
 import { TitlebarGitPanelToggle } from "@/components/layout/titlebar/TitlebarGitPanelToggle";
 import type { TurnUsage } from "@/store/sessions";
@@ -7,6 +8,7 @@ import type { TurnUsage } from "@/store/sessions";
 export interface TitlebarMainSectionProps {
 	headerPwd: string;
 	headerBranch: string | null;
+	claudeModel: string | null;
 	gitPanelOpen: boolean;
 	onToggleGitPanel: () => void;
 	cumulativeUsage: TurnUsage | null;
@@ -19,6 +21,7 @@ export interface TitlebarMainSectionProps {
 export function TitlebarMainSection({
 	headerPwd,
 	headerBranch,
+	claudeModel,
 	gitPanelOpen,
 	onToggleGitPanel,
 	cumulativeUsage,
@@ -37,6 +40,10 @@ export function TitlebarMainSection({
 				className="flex shrink-0 items-center gap-1"
 				data-tauri-drag-region="false"
 			>
+				<TitlebarContextUsageChip
+					claudeModel={claudeModel}
+					lastTurnUsage={lastTurnUsage}
+				/>
 				<TitlebarSessionUsageChip
 					cumulativeUsage={cumulativeUsage}
 					lastTurnUsage={lastTurnUsage}

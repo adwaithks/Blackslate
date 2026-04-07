@@ -37,11 +37,15 @@ export function resolveTerminalTheme(themeId: string, background: string) {
 	const pair = THEME_PAIR[themeId] ?? DEFAULT_PAIR;
 	const fn = isLightSurface(background) ? pair.light : pair.dark;
 	const theme = fn(background);
-	// Some theme palettes set very subtle selection backgrounds (low alpha),
-	// which can feel like "nothing is selected" on certain displays/surfaces.
-	// Enforce a floor so selection is always visible.
+	// Light themes often use translucent #RRGGBBAA; bump alpha so selection reads.
+	// Dark themes use opaque near-white (#RRGGBB) — `withMinAlpha` is a no-op for those.
 	if (theme.selectionBackground) {
 		theme.selectionBackground = withMinAlpha(theme.selectionBackground, 0.45);
+	}
+	// WebGL renderer uses selectionInactive* when the terminal isn’t focused (e.g. after
+	// clicking the sidebar). Without this, xterm falls back to a dim gray/purple tint.
+	if (theme.selectionBackground && theme.selectionInactiveBackground === undefined) {
+		theme.selectionInactiveBackground = theme.selectionBackground;
 	}
 	return theme;
 }

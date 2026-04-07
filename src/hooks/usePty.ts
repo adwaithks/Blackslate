@@ -4,7 +4,6 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import { findSession, useSessionStore } from "@/store/sessions";
 import {
-	OSC_ROLLING_BUFFER_MAX,
 	stripShellCursorShapeSequences,
 	parseOsc7WorkingDirectory,
 	parseOsc6973ShellState,
@@ -52,8 +51,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 	const setCurrentTool = useSessionStore((s) => s.setCurrentTool);
 	const setLastTurnUsage = useSessionStore((s) => s.setLastTurnUsage);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
-	/** Trailing slice of decoded output so OSC 7 can complete across chunk boundaries. */
-	const oscBufRef = useRef("");
 
 	const sendResize = useCallback((cols: number, rows: number) => {
 		resizeFnRef.current(cols, rows);
@@ -122,44 +119,34 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// --- OSC 6973: zsh preexec/precmd (Rust-injected ZDOTDIR) → running vs idle ---
+					// --- OSC 6973: shell state ---
 					const shellState = parseOsc6973ShellState(withoutCursor);
-					if (shellState) {
-						setShellState(sessionId, shellState);
-					}
+					if (shellState) setShellState(sessionId, shellState);
 
-					// --- OSC 7: cwd from shell integration; may span chunks → rolling tail buffer ---
-					const combined = oscBufRef.current + withoutCursor;
-					const buf =
-						combined.length > OSC_ROLLING_BUFFER_MAX
-							? combined.slice(-OSC_ROLLING_BUFFER_MAX)
-							: combined;
-					const cwd = parseOsc7WorkingDirectory(buf, home);
-					const lastEsc = buf.lastIndexOf("\x1b");
-					oscBufRef.current =
-						lastEsc !== -1 ? buf.slice(lastEsc) : "";
+					// --- OSC 7: cwd ---
+					const cwd = parseOsc7WorkingDirectory(withoutCursor, home);
 					if (cwd !== null) setCwd(sessionId, cwd);
 
-					// --- OSC 6974: Claude hook scripts (blackslate-*) → thinking / waiting / complete ---
+					// --- OSC 6974: Claude lifecycle ---
 					const lifecycle = parseOsc6974ClaudeLifecycle(withoutCursor);
 					if (lifecycle) {
 						claudeOscActive = true;
 						setClaudeState(sessionId, lifecycle);
 					}
 
-					// --- OSC 6975: PreToolUse tool label (empty clears) ---
+					// --- OSC 6975: tool label ---
 					const toolLabel = parseOsc6975ToolLabel(withoutCursor);
 					if (toolLabel !== undefined) {
 						setCurrentTool(sessionId, toolLabel);
 					}
 
-					// --- OSC 6977: SessionStart → initial `model` from Claude hook JSON ---
+					// --- OSC 6977: SessionStart model ---
 					const sessionModel = parseOsc6977SessionModel(withoutCursor);
 					if (sessionModel) {
 						setClaudeModel(sessionId, sessionModel);
 					}
 
-					// --- OSC 6976: Stop hook → last-turn tokens (+ optional model) ---
+					// --- OSC 6976: Stop hook usage ---
 					const usageParsed = parseOsc6976Usage(withoutCursor);
 					if (usageParsed) {
 						setLastTurnUsage(sessionId, usageParsed.usage);
@@ -168,7 +155,7 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 						}
 					}
 
-					// --- OSC 0/2: window title — Claude session name; empty title = exit ---
+					// --- OSC 0/2: window title ---
 					for (const rawTitle of eachOscWindowTitle(withoutCursor)) {
 						if (rawTitle.length > 0) {
 							const name = stripClaudeWindowTitlePrefix(rawTitle);
@@ -279,7 +266,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			clearClaudeOscState();
 			setPtyId(sessionId, null);
 			resizeFnRef.current = () => {};
-			oscBufRef.current = "";
 			onDataDisposable?.dispose();
 			unlistenData?.();
 			unlistenExit?.();

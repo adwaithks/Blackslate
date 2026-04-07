@@ -17,6 +17,8 @@ export interface AppTitlebarProps {
 	cumulativeUsage: TurnUsage | null;
 	/** Most recent completed turn only (tooltip detail). */
 	lastTurnUsage: TurnUsage | null;
+	/** API model id (best-effort, used for context window inference). */
+	claudeModel: string | null;
 }
 
 /**
@@ -33,6 +35,7 @@ export function AppTitlebar({
 	onToggleGitPanel,
 	cumulativeUsage,
 	lastTurnUsage,
+	claudeModel,
 }: AppTitlebarProps) {
 	return (
 		<div
@@ -51,6 +54,7 @@ export function AppTitlebar({
 			<TitlebarMainSection
 				headerPwd={headerPwd}
 				headerBranch={headerBranch}
+				claudeModel={claudeModel}
 				gitPanelOpen={gitPanelOpen}
 				onToggleGitPanel={onToggleGitPanel}
 				cumulativeUsage={cumulativeUsage}
