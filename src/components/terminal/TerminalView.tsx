@@ -32,10 +32,9 @@ export function TerminalView() {
 	const paneList = useMemo(
 		() =>
 			workspaces.flatMap((workspace) =>
-				workspace.sessions.map((session) => ({
-					workspace,
-					session,
-				})),
+				workspace.sessions
+					.filter((session) => session.isMounted)
+					.map((session) => ({ workspace, session })),
 			),
 		[workspaces],
 	);

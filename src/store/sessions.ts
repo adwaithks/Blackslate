@@ -29,3 +29,9 @@ export {
 } from "@/store/sessionsDisplay";
 
 export { useSessionStore } from "@/store/sessionsStore";
+
+export {
+	SESSION_LAYOUT_STORAGE_KEY,
+	clearPersistedSessionLayout,
+	validatePersistedSessionState,
+} from "@/store/sessionsPersistence";

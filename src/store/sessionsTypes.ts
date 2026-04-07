@@ -1,8 +1,12 @@
 /**
  * Workspace / session model for Blackslate.
  *
- * Not persisted — in-memory only. PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
- * this store is the single source of truth for cwd, git, Claude UI state, etc.
+ * Layout is persisted to localStorage via Zustand persist (see `sessionsPersistence.ts` for key + I/O).
+ * Only the fields in `PersistedSession` / `PersistedWorkspace` are written; runtime-only
+ * fields are stripped before each write and reset to zero values on restore.
+ *
+ * PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
+ * This store is the single source of truth for cwd, git, Claude UI state, etc.
  */
 
 export interface GitInfo {
@@ -27,6 +31,30 @@ export interface TurnUsage {
  */
 export type ClaudeState = "thinking" | "waiting" | "complete" | null;
 
+/**
+ * Persisted fields — the subset written to localStorage on every mutation.
+ * Runtime-only fields (`isMounted`, `ptyId`, `claudeCodeActive`, etc.) are
+ * excluded and always reset to their zero values on restore.
+ */
+export interface PersistedSession {
+	id: string;
+	customName: string | null;
+	cwd: string;
+	createdAt: number;
+}
+
+export interface PersistedWorkspace {
+	id: string;
+	customName: string | null;
+	activeSessionId: string;
+	sessions: PersistedSession[];
+}
+
+export interface PersistedSessionState {
+	activeWorkspaceId: string;
+	workspaces: PersistedWorkspace[];
+}
+
 export interface Session {
 	id: string;
 	/**
@@ -37,6 +65,13 @@ export interface Session {
 	cwd: string;
 	/** Unix timestamp of when the session was created. */
 	createdAt: number;
+	/**
+	 * Whether xterm + PTY have been initialised for this session.
+	 * Starts `false` for sessions restored from localStorage; flipped to `true`
+	 * when the session is first activated (or immediately for brand-new sessions).
+	 * Once `true`, never goes back to `false` — visibility:hidden handles hiding.
+	 */
+	isMounted: boolean;
 	/** Git info for the current cwd, null when not in a repo. */
 	git: GitInfo | null;
 	/** PTY backend id (Rust session key), set when the terminal connects. */
@@ -128,6 +163,19 @@ export interface SessionActions {
 	setShellState: (sessionId: string, state: "running" | "idle") => void;
 	setCurrentTool: (sessionId: string, tool: string | null) => void;
 	setLastTurnUsage: (sessionId: string, usage: TurnUsage | null) => void;
+
+	// ── Layout persistence ───────────────────────────────────────────────────
+	/**
+	 * Bulk-replace state from a validated persisted snapshot.
+	 * Sets `isMounted: true` only for the active session in the active workspace;
+	 * all other restored sessions start unmounted and are lazily mounted on first activation.
+	 */
+	restoreFromLayout: (layout: PersistedSessionState) => void;
+	/**
+	 * Called when localStorage data is missing or fails validation.
+	 * Clears the persisted key and resets to one fresh workspace + one session.
+	 */
+	resetToDefault: () => void;
 }
 
 export type SessionStore = SessionState & SessionActions;

@@ -8,6 +8,7 @@ export function makeSession(
 		customName: null,
 		cwd: "~",
 		createdAt: 0,
+		isMounted: true,
 		git: null,
 		ptyId: null,
 		claudeCodeActive: false,
