@@ -56,6 +56,54 @@ function filenameFromPath(path: string) {
 	return segments[segments.length - 1] ?? path;
 }
 
+/**
+ * `DiffView` memoizes its internal `DiffFile` with `useMemo(..., [data])` using
+ * reference equality. A fresh inline `data={{...}}` on every parent render
+ * recreates the file and resets expand/collapse state — including when the
+ * git panel poll updates `status` upstream.
+ */
+function SheetDiffView({
+	path,
+	diff,
+	oldContent,
+	newContent,
+	isLight,
+}: {
+	path: string;
+	diff: string | null;
+	oldContent: string | null;
+	newContent: string | null;
+	isLight: boolean;
+}) {
+	const data = useMemo(
+		() => ({
+			oldFile: {
+				fileName: path,
+				content: oldContent === "" ? null : oldContent,
+			},
+			newFile: {
+				fileName: path,
+				content: newContent === "" ? null : newContent,
+			},
+			hunks: [diff ?? ""],
+		}),
+		[path, diff, oldContent, newContent],
+	);
+
+	return (
+		<div className="min-w-0 font-mono **:[[class*='diff-']]:font-mono">
+			<DiffView
+				data={data}
+				diffViewMode={DiffModeEnum.Unified}
+				diffViewTheme={isLight ? "light" : "dark"}
+				diffViewHighlight
+				diffViewWrap
+				diffViewFontSize={12}
+			/>
+		</div>
+	);
+}
+
 export function GitDiffViewerSheet({
 	repoPath,
 	repoDisplayName,
@@ -270,7 +318,7 @@ export function GitDiffViewerSheet({
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="right"
-				className="mt-8 w-[min(1100px,calc(100vw-260px))] p-0 overflow-hidden border-l-0 flex flex-col min-h-0 gap-0 bg-background"
+				className="mt-8 max-h-[calc(100dvh-1rem)] w-[min(1100px,calc(100vw-260px))] p-0 overflow-hidden border-l-0 flex flex-col min-h-0 gap-0 bg-background"
 				showCloseButton={false}
 			>
 				<div className="shrink-0 flex min-h-12 items-center justify-between gap-3 border-b border-border px-3 py-2">
@@ -570,10 +618,10 @@ export function GitDiffViewerSheet({
 											</div>
 											<button
 												type="button"
-											className={cn(
-												"ml-1 shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/55",
-												"invisible group-hover/tab:visible hover:bg-muted/40 hover:text-foreground",
-											)}
+												className={cn(
+													"ml-1 shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/55",
+													"invisible group-hover/tab:visible hover:bg-muted/40 hover:text-foreground",
+												)}
 												onMouseDown={(e) =>
 													e.preventDefault()
 												}
@@ -624,7 +672,7 @@ export function GitDiffViewerSheet({
 								<TabsContent
 									key={t.id}
 									value={t.id}
-									className="min-h-0 flex-1 h-full overflow-y-auto overflow-x-hidden"
+									className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-5"
 								>
 									{t.loading ? (
 										<p className="px-3 py-3 text-xs text-muted-foreground/45">
@@ -635,35 +683,13 @@ export function GitDiffViewerSheet({
 											{t.error}
 										</p>
 									) : (
-										<div className="min-w-0 font-mono **:[[class*='diff-']]:font-mono">
-											<DiffView
-												data={{
-													oldFile: {
-														fileName: t.path,
-														// null = no prior revision (new/untracked);
-														content:
-															t.oldContent === ""
-																? null
-																: t.oldContent,
-													},
-													newFile: {
-														fileName: t.path,
-														content:
-															t.newContent === ""
-																? null
-																: t.newContent,
-													},
-													hunks: [t.diff ?? ""],
-												}}
-												diffViewMode={
-													DiffModeEnum.Unified
-												}
-												diffViewTheme={isLight ? "light" : "dark"}
-												diffViewHighlight
-												diffViewWrap
-												diffViewFontSize={12}
-											/>
-										</div>
+										<SheetDiffView
+											path={t.path}
+											diff={t.diff}
+											oldContent={t.oldContent}
+											newContent={t.newContent}
+											isLight={isLight}
+										/>
 									)}
 								</TabsContent>
 							))}
