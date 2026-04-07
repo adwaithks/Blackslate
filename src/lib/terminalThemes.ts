@@ -1,5 +1,9 @@
 import type { ITheme } from "@xterm/xterm";
 
+/** Dark themes: opaque light selection (xterm blends inactive selection; defaults read as gray/purple). */
+const DARK_SELECTION_BG = "#ffffff";
+const DARK_SELECTION_FG = "#000000";
+
 /**
  * Terminal colour themes.
  *
@@ -23,7 +27,8 @@ export function gruvboxDark(background = "#1d2021"): ITheme {
 		foreground:          "#ebdbb2", // fg1
 		cursor:              "#ebdbb2",
 		cursorAccent:        "#1d2021",
-		selectionBackground: "#a8998455", // bg4 @ ~33%
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#1d2021", // dark0_hard
 		red:           "#cc241d", // neutral_red
@@ -54,7 +59,8 @@ export function dracula(background = "#282a36"): ITheme {
 		foreground:          "#f8f8f2",
 		cursor:              "#f8f8f2",
 		cursorAccent:        "#282a36",
-		selectionBackground: "#44475a99",
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#21222c",
 		red:           "#ff5555",
@@ -85,7 +91,8 @@ export function tokyoNight(background = "#1a1b26"): ITheme {
 		foreground:          "#c0caf5", // fg
 		cursor:              "#c0caf5",
 		cursorAccent:        "#1a1b26",
-		selectionBackground: "#283457bb",
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#15161e", // bg_dark
 		red:           "#f7768e", // red
@@ -116,7 +123,8 @@ export function nord(background = "#2e3440"): ITheme {
 		foreground:          "#d8dee9",
 		cursor:              "#d8dee9",
 		cursorAccent:        "#2e3440",
-		selectionBackground: "#4c566a99",
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#3b4252", // nord1
 		red:           "#bf616a", // nord11
@@ -147,7 +155,8 @@ export function oneDark(background = "#1e1e1e"): ITheme {
 		foreground:          "#abb2bf",
 		cursor:              "#abb2bf",
 		cursorAccent:        "#000000",
-		selectionBackground: "#61afef44",
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#1e1e1e",
 		red:           "#e06c75",
@@ -178,7 +187,8 @@ export function solarizedDark(background = "#002b36"): ITheme {
 		foreground:          "#839496", // base0
 		cursor:              "#839496",
 		cursorAccent:        "#002b36",
-		selectionBackground: "#586e7580", // base01 @ ~50%
+		selectionBackground: DARK_SELECTION_BG,
+		selectionForeground: DARK_SELECTION_FG,
 
 		black:         "#073642", // base02
 		red:           "#dc322f",
@@ -213,6 +223,7 @@ export function gruvboxLight(background = "#fbf1c7"): ITheme {
 		cursor:              "#3c3836",
 		cursorAccent:        "#fbf1c7",
 		selectionBackground: "#d5c4a155",
+		selectionForeground: "#000000",
 
 		black:         "#fbf1c7", // bg
 		red:           "#cc241d",
@@ -243,6 +254,7 @@ export function solarizedLight(background = "#fdf6e3"): ITheme {
 		cursor:              "#657b83",
 		cursorAccent:        "#fdf6e3",
 		selectionBackground: "#eee8d580",
+		selectionForeground: "#000000",
 
 		black:         "#eee8d5", // base2
 		red:           "#dc322f",
@@ -273,6 +285,7 @@ export function oneLight(background = "#fafafa"): ITheme {
 		cursor:              "#383a42",
 		cursorAccent:        "#fafafa",
 		selectionBackground: "#bfceff77",
+		selectionForeground: "#000000",
 
 		black:         "#fafafa",
 		red:           "#e45649",

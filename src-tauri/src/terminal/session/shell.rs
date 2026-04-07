@@ -92,6 +92,7 @@ pub(super) fn build_shell_cmd(shell: &str, cwd: PathBuf) -> CommandBuilder {
 /// Create a temporary ZDOTDIR containing a `.zshrc` that:
 ///   1. Sources the user's real `~/.zshrc`
 ///   2. Appends OSC 7 / OSC 6973 shell hooks for cwd + running/idle tracking
+///      (`precmd` + `chpwd` so `cd foo && long-running-cmd` updates cwd before the cmd blocks)
 ///   3. Wraps the `claude` binary to inject UserPromptSubmit/Stop hooks that
 ///      emit OSC 6974 sequences so Blackslate can track thinking vs waiting state
 ///
@@ -239,11 +240,14 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
     std::fs::write(&hook_waiting, "#!/bin/sh\nprintf '\\033]6974;waiting\\007' >/dev/tty\nprintf '\\033]6975;\\007' >/dev/tty\n").ok()?;
 
     // blackslate-complete: Python — emits complete + reads transcript for token usage.
+    // The Stop hook can fire before the final `end_turn` row is flushed to the JSONL
+    // transcript, so we sleep 1s first. Then we grab the latest `end_turn` assistant
+    // message which carries the aggregated output_tokens for the whole turn.
     let hook_complete = zdotdir.join("blackslate-complete");
     std::fs::write(
         &hook_complete,
         r#"#!/usr/bin/env python3
-import sys, json, os
+import sys, json, os, time
 
 with open('/dev/tty', 'wb', buffering=0) as tty:
     tty.write(b'\033]6974;complete\007')
@@ -252,26 +256,35 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
         d = json.load(sys.stdin)
         tp = d.get('transcript_path', '')
         if tp:
+            def emit_usage(msg):
+                usage = msg.get('usage') or {}
+                if usage.get('input_tokens') is None:
+                    return False
+                parts = [
+                    'in='         + str(usage.get('input_tokens', 0)),
+                    'out='        + str(usage.get('output_tokens', 0)),
+                    'cache_read=' + str(usage.get('cache_read_input_tokens', 0)),
+                    'cache_write='+ str(usage.get('cache_creation_input_tokens', 0)),
+                ]
+                model = msg.get('model', '')
+                if model:
+                    safe_model = ''.join(c for c in model if c not in '\x07\x1b;')
+                    parts.append('model=' + safe_model)
+                tty.write(('\033]6976;' + ';'.join(parts) + '\007').encode())
+                return True
+
+            time.sleep(1)
             with open(os.path.expanduser(tp)) as f:
                 lines = f.readlines()
+
             for line in reversed(lines):
                 try:
                     obj = json.loads(line)
-                    # Claude Code JSONL wraps messages: {message: {role, usage, model, ...}}
                     msg = obj.get('message') or obj
-                    usage = msg.get('usage') or {}
-                    if usage.get('input_tokens') is not None:
-                        parts = [
-                            'in='         + str(usage.get('input_tokens', 0)),
-                            'out='        + str(usage.get('output_tokens', 0)),
-                            'cache_read=' + str(usage.get('cache_read_input_tokens', 0)),
-                            'cache_write='+ str(usage.get('cache_creation_input_tokens', 0)),
-                        ]
-                        model = msg.get('model', '')
-                        if model:
-                            safe_model = ''.join(c for c in model if c not in '\x07\x1b;')
-                            parts.append('model=' + safe_model)
-                        tty.write(('\033]6976;' + ';'.join(parts) + '\007').encode())
+                    if msg.get('role') != 'assistant':
+                        continue
+                    if msg.get('stop_reason') == 'end_turn' and (msg.get('usage') or {}).get('input_tokens') is not None:
+                        emit_usage(msg)
                         break
                 except Exception:
                     continue
@@ -298,11 +311,13 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
 # Source the user's real zshrc first.
 [ -f "{home}/.zshrc" ] && source "{home}/.zshrc"
 
-# OSC 7: emit cwd before each prompt so Blackslate can track directory changes.
+# OSC 7: emit cwd on each prompt and whenever $PWD changes (e.g. `cd dir && npm start`
+# updates the UI after `cd`, not only when the foreground job exits).
 _blackslate_report_cwd() {{
     printf '\033]7;file://%s%s\a' "${{HOST:-$(hostname)}}" "$PWD"
 }}
 precmd_functions+=(_blackslate_report_cwd)
+chpwd_functions+=(_blackslate_report_cwd)
 _blackslate_report_cwd
 
 # Shell state tracking: OSC 6973 signals running vs idle.

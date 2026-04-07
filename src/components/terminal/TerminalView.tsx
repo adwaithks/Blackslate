@@ -4,6 +4,7 @@ import { TerminalPane } from "./TerminalPane";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
 import { MessageComposer } from "./MessageComposer";
 import { useTerminalSurface } from "@/hooks/useTerminalSurface";
+import { useTerminalFileDropToPty } from "@/hooks/useTerminalFileDropToPty";
 
 /**
  * Renders a TerminalPane for every session across every workspace simultaneously.
@@ -23,6 +24,8 @@ import { useTerminalSurface } from "@/hooks/useTerminalSurface";
  *   └─────────────────────────────┘
  */
 export function TerminalView() {
+	useTerminalFileDropToPty();
+
 	const { workspaces, activeWorkspaceId } = useSessionStore();
 	const activeWorkspace = selectActiveWorkspace({
 		workspaces,

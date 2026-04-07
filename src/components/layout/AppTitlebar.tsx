@@ -3,26 +3,17 @@ import { TitlebarSidebarSection } from "@/components/layout/titlebar/TitlebarSid
 import { TitlebarMainSection } from "@/components/layout/titlebar/TitlebarMainSection";
 
 export interface AppTitlebarProps {
-	/** Whether the left sidebar column is expanded (drives titlebar grid + toggle icon). */
 	sidebarOpen: boolean;
-	/** Absolute cwd string for the path label and session picker. */
 	headerPwd: string;
-	/** Current git branch for active session’s cwd, when known. */
 	headerBranch: string | null;
 	onCreateWorkspace: () => void;
 	onToggleSidebar: () => void;
 	gitPanelOpen: boolean;
 	onToggleGitPanel: () => void;
-	/** Running total of token usage for this terminal session (sum of completed turns). */
 	cumulativeUsage: TurnUsage | null;
-	/** Most recent completed turn only (tooltip detail). */
 	lastTurnUsage: TurnUsage | null;
 }
 
-/**
- * macOS titlebar row: drag region, workspace controls, cwd, model + Claude gear menu, git toggle.
- * Grid columns align with the sidebar width below (see parent).
- */
 export function AppTitlebar({
 	sidebarOpen,
 	headerPwd,
