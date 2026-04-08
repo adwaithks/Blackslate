@@ -93,9 +93,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 		const run = async () => {
 			const { cols, rows } = term;
-			console.log(
-				`[pty] setup start — id=${ptyId} cols=${cols} rows=${rows}`,
-			);
 
 			const home = await getHomeDir().catch(() => "");
 
@@ -121,11 +118,15 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 					// --- OSC 6973: shell state ---
 					const shellState = parseOsc6973ShellState(withoutCursor);
-					if (shellState) setShellState(sessionId, shellState);
+					if (shellState) {
+						setShellState(sessionId, shellState);
+					}
 
 					// --- OSC 7: cwd ---
 					const cwd = parseOsc7WorkingDirectory(withoutCursor, home);
-					if (cwd !== null) setCwd(sessionId, cwd);
+					if (cwd !== null) {
+						setCwd(sessionId, cwd);
+					}
 
 					// --- OSC 6974: Claude lifecycle ---
 					const lifecycle = parseOsc6974ClaudeLifecycle(withoutCursor);
@@ -184,23 +185,18 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			if (!active) {
 				unlistenData?.();
 				unlistenExit?.();
-				console.log(`[pty] aborted before create — id=${ptyId}`);
 				return;
 			}
 
 			const initialCwd =
 				findSession(useSessionStore.getState().workspaces, sessionId)
 					?.cwd ?? null;
-			console.log(
-				`[pty] invoking pty_create — id=${ptyId} cwd=${initialCwd}`,
-			);
 			await invoke("pty_create", {
 				id: ptyId,
 				cols,
 				rows,
 				cwd: initialCwd,
 			});
-			console.log(`[pty] session created — id=${ptyId}`);
 
 			if (!active) {
 				invoke("pty_close", { id: ptyId }).catch(() => {});
@@ -246,7 +242,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			});
 
 			term.focus();
-			console.log(`[pty] ready — id=${ptyId}`);
 		};
 
 		run().catch((err) => {
@@ -270,7 +265,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			unlistenData?.();
 			unlistenExit?.();
 			invoke("pty_close", { id: ptyId }).catch(() => {});
-			console.log(`[pty] cleanup — id=${ptyId}`);
 		};
 	}, [
 		terminal,

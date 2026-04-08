@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { useSessionStore, findSession } from "@/store/sessions";
 import { useAppConfigStore } from "@/store/appConfig";
 import { usePty } from "@/hooks/usePty";
@@ -28,7 +28,7 @@ interface TerminalPaneProps {
  * `visibility: hidden` so `fit()` still sees real dimensions. Activation
  * refits and focuses (see `useTerminalPaneLayoutEffects`).
  */
-export function TerminalPane({
+function TerminalPaneImpl({
 	sessionId,
 	isActive,
 	terminalSurface,
@@ -90,3 +90,11 @@ export function TerminalPane({
 		</div>
 	);
 }
+
+export const TerminalPane = memo(
+	TerminalPaneImpl,
+	(prev, next) =>
+		prev.sessionId === next.sessionId &&
+		prev.isActive === next.isActive &&
+		prev.terminalSurface === next.terminalSurface,
+);

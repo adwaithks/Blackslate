@@ -1,11 +1,13 @@
 import { useLayoutEffect, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { IoAdd, IoClose, IoPencil } from "react-icons/io5";
 import { SiClaude } from "react-icons/si";
 import {
 	useSessionStore,
+	selectActiveWorkspace,
+	selectActiveWorkspaceTabBarSignature,
 	terminalDisplayName,
 	type Session,
-	type Workspace,
 } from "@/store/sessions";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import { Button } from "@/components/ui/button";
@@ -57,18 +59,24 @@ function tryScrollHorizontallyFromWheel(
 	return true;
 }
 
-interface WorkspaceTabBarProps {
-	workspace: Workspace;
-}
-
-export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
+export function WorkspaceTabBar() {
+	useSessionStore(selectActiveWorkspaceTabBarSignature);
 	const { activateSession, closeSession, createSessionInWorkspace } =
-		useSessionStore();
+		useSessionStore(
+			useShallow((s) => ({
+				activateSession: s.activateSession,
+				closeSession: s.closeSession,
+				createSessionInWorkspace: s.createSessionInWorkspace,
+			})),
+		);
+
+	const workspace = selectActiveWorkspace(useSessionStore.getState());
+	const activeId = workspace?.activeSessionId ?? "";
+	const tabCount = workspace?.sessions.length ?? 0;
 
 	const tabBarRef = useRef<HTMLDivElement>(null);
 	const tabScrollRef = useRef<HTMLDivElement>(null);
 	const sessionTabRefs = useRef(new Map<string, HTMLButtonElement | null>());
-	const activeId = workspace.activeSessionId;
 
 	useLayoutEffect(() => {
 		const row = tabBarRef.current;
@@ -103,7 +111,9 @@ export function WorkspaceTabBar({ workspace }: WorkspaceTabBarProps) {
 		});
 
 		return () => cancelAnimationFrame(raf);
-	}, [activeId, workspace.sessions.length]);
+	}, [activeId, tabCount]);
+
+	if (!workspace) return null;
 
 	const requestCloseSession = async (sessionId: string) => {
 		const ok = await confirmCloseSessionInWorkspace(workspace, sessionId);

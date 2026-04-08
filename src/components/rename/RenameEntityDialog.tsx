@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { IoClose } from "react-icons/io5";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 /**
  * Modal to rename a workspace or terminal tab — shell matches {@link SettingsDialog}.
  */
-export function RenameEntityDialog() {
+function RenameEntityDialogImpl() {
 	const target = useRenameUiStore((s) => s.target);
 	const closeUi = useRenameUiStore((s) => s.close);
 	const workspaces = useSessionStore((s) => s.workspaces);
@@ -137,3 +137,5 @@ export function RenameEntityDialog() {
 		</Dialog.Root>
 	);
 }
+
+export const RenameEntityDialog = memo(RenameEntityDialogImpl);

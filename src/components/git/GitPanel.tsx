@@ -23,7 +23,7 @@ interface GitPanelProps {
  * Right-hand git status panel: tracked repos, stage/discard/unstage, resize handle.
  */
 export function GitPanel({ activeCwd, open }: GitPanelProps) {
-	const { repos, addRepos, removeRepo } = useGitReposStore();
+	const { repos, addRepos } = useGitReposStore();
 	const [addingFolders, setAddingFolders] = useState(false);
 	const [addingCurrent, setAddingCurrent] = useState(false);
 	const [footerMsg, setFooterMsg] = useTimedFooterMessage();
@@ -116,7 +116,6 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 						key={repoPath}
 						repoPath={repoPath}
 						panelOpen={open}
-						onRemove={() => removeRepo(repoPath)}
 						isFirst={i === 0}
 					/>
 				))

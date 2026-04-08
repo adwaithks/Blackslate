@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
 	Collapsible,
@@ -17,6 +24,7 @@ import type {
 import { sumLineStats, repoName } from "@/components/git/gitPanelHelpers";
 import { RepoSectionInnerSkeleton } from "@/components/git/GitPanelSkeletons";
 import { GitDiffViewerSheet } from "@/components/git/GitDiffViewerSheet";
+import { useGitReposStore } from "@/store/gitRepos";
 
 type StatusState =
 	| { kind: "loading" }
@@ -26,7 +34,6 @@ type StatusState =
 interface RepoSectionProps {
 	repoPath: string;
 	panelOpen: boolean;
-	onRemove: () => void;
 	isFirst?: boolean;
 }
 
@@ -112,12 +119,12 @@ function PanelFileRow({
  * One tracked repo: collapsible header + flat file list. Polling and git actions
  * all live here; changes/staged management is inside the diff sheet.
  */
-export function RepoSection({
+function RepoSectionImpl({
 	repoPath,
 	panelOpen,
-	onRemove,
 	isFirst = false,
 }: RepoSectionProps) {
+	const removeRepo = useGitReposStore((s) => s.removeRepo);
 	const [state, setState] = useState<StatusState>({ kind: "loading" });
 	const [open, setOpen] = useState(true);
 	const [diffOpen, setDiffOpen] = useState(false);
@@ -136,11 +143,12 @@ export function RepoSection({
 
 	const refresh = useCallback(async () => {
 		try {
+			const prevHash = lastHashRef.current;
 			const polled = await invoke<GitStatusPoll | null>(
 				"get_git_status_poll",
 				{
 					cwd: repoPath,
-					prev_hash: lastHashRef.current,
+					prevHash,
 				},
 			);
 			if (polled === null) {
@@ -178,8 +186,6 @@ export function RepoSection({
 		},
 		[repoPath, refresh],
 	);
-
-	if (state.kind === "not-git") return null;
 
 	const status = state.kind === "ready" ? state.status : null;
 	const lineStats =
@@ -222,6 +228,8 @@ export function RepoSection({
 		}
 		return [...map.values()].sort((a, b) => a.path.localeCompare(b.path));
 	}, [status]);
+
+	if (state.kind === "not-git") return null;
 
 	return (
 		<Collapsible
@@ -285,7 +293,7 @@ export function RepoSection({
 						type="button"
 						onClick={(e) => {
 							e.stopPropagation();
-							onRemove();
+							removeRepo(repoPath);
 						}}
 						title="Remove repository"
 						className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:bg-muted/40 hover:text-foreground group-hover/header:opacity-100"
@@ -341,3 +349,5 @@ export function RepoSection({
 		</Collapsible>
 	);
 }
+
+export const RepoSection = memo(RepoSectionImpl);

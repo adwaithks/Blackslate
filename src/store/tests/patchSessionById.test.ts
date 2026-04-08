@@ -4,6 +4,20 @@ import { patchSessionById } from "@/store/sessionsStore";
 import { makeSession, makeWorkspace } from "@/test/sessionFixtures";
 
 describe("patchSessionById", () => {
+	it("returns the same workspaces reference when the new cwd equals the current value", () => {
+		const tab = makeSession({ id: "tab-1", cwd: "/same" });
+		const ws = makeWorkspace({
+			id: "ws-1",
+			sessions: [tab],
+			activeSessionId: tab.id,
+		});
+		const workspaces = [ws];
+
+		const next = patchSessionById(workspaces, "tab-1", "cwd", "/same");
+
+		expect(next).toBe(workspaces);
+	});
+
 	it("returns the same workspaces reference when sessionId is not found", () => {
 		const tab = makeSession({ id: "tab-1" });
 		const ws = makeWorkspace({

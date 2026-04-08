@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { TerminalView } from "@/components/terminal/TerminalView";
 import { GitPanel } from "@/components/git/GitPanel";
@@ -12,7 +13,7 @@ interface AppMainAreaProps {
 /**
  * Sidebar + terminal + optional git panel. flex-1 fills space below the titlebar.
  */
-export function AppMainArea({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
+function AppMainAreaImpl({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
 	return (
 		<div className="flex min-h-0 flex-1">
 			<AppSidebar />
@@ -23,3 +24,10 @@ export function AppMainArea({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
 		</div>
 	);
 }
+
+export const AppMainArea = memo(
+	AppMainAreaImpl,
+	(prev, next) =>
+		prev.gitPanelOpen === next.gitPanelOpen &&
+		prev.gitActiveCwd === next.gitActiveCwd,
+);

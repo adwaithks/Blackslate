@@ -131,29 +131,15 @@ export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.repeat) {
-				console.debug("[shortcuts] skip (repeat)", e.code);
 				return;
 			}
 			if (shouldIgnoreShortcutTarget(e)) {
-				const t = e.target;
-				const hint =
-					t instanceof HTMLElement
-						? `${t.tagName}${t.id ? `#${t.id}` : ""}`
-						: String(t);
-				console.debug("[shortcuts] ignored (focus target)", hint);
 				return;
 			}
 
 			const defs = getDefsRef.current();
 			for (const def of defs) {
 				if (def.when(e)) {
-					console.debug("[shortcuts] matched", def.id, {
-						code: e.code,
-						key: e.key,
-						meta: e.metaKey,
-						shift: e.shiftKey,
-						alt: e.altKey,
-					});
 					e.preventDefault();
 					e.stopPropagation();
 					void Promise.resolve(def.run()).catch(console.error);
@@ -161,14 +147,6 @@ export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 				}
 			}
 
-			if (modPrimary(e)) {
-				console.debug("[shortcuts] no match (⌘/Ctrl chord)", {
-					code: e.code,
-					key: e.key,
-					shift: e.shiftKey,
-					alt: e.altKey,
-				});
-			}
 		};
 
 		// `document` is more reliable than `window` in some WebViews (WKWebView) for

@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { FaFolderOpen } from "react-icons/fa";
 import {
 	Sidebar,
@@ -8,7 +9,7 @@ import {
 	SidebarHeader,
 	SidebarMenu,
 } from "@/components/ui/sidebar";
-import { useSessionStore } from "@/store/sessions";
+import { selectSidebarDisplaySignature, useSessionStore } from "@/store/sessions";
 import { confirmCloseWorkspace } from "@/lib/closeConfirm";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceItem } from "@/components/sidebar/WorkspaceItem";
@@ -19,17 +20,25 @@ import { getWorkspaceDisplaySession } from "@/components/sidebar/getWorkspaceDis
  * Picking a row calls `activateWorkspace`; × removes the workspace without affecting others.
  */
 export function AppSidebar() {
-	const { workspaces, activeWorkspaceId, closeWorkspace, activateWorkspace } =
-		useSessionStore();
+	useSessionStore(selectSidebarDisplaySignature);
+	const { closeWorkspace, activateWorkspace } = useSessionStore(
+		useShallow((s) => ({
+			closeWorkspace: s.closeWorkspace,
+			activateWorkspace: s.activateWorkspace,
+		})),
+	);
+	const { workspaces, activeWorkspaceId } = useSessionStore.getState();
 
 	const requestCloseWorkspaceFromSidebar = useCallback(
 		async (workspaceId: string) => {
-			const ws = workspaces.find((w) => w.id === workspaceId);
+			const ws = useSessionStore
+				.getState()
+				.workspaces.find((w) => w.id === workspaceId);
 			if (!ws) return;
 			const ok = await confirmCloseWorkspace(ws);
 			if (ok) closeWorkspace(workspaceId);
 		},
-		[closeWorkspace, workspaces],
+		[closeWorkspace],
 	);
 
 	return (
