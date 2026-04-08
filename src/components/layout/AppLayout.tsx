@@ -1,12 +1,14 @@
 import { useState, type CSSProperties } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { RenameEntityDialog } from "@/components/rename/RenameEntityDialog";
 import {
 	cwdToAbsolute,
-	selectActiveSession,
+	selectAppHeaderSlice,
 	useSessionStore,
 } from "@/store/sessions";
+import { useRenameUiStore } from "@/store/renameUiStore";
 import { useAppConfigStore, appThemeValue } from "@/store/appConfig";
 import { useHomeDir } from "@/hooks/useHomeDir";
 import { useApplyAppTheme } from "@/hooks/useApplyAppTheme";
@@ -20,14 +22,11 @@ import { AppMainArea } from "@/components/layout/AppMainArea";
  * Keyboard shortcuts live in useAppLayoutShortcuts + lib/appLayoutShortcuts.
  */
 export function AppLayout() {
-	const { workspaces, activeWorkspaceId, createWorkspace } =
-		useSessionStore();
-	const activeSession = selectActiveSession({
-		workspaces,
-		activeWorkspaceId,
-	});
-	const activeCwd = activeSession?.cwd ?? "~";
-	const headerBranch = activeSession?.git?.branch ?? null;
+	const createWorkspace = useSessionStore((s) => s.createWorkspace);
+	const headerSlice = useSessionStore(useShallow(selectAppHeaderSlice));
+	const activeCwd = headerSlice.cwd;
+	const headerBranch = headerSlice.branch;
+	const renameOpen = useRenameUiStore((s) => s.target !== null);
 
 	const homeDir = useHomeDir();
 	const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -54,7 +53,7 @@ export function AppLayout() {
 	return (
 		<>
 			<SettingsDialog />
-			<RenameEntityDialog />
+			{renameOpen ? <RenameEntityDialog /> : null}
 			<SidebarProvider
 				open={sidebarOpen}
 				onOpenChange={setSidebarOpen}
@@ -69,8 +68,8 @@ export function AppLayout() {
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}
 						onToggleGitPanel={() => setGitPanelOpen((o) => !o)}
-						cumulativeUsage={activeSession?.cumulativeUsage ?? null}
-						lastTurnUsage={activeSession?.lastTurnUsage ?? null}
+						cumulativeUsage={headerSlice.cumulativeUsage ?? null}
+						lastTurnUsage={headerSlice.lastTurnUsage ?? null}
 					/>
 					<AppMainArea
 						gitPanelOpen={gitPanelOpen}

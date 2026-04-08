@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Main dialog ─────────────────────────────────────────────────────────────
-export function SettingsDialog() {
+function SettingsDialogImpl() {
 	const [open, setOpen] = useState(false);
 
 	const { terminalTheme, appTheme, setTerminalTheme, setAppTheme } =
@@ -202,3 +202,5 @@ export function SettingsDialog() {
 		</Dialog.Root>
 	);
 }
+
+export const SettingsDialog = memo(SettingsDialogImpl);

@@ -16,9 +16,14 @@ export type {
 } from "@/store/sessionsTypes";
 
 export {
+	buildMountedTerminalRows,
 	selectActiveSession,
 	selectActiveWorkspace,
+	selectActiveWorkspaceTabBarSignature,
+	selectAppHeaderSlice,
+	selectSidebarDisplaySignature,
 	findSession,
+	selectTerminalStackSignature,
 } from "@/store/sessionsSelectors";
 
 export {

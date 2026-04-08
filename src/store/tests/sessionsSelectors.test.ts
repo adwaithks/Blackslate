@@ -4,6 +4,9 @@ import {
 	findSession,
 	selectActiveSession,
 	selectActiveWorkspace,
+	selectActiveWorkspaceTabBarSignature,
+	selectAppHeaderSlice,
+	selectSidebarDisplaySignature,
 } from "@/store/sessionsSelectors";
 import { makeSession, makeWorkspace } from "@/test/sessionFixtures";
 
@@ -132,5 +135,73 @@ describe("findSession", () => {
 
 	it("returns undefined for an empty workspace list", () => {
 		expect(findSession([], "s1")).toBeUndefined();
+	});
+});
+
+describe("selectActiveWorkspaceTabBarSignature", () => {
+	it("is unchanged when only shellState changes on the active tab", () => {
+		const tab = makeSession({ id: "t1", shellState: "idle" });
+		const ws = makeWorkspace({
+			id: "w1",
+			sessions: [tab],
+			activeSessionId: "t1",
+		});
+		const base = {
+			workspaces: [ws],
+			activeWorkspaceId: "w1",
+		};
+		const a = selectActiveWorkspaceTabBarSignature(base);
+		const tabRunning = { ...tab, shellState: "running" as const };
+		const ws2 = { ...ws, sessions: [tabRunning] };
+		const b = selectActiveWorkspaceTabBarSignature({
+			workspaces: [ws2],
+			activeWorkspaceId: "w1",
+		});
+		expect(a).toBe(b);
+	});
+});
+
+describe("selectSidebarDisplaySignature", () => {
+	it("is unchanged when only shellState changes", () => {
+		const tab = makeSession({ id: "t1", shellState: "idle" });
+		const ws = makeWorkspace({
+			id: "w1",
+			sessions: [tab],
+			activeSessionId: "t1",
+		});
+		const base = { workspaces: [ws], activeWorkspaceId: "w1" };
+		const a = selectSidebarDisplaySignature(base);
+		const tabRunning = { ...tab, shellState: "running" as const };
+		const ws2 = { ...ws, sessions: [tabRunning] };
+		const b = selectSidebarDisplaySignature({
+			workspaces: [ws2],
+			activeWorkspaceId: "w1",
+		});
+		expect(a).toBe(b);
+	});
+});
+
+describe("selectAppHeaderSlice", () => {
+	it("is unchanged when only shellState changes", () => {
+		const tab = makeSession({
+			id: "t1",
+			cwd: "~/proj",
+			shellState: "idle",
+			git: { branch: "main", dirty: false },
+		});
+		const ws = makeWorkspace({
+			id: "w1",
+			sessions: [tab],
+			activeSessionId: "t1",
+		});
+		const base = { workspaces: [ws], activeWorkspaceId: "w1" };
+		const h1 = selectAppHeaderSlice(base);
+		const tab2 = { ...tab, shellState: "running" as const };
+		const ws2 = { ...ws, sessions: [tab2] };
+		const h2 = selectAppHeaderSlice({
+			workspaces: [ws2],
+			activeWorkspaceId: "w1",
+		});
+		expect(h1).toEqual(h2);
 	});
 });

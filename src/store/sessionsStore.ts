@@ -11,6 +11,7 @@ import {
 	sessionLayoutLocalStorage,
 } from "@/store/sessionsPersistence";
 import type {
+	GitInfo,
 	PersistedSessionState,
 	Session,
 	SessionStore,
@@ -57,6 +58,20 @@ function makeWorkspace(initialCwd = "~", isMounted = false): Workspace {
 // Patch helpers
 // ---------------------------------------------------------------------------
 
+function sessionFieldUnchanged<K extends keyof Session>(
+	sess: Session,
+	key: K,
+	value: Session[K],
+): boolean {
+	if (Object.is(sess[key], value)) return true;
+	if (key === "git" && sess.git && value) {
+		const a = sess.git;
+		const b = value as GitInfo;
+		return a.branch === b.branch && a.dirty === b.dirty;
+	}
+	return false;
+}
+
 /**
  * Patch a single field on a session found by sessionId across all workspaces.
  * Returns the same `workspaces` reference when the session is not found —
@@ -72,6 +87,10 @@ export function patchSessionById<K extends keyof Session>(
 	const result = workspaces.map((ws) => {
 		const idx = ws.sessions.findIndex((s) => s.id === sessionId);
 		if (idx === -1) return ws;
+		const sess = ws.sessions[idx];
+		if (sessionFieldUnchanged(sess, key, value)) {
+			return ws;
+		}
 		updated = true;
 		return {
 			...ws,
@@ -80,7 +99,10 @@ export function patchSessionById<K extends keyof Session>(
 			),
 		};
 	});
-	return updated ? result : workspaces;
+	if (!updated) {
+		return workspaces;
+	}
+	return result;
 }
 
 function patchWorkspaceById<K extends keyof Workspace>(
