@@ -12,7 +12,7 @@
  * Only the fields in `PersistedSession` / `PersistedPane` / `PersistedWorkspace` are
  * written; runtime-only fields are stripped before each write and reset on restore.
  *
- * PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
+ * PTY wiring in `usePty`; OSC effects from `ptyStreamOsc.ts` (`@ansi-tools/parser`).
  * This store is the single source of truth for cwd, git, Claude UI state, etc.
  */
 

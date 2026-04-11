@@ -4,15 +4,9 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import { findSession, useSessionStore } from "@/store/sessions";
 import {
-	stripShellCursorShapeSequences,
-	parseOsc7WorkingDirectory,
-	parseOsc6973ShellState,
-	parseOsc6974ClaudeLifecycle,
-	parseOsc6975ToolLabel,
-	parseOsc6976Usage,
-	parseOsc6977SessionModel,
-	eachOscWindowTitle,
+	pullOscSideEffects,
 	stripClaudeWindowTitlePrefix,
+	stripShellCursorShapeSequences,
 } from "@/lib/ptyStreamOsc";
 
 // ---------------------------------------------------------------------------
@@ -116,62 +110,49 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 							: TEXT_ENCODER.encode(withoutCursor),
 					);
 
-					// --- OSC 6973: shell state ---
-					const shellState = parseOsc6973ShellState(withoutCursor);
-					if (shellState) {
-						setShellState(sessionId, shellState);
-					}
-
-					// --- OSC 7: cwd ---
-					const cwd = parseOsc7WorkingDirectory(withoutCursor, home);
-					if (cwd !== null) {
-						setCwd(sessionId, cwd);
-					}
-
-					// --- OSC 6974: Claude lifecycle ---
-					const lifecycle = parseOsc6974ClaudeLifecycle(withoutCursor);
-					if (lifecycle) {
-						claudeOscActive = true;
-						setClaudeState(sessionId, lifecycle);
-					}
-
-					// --- OSC 6975: tool label ---
-					const toolLabel = parseOsc6975ToolLabel(withoutCursor);
-					if (toolLabel !== undefined) {
-						setCurrentTool(sessionId, toolLabel);
-					}
-
-					// --- OSC 6977: SessionStart model ---
-					const sessionModel = parseOsc6977SessionModel(withoutCursor);
-					if (sessionModel) {
-						setClaudeModel(sessionId, sessionModel);
-					}
-
-					// --- OSC 6976: Stop hook usage ---
-					const usageParsed = parseOsc6976Usage(withoutCursor);
-					if (usageParsed) {
-						setLastTurnUsage(sessionId, usageParsed.usage);
-						if (usageParsed.model) {
-							setClaudeModel(sessionId, usageParsed.model);
-						}
-					}
-
-					// --- OSC 0/2: window title ---
-					for (const rawTitle of eachOscWindowTitle(withoutCursor)) {
-						if (rawTitle.length > 0) {
-							const name = stripClaudeWindowTitlePrefix(rawTitle);
-							if (name === "Claude Code") {
+					for (const e of pullOscSideEffects(withoutCursor, home)) {
+						switch (e.type) {
+							case "shell_state":
+								setShellState(sessionId, e.state);
+								break;
+							case "cwd":
+								setCwd(sessionId, e.path);
+								break;
+							case "claude_lifecycle":
 								claudeOscActive = true;
-							} else if (
-								name &&
-								claudeOscActive &&
-								name !== lastSessionTitle
-							) {
-								lastSessionTitle = name;
-								setClaudeSessionTitle(sessionId, name);
+								setClaudeState(sessionId, e.lifecycle);
+								break;
+							case "tool_label":
+								setCurrentTool(sessionId, e.label);
+								break;
+							case "session_model":
+								setClaudeModel(sessionId, e.model);
+								break;
+							case "turn_usage":
+								setLastTurnUsage(sessionId, e.usage);
+								if (e.model) setClaudeModel(sessionId, e.model);
+								break;
+							case "window_title": {
+								const rawTitle = e.raw;
+								if (rawTitle.length > 0) {
+									const name = stripClaudeWindowTitlePrefix(rawTitle);
+									if (name === "Claude Code") {
+										claudeOscActive = true;
+									} else if (
+										name &&
+										claudeOscActive &&
+										name !== lastSessionTitle
+									) {
+										lastSessionTitle = name;
+										setClaudeSessionTitle(sessionId, name);
+									}
+								} else if (claudeOscActive) {
+									clearClaudeOscState();
+								}
+								break;
 							}
-						} else if (claudeOscActive) {
-							clearClaudeOscState();
+							default:
+								break;
 						}
 					}
 				},

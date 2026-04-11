@@ -16,5 +16,8 @@ export default defineConfig({
 		environment: "node",
 		include: ["src/**/*.{test,spec}.{ts,tsx}"],
 		passWithNoTests: true,
+		// setupFiles runs before executing tests in the file, hence the stub is in place
+		// before the actual test file is executed.
+		setupFiles: [path.resolve(__dirname, "./src/test/vitestSetup.ts")],
 	},
 });

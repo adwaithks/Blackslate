@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ansi-tools/parser": "^1.0.15",
     "@base-ui/react": "^1.3.0",
     "@fontsource-variable/geist-mono": "^5.2.7",
     "@git-diff-view/react": "^0.1.3",
