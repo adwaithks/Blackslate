@@ -8,7 +8,8 @@ use terminal::commands::{
     discard_all, discard_file, get_git_diff, get_git_diff_bundle, get_git_status,
     get_git_status_poll, get_home_dir, get_log_dir, git_discover_repo_root, git_info,
     list_claude_projects, list_claude_sessions, list_global_hooks, list_global_skills,
-    list_project_hooks, list_project_skills, pick_folders, pty_claude_code_active, pty_close,
+    list_md_files, list_project_hooks, list_project_skills, pick_folders, pty_claude_code_active,
+    pty_close,
     pty_create, pty_resize, pty_session_paths, pty_write, read_skill_content, stage_all,
     stage_file, unstage_all, unstage_file,
 };
@@ -56,6 +57,7 @@ pub fn run() {
             read_skill_content,
             list_global_hooks,
             list_project_hooks,
+            list_md_files,
         ]);
 
     #[cfg(target_os = "macos")]
