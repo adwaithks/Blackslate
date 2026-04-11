@@ -1,9 +1,16 @@
 /**
  * Workspace / session model for Blackslate.
  *
- * Layout is persisted to localStorage via Zustand persist (see `sessionsPersistence.ts` for key + I/O).
- * Only the fields in `PersistedSession` / `PersistedWorkspace` are written; runtime-only
- * fields are stripped before each write and reset to zero values on restore.
+ * Layout: workspace → panes[] → sessions[]
+ *   - A workspace is one sidebar entry.
+ *   - A pane is a layout region inside a workspace (e.g. left / right split).
+ *     For now every workspace starts with exactly one pane; the UI for creating
+ *     additional panes (vertical splits) is not yet implemented.
+ *   - A session is one terminal tab inside a pane.
+ *
+ * Layout is persisted to localStorage via Zustand persist (see `sessionsPersistence.ts`).
+ * Only the fields in `PersistedSession` / `PersistedPane` / `PersistedWorkspace` are
+ * written; runtime-only fields are stripped before each write and reset on restore.
  *
  * PTY wiring in `usePty`; OSC parsing helpers in `ptyStreamOsc.ts`.
  * This store is the single source of truth for cwd, git, Claude UI state, etc.
@@ -43,11 +50,17 @@ export interface PersistedSession {
 	createdAt: number;
 }
 
+export interface PersistedPane {
+	id: string;
+	activeSessionId: string;
+	sessions: PersistedSession[];
+}
+
 export interface PersistedWorkspace {
 	id: string;
 	customName: string | null;
-	activeSessionId: string;
-	sessions: PersistedSession[];
+	activePaneId: string;
+	panes: PersistedPane[];
 }
 
 export interface PersistedSessionState {
@@ -61,7 +74,7 @@ export interface Session {
 	 * User-set tab label. When non-null, automatic labels (cwd / Claude session title) are ignored.
 	 */
 	customName: string | null;
-	/** Current working directory, tilde-normalised (e.g. "~/Projects/Slate"). */
+	/** Current working directory, tilde-normalised (e.g. "~/Projects/Blackslate"). */
 	cwd: string;
 	/** Unix timestamp of when the session was created. */
 	createdAt: number;
@@ -103,9 +116,21 @@ export interface Session {
 }
 
 /**
- * A workspace is one sidebar entry that groups multiple terminal sessions
- * (horizontal tabs). ⌘N creates a new workspace; ⌘T creates a new session
- * within the active workspace.
+ * A pane is a layout region inside a workspace that owns one or more terminal
+ * sessions (horizontal tabs). Each workspace starts with a single pane.
+ * Future work: multiple panes per workspace enables vertical splits.
+ */
+export interface Pane {
+	id: string;
+	sessions: Session[];
+	/** The session currently shown in this pane's terminal area. */
+	activeSessionId: string;
+}
+
+/**
+ * A workspace is one sidebar entry that groups one or more panes.
+ * ⌘N creates a new workspace; ⌘T creates a new session within the active pane
+ * of the active workspace.
  */
 export interface Workspace {
 	id: string;
@@ -113,9 +138,9 @@ export interface Workspace {
 	 * User-set sidebar label. When non-null, the name no longer tracks the active terminal.
 	 */
 	customName: string | null;
-	sessions: Session[];
-	/** The session currently shown in this workspace's terminal area. */
-	activeSessionId: string;
+	panes: Pane[];
+	/** The pane currently visible in this workspace. */
+	activePaneId: string;
 }
 
 export interface SessionState {
@@ -127,24 +152,24 @@ export interface SessionActions {
 	// ── Workspace lifecycle ──────────────────────────────────────────────────
 	/** Create a new workspace with one fresh session, make it active (⌘N). */
 	createWorkspace: () => void;
-	/** Close a workspace and all its sessions. Always keeps at least one workspace. */
+	/** Close a workspace and all its panes/sessions. Always keeps at least one workspace. */
 	closeWorkspace: (workspaceId: string) => void;
 	/** Switch the visible workspace (sidebar click). */
 	activateWorkspace: (workspaceId: string) => void;
 
-	// ── Session lifecycle (within a workspace) ───────────────────────────────
-	/** Add a new session to an existing workspace, make it active (⌘T). */
+	// ── Session lifecycle (within the active pane of a workspace) ────────────
+	/** Add a new session to the active pane of a workspace, make it active (⌘T). */
 	createSessionInWorkspace: (workspaceId: string) => void;
 	/**
-	 * Close a session within a workspace.
-	 * If it was the last session, the workspace itself is closed.
+	 * Close a session within a workspace (the store finds its pane internally).
+	 * If it was the last session in the last pane, the workspace itself is closed.
 	 */
 	closeSession: (workspaceId: string, sessionId: string) => void;
-	/** Switch the active tab within a workspace. */
+	/** Switch the active tab within a workspace (store finds the pane internally). */
 	activateSession: (workspaceId: string, sessionId: string) => void;
 
 	// ── Per-session state setters ────────────────────────────────────────────
-	// These take only `sessionId` — the store finds the owning workspace
+	// These take only `sessionId` — the store finds the owning workspace/pane
 	// internally. This keeps `usePty` and `TerminalPane` free of workspaceId.
 
 	/** Update the working directory (called by the OSC 7 parser in usePty). */
@@ -167,13 +192,14 @@ export interface SessionActions {
 	// ── Layout persistence ───────────────────────────────────────────────────
 	/**
 	 * Bulk-replace state from a validated persisted snapshot.
-	 * Sets `isMounted: true` only for the active session in the active workspace;
-	 * all other restored sessions start unmounted and are lazily mounted on first activation.
+	 * Sets `isMounted: true` only for the active session in the active pane of the
+	 * active workspace; all other restored sessions start unmounted and are lazily
+	 * mounted on first activation.
 	 */
 	restoreFromLayout: (layout: PersistedSessionState) => void;
 	/**
 	 * Called when localStorage data is missing or fails validation.
-	 * Clears the persisted key and resets to one fresh workspace + one session.
+	 * Clears the persisted key and resets to one fresh workspace + one pane + one session.
 	 */
 	resetToDefault: () => void;
 }

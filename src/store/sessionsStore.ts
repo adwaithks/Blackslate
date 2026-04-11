@@ -12,6 +12,7 @@ import {
 } from "@/store/sessionsPersistence";
 import type {
 	GitInfo,
+	Pane,
 	PersistedSessionState,
 	Session,
 	SessionStore,
@@ -43,14 +44,23 @@ function makeSession(cwd = "~", isMounted = false): Session {
 	};
 }
 
+function makePane(cwd = "~", isMounted = false): Pane {
+	const session = makeSession(cwd, isMounted);
+	return {
+		id: crypto.randomUUID(),
+		sessions: [session],
+		activeSessionId: session.id,
+	};
+}
+
 /** `initialCwd` is usually `~` (first launch) or copied from the active session when adding a workspace/tab. */
 function makeWorkspace(initialCwd = "~", isMounted = false): Workspace {
-	const session = makeSession(initialCwd, isMounted);
+	const pane = makePane(initialCwd, isMounted);
 	return {
 		id: crypto.randomUUID(),
 		customName: null,
-		sessions: [session],
-		activeSessionId: session.id,
+		panes: [pane],
+		activePaneId: pane.id,
 	};
 }
 
@@ -73,7 +83,7 @@ function sessionFieldUnchanged<K extends keyof Session>(
 }
 
 /**
- * Patch a single field on a session found by sessionId across all workspaces.
+ * Patch a single field on a session found by sessionId across all workspaces and panes.
  * Returns the same `workspaces` reference when the session is not found —
  * avoids unnecessary re-renders from stale async handlers.
  */
@@ -85,19 +95,23 @@ export function patchSessionById<K extends keyof Session>(
 ): Workspace[] {
 	let updated = false;
 	const result = workspaces.map((ws) => {
-		const idx = ws.sessions.findIndex((s) => s.id === sessionId);
-		if (idx === -1) return ws;
-		const sess = ws.sessions[idx];
-		if (sessionFieldUnchanged(sess, key, value)) {
-			return ws;
-		}
+		let paneUpdated = false;
+		const panes = ws.panes.map((pane) => {
+			const idx = pane.sessions.findIndex((s) => s.id === sessionId);
+			if (idx === -1) return pane;
+			const sess = pane.sessions[idx];
+			if (sessionFieldUnchanged(sess, key, value)) return pane;
+			paneUpdated = true;
+			return {
+				...pane,
+				sessions: pane.sessions.map((s) =>
+					s.id === sessionId ? { ...s, [key]: value } : s,
+				),
+			};
+		});
+		if (!paneUpdated) return ws;
 		updated = true;
-		return {
-			...ws,
-			sessions: ws.sessions.map((s) =>
-				s.id === sessionId ? { ...s, [key]: value } : s,
-			),
-		};
+		return { ...ws, panes };
 	});
 	if (!updated) {
 		return workspaces;
@@ -116,7 +130,7 @@ function patchWorkspaceById<K extends keyof Workspace>(
 	);
 }
 
-/** Flip isMounted=true on a specific session inside a specific workspace. */
+/** Flip isMounted=true on a specific session inside a specific workspace (searches all panes). */
 function mountSession(
 	workspaces: Workspace[],
 	workspaceId: string,
@@ -126,9 +140,12 @@ function mountSession(
 		if (ws.id !== workspaceId) return ws;
 		return {
 			...ws,
-			sessions: ws.sessions.map((s) =>
-				s.id === sessionId ? { ...s, isMounted: true } : s,
-			),
+			panes: ws.panes.map((pane) => ({
+				...pane,
+				sessions: pane.sessions.map((s) =>
+					s.id === sessionId ? { ...s, isMounted: true } : s,
+				),
+			})),
 		};
 	});
 }
@@ -186,11 +203,13 @@ export const useSessionStore = create<SessionStore>()(
 				set((s) => {
 					const ws = s.workspaces.find((w) => w.id === workspaceId);
 					if (!ws) return s;
-					// Mount the workspace's active session on first activation.
+					const activePane = ws.panes.find((p) => p.id === ws.activePaneId);
+					if (!activePane) return s;
+					// Mount the active pane's active session on first activation.
 					const workspaces = mountSession(
 						s.workspaces,
 						workspaceId,
-						ws.activeSessionId,
+						activePane.activeSessionId,
 					);
 					return { workspaces, activeWorkspaceId: workspaceId };
 				});
@@ -199,19 +218,29 @@ export const useSessionStore = create<SessionStore>()(
 			createSessionInWorkspace(workspaceId) {
 				set((s) => {
 					const ws = s.workspaces.find((w) => w.id === workspaceId);
+					if (!ws) return s;
+					const activePane = ws.panes.find((p) => p.id === ws.activePaneId);
 					const cwd =
-						ws?.sessions.find((sess) => sess.id === ws.activeSessionId)
-							?.cwd ?? "~";
+						activePane?.sessions.find(
+							(sess) => sess.id === activePane.activeSessionId,
+						)?.cwd ?? "~";
 					const session = makeSession(cwd, true); // always mounted immediately
 					return {
 						workspaces: s.workspaces.map((w) =>
-							w.id === workspaceId
-								? {
+							w.id !== workspaceId
+								? w
+								: {
 										...w,
-										sessions: [...w.sessions, session],
-										activeSessionId: session.id,
-									}
-								: w,
+										panes: w.panes.map((p) =>
+											p.id !== w.activePaneId
+												? p
+												: {
+														...p,
+														sessions: [...p.sessions, session],
+														activeSessionId: session.id,
+													},
+										),
+									},
 						),
 					};
 				});
@@ -221,10 +250,20 @@ export const useSessionStore = create<SessionStore>()(
 				set((s) => {
 					const ws = s.workspaces.find((w) => w.id === workspaceId);
 					if (!ws) return s;
-					if (!ws.sessions.some((x) => x.id === sessionId)) return s;
 
-					// Last session in the workspace → close the whole workspace.
-					if (ws.sessions.length <= 1) {
+					// Find the pane that owns this session.
+					const pane = ws.panes.find((p) =>
+						p.sessions.some((x) => x.id === sessionId),
+					);
+					if (!pane) return s;
+
+					const totalSessions = ws.panes.reduce(
+						(sum, p) => sum + p.sessions.length,
+						0,
+					);
+
+					// Last session across all panes → close the whole workspace.
+					if (totalSessions <= 1) {
 						if (s.workspaces.length <= 1) return s;
 						const idx = s.workspaces.findIndex((w) => w.id === workspaceId);
 						const workspaces = s.workspaces.filter(
@@ -237,19 +276,43 @@ export const useSessionStore = create<SessionStore>()(
 						return { workspaces, activeWorkspaceId };
 					}
 
-					// Remove the session; activate nearest sibling if it was active.
-					const idx = ws.sessions.findIndex((x) => x.id === sessionId);
-					const sessions = ws.sessions.filter((x) => x.id !== sessionId);
+					// Last session in this pane (but other panes exist) → close the pane.
+					if (pane.sessions.length <= 1) {
+						const paneIdx = ws.panes.findIndex((p) => p.id === pane.id);
+						const newPanes = ws.panes.filter((p) => p.id !== pane.id);
+						const activePaneId =
+							ws.activePaneId === pane.id
+								? newPanes[Math.max(0, paneIdx - 1)].id
+								: ws.activePaneId;
+						return {
+							workspaces: s.workspaces.map((w) =>
+								w.id === workspaceId
+									? { ...w, panes: newPanes, activePaneId }
+									: w,
+							),
+						};
+					}
+
+					// Remove the session from its pane; activate nearest sibling if it was active.
+					const idx = pane.sessions.findIndex((x) => x.id === sessionId);
+					const sessions = pane.sessions.filter((x) => x.id !== sessionId);
 					const activeSessionId =
-						ws.activeSessionId === sessionId
+						pane.activeSessionId === sessionId
 							? sessions[Math.max(0, idx - 1)].id
-							: ws.activeSessionId;
+							: pane.activeSessionId;
 
 					return {
 						workspaces: s.workspaces.map((w) =>
-							w.id === workspaceId
-								? { ...w, sessions, activeSessionId }
-								: w,
+							w.id !== workspaceId
+								? w
+								: {
+										...w,
+										panes: w.panes.map((p) =>
+											p.id !== pane.id
+												? p
+												: { ...p, sessions, activeSessionId },
+										),
+									},
 						),
 					};
 				});
@@ -258,14 +321,26 @@ export const useSessionStore = create<SessionStore>()(
 			activateSession(workspaceId, sessionId) {
 				set((s) => {
 					const ws = s.workspaces.find((w) => w.id === workspaceId);
-					if (!ws || !ws.sessions.some((x) => x.id === sessionId)) return s;
+					if (!ws) return s;
+					const pane = ws.panes.find((p) =>
+						p.sessions.some((x) => x.id === sessionId),
+					);
+					if (!pane) return s;
 					// Mount the session on first activation.
 					const workspaces = mountSession(s.workspaces, workspaceId, sessionId);
 					return {
 						workspaces: workspaces.map((w) =>
-							w.id === workspaceId
-								? { ...w, activeSessionId: sessionId }
-								: w,
+							w.id !== workspaceId
+								? w
+								: {
+										...w,
+										activePaneId: pane.id,
+										panes: w.panes.map((p) =>
+											p.id !== pane.id
+												? p
+												: { ...p, activeSessionId: sessionId },
+										),
+									},
 						),
 						activeWorkspaceId: workspaceId,
 					};
@@ -389,33 +464,38 @@ export const useSessionStore = create<SessionStore>()(
 			setLastTurnUsage(sessionId, lastTurnUsage) {
 				set((s) => {
 					const exists = s.workspaces.some((ws) =>
-						ws.sessions.some((sess) => sess.id === sessionId),
+						ws.panes.some((p) =>
+							p.sessions.some((sess) => sess.id === sessionId),
+						),
 					);
 					if (!exists) return s;
 
 					return {
 						workspaces: s.workspaces.map((ws) => ({
 							...ws,
-							sessions: ws.sessions.map((sess) => {
-								if (sess.id !== sessionId) return sess;
-								if (lastTurnUsage === null) {
-									return { ...sess, lastTurnUsage: null };
-								}
-								const prev = sess.cumulativeUsage;
-								const cumulative: TurnUsage = prev
-									? {
-											inputTokens:
-												prev.inputTokens + lastTurnUsage.inputTokens,
-											outputTokens:
-												prev.outputTokens + lastTurnUsage.outputTokens,
-											cacheRead:
-												prev.cacheRead + lastTurnUsage.cacheRead,
-											cacheWrite:
-												prev.cacheWrite + lastTurnUsage.cacheWrite,
-										}
-									: { ...lastTurnUsage };
-								return { ...sess, lastTurnUsage, cumulativeUsage: cumulative };
-							}),
+							panes: ws.panes.map((pane) => ({
+								...pane,
+								sessions: pane.sessions.map((sess) => {
+									if (sess.id !== sessionId) return sess;
+									if (lastTurnUsage === null) {
+										return { ...sess, lastTurnUsage: null };
+									}
+									const prev = sess.cumulativeUsage;
+									const cumulative: TurnUsage = prev
+										? {
+												inputTokens:
+													prev.inputTokens + lastTurnUsage.inputTokens,
+												outputTokens:
+													prev.outputTokens + lastTurnUsage.outputTokens,
+												cacheRead:
+													prev.cacheRead + lastTurnUsage.cacheRead,
+												cacheWrite:
+													prev.cacheWrite + lastTurnUsage.cacheWrite,
+											}
+										: { ...lastTurnUsage };
+									return { ...sess, lastTurnUsage, cumulativeUsage: cumulative };
+								}),
+							})),
 						})),
 					};
 				});
@@ -428,14 +508,20 @@ export const useSessionStore = create<SessionStore>()(
 					const workspaces = persistedWorkspaces.map((pw) => ({
 						id: pw.id,
 						customName: pw.customName,
-						activeSessionId: pw.activeSessionId,
-						sessions: pw.sessions.map((ps) =>
-							sessionFromPersisted(
-								ps,
-								// Only the active session in the active workspace is mounted eagerly.
-								pw.id === activeWorkspaceId && ps.id === pw.activeSessionId,
+						activePaneId: pw.activePaneId,
+						panes: pw.panes.map((pp) => ({
+							id: pp.id,
+							activeSessionId: pp.activeSessionId,
+							sessions: pp.sessions.map((ps) =>
+								sessionFromPersisted(
+									ps,
+									// Only the active session in the active pane of the active workspace is mounted eagerly.
+									pw.id === activeWorkspaceId &&
+										pp.id === pw.activePaneId &&
+										ps.id === pp.activeSessionId,
+								),
 							),
-						),
+						})),
 					}));
 					return { activeWorkspaceId, workspaces };
 				});

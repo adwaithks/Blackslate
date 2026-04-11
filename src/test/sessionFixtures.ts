@@ -1,4 +1,4 @@
-import type { Session, Workspace } from "@/store/sessionsTypes";
+import type { Pane, Session, Workspace } from "@/store/sessionsTypes";
 
 /** Minimal `Session` for store / selector unit tests — override fields as needed. */
 export function makeSession(
@@ -23,13 +23,29 @@ export function makeSession(
 	};
 }
 
-/** Minimal `Workspace` for store / selector unit tests — override fields as needed. */
+/**
+ * Minimal `Workspace` for unit tests.
+ *
+ * Accepts the legacy shorthand `{ sessions, activeSessionId }` and wraps them
+ * into a single pane automatically — this keeps all existing test call-sites
+ * unchanged while the runtime model uses workspace → panes[] → sessions[].
+ */
 export function makeWorkspace(
-	partial: Partial<Workspace> &
-		Pick<Workspace, "id" | "sessions" | "activeSessionId">,
+	partial: Partial<Omit<Workspace, "panes" | "activePaneId">> &
+		Pick<Workspace, "id"> & {
+			sessions: Session[];
+			activeSessionId: string;
+		},
 ): Workspace {
+	const pane: Pane = {
+		id: "pane-" + partial.id,
+		sessions: partial.sessions,
+		activeSessionId: partial.activeSessionId,
+	};
 	return {
-		customName: null,
-		...partial,
+		customName: partial.customName ?? null,
+		id: partial.id,
+		panes: [pane],
+		activePaneId: pane.id,
 	};
 }

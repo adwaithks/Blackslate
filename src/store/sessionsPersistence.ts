@@ -6,6 +6,7 @@
 import { createJSONStorage } from "zustand/middleware";
 
 import type {
+	PersistedPane,
 	PersistedSession,
 	PersistedSessionState,
 	PersistedWorkspace,
@@ -35,15 +36,26 @@ function isPersistedSession(v: unknown): v is PersistedSession {
 	);
 }
 
+function isPersistedPane(v: unknown): v is PersistedPane {
+	if (!v || typeof v !== "object") return false;
+	const p = v as Record<string, unknown>;
+	return (
+		typeof p.id === "string" &&
+		typeof p.activeSessionId === "string" &&
+		Array.isArray(p.sessions) &&
+		p.sessions.every(isPersistedSession)
+	);
+}
+
 function isPersistedWorkspace(v: unknown): v is PersistedWorkspace {
 	if (!v || typeof v !== "object") return false;
 	const w = v as Record<string, unknown>;
 	return (
 		typeof w.id === "string" &&
 		(w.customName === null || typeof w.customName === "string") &&
-		typeof w.activeSessionId === "string" &&
-		Array.isArray(w.sessions) &&
-		w.sessions.every(isPersistedSession)
+		typeof w.activePaneId === "string" &&
+		Array.isArray(w.panes) &&
+		w.panes.every(isPersistedPane)
 	);
 }
 
@@ -60,8 +72,15 @@ export function validatePersistedSessionState(
 		(s.workspaces as PersistedWorkspace[]).some(
 			(w) => w.id === s.activeWorkspaceId,
 		) &&
-		(s.workspaces as PersistedWorkspace[]).every((w) =>
-			w.sessions.some((sess) => sess.id === w.activeSessionId),
+		(s.workspaces as PersistedWorkspace[]).every(
+			(w) =>
+				w.panes.length > 0 &&
+				w.panes.some((p) => p.id === w.activePaneId) &&
+				w.panes.every(
+					(p) =>
+						p.sessions.length > 0 &&
+						p.sessions.some((sess) => sess.id === p.activeSessionId),
+				),
 		)
 	);
 }
@@ -100,15 +119,19 @@ export function partializeSessionStore(s: SessionStore): PersistedSessionState {
 		workspaces: s.workspaces.map((ws) => ({
 			id: ws.id,
 			customName: ws.customName,
-			activeSessionId: ws.activeSessionId,
-			sessions: ws.sessions.map(
-				({ id, customName, cwd, createdAt }): PersistedSession => ({
-					id,
-					customName,
-					cwd,
-					createdAt,
-				}),
-			),
+			activePaneId: ws.activePaneId,
+			panes: ws.panes.map((pane) => ({
+				id: pane.id,
+				activeSessionId: pane.activeSessionId,
+				sessions: pane.sessions.map(
+					({ id, customName, cwd, createdAt }): PersistedSession => ({
+						id,
+						customName,
+						cwd,
+						createdAt,
+					}),
+				),
+			})),
 		})),
 	};
 }
@@ -120,6 +143,9 @@ export function clearPersistedSessionLayout(): void {
 /**
  * After Zustand reads localStorage: validate shape, then call `restoreFromLayout`
  * so `isMounted` and runtime session fields are seeded correctly.
+ *
+ * Note: the schema changed from `workspace.sessions[]` to `workspace.panes[].sessions[]`.
+ * Old persisted layouts will fail validation and reset to defaults.
  */
 export function handleSessionStoreRehydrate(
 	state: SessionStore | undefined,

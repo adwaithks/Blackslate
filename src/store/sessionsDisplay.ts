@@ -1,6 +1,6 @@
 import type { Session, Workspace } from "@/store/sessionsTypes";
 
-/** NOTE: session is equivalent to a terminal inside a workspace. */
+/** NOTE: session is equivalent to a terminal inside a pane inside a workspace. */
 
 /**
  * display name for a session: the last path segment of cwd, or "~" / "/"
@@ -21,13 +21,17 @@ export function terminalDisplayName(session: Session): string {
 }
 
 /**
- * Sidebar workspace row: explicit name wins, else the active tab’s {@link terminalDisplayName}.
+ * Sidebar workspace row: explicit name wins, else the active tab's {@link terminalDisplayName}.
  */
 export function workspaceDisplayName(workspace: Workspace): string {
 	if (workspace.customName !== null) return workspace.customName;
+	const activePane =
+		workspace.panes.find((p) => p.id === workspace.activePaneId) ??
+		workspace.panes[0];
+	if (!activePane) return "~";
 	const active =
-		workspace.sessions.find((s) => s.id === workspace.activeSessionId) ??
-		workspace.sessions[0];
+		activePane.sessions.find((s) => s.id === activePane.activeSessionId) ??
+		activePane.sessions[0];
 	if (!active) return "~";
 	return terminalDisplayName(active);
 }

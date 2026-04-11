@@ -1,13 +1,17 @@
-import type { Session, SessionState, Workspace } from "@/store/sessionsTypes";
+import type { Pane, Session, SessionState, Workspace } from "@/store/sessionsTypes";
 
 /**
  * Pure selectors — safe to call outside React (tests, derived state).
  */
 
 function displaySessionForWorkspace(workspace: Workspace): Session | undefined {
+	const activePane =
+		workspace.panes.find((p) => p.id === workspace.activePaneId) ??
+		workspace.panes[0];
+	if (!activePane) return undefined;
 	return (
-		workspace.sessions.find((s) => s.id === workspace.activeSessionId) ??
-		workspace.sessions[0]
+		activePane.sessions.find((s) => s.id === activePane.activeSessionId) ??
+		activePane.sessions[0]
 	);
 }
 
@@ -44,13 +48,16 @@ export function selectAppHeaderSlice(state: SessionState): {
 export function selectActiveWorkspaceTabBarSignature(state: SessionState): string {
 	const w = selectActiveWorkspace(state);
 	if (!w) return "";
+	const activePane = selectActivePaneForWorkspace(w);
+	if (!activePane) return "";
 	const parts = [
 		w.id,
 		w.customName ?? "",
-		w.activeSessionId,
-		w.sessions.map((s) => s.id).join(","),
+		w.activePaneId,
+		activePane.activeSessionId,
+		activePane.sessions.map((s) => s.id).join(","),
 	];
-	for (const s of w.sessions) {
+	for (const s of activePane.sessions) {
 		parts.push(
 			s.id,
 			s.customName ?? "",
@@ -72,10 +79,11 @@ export function selectSidebarDisplaySignature(state: SessionState): string {
 	for (const w of state.workspaces) {
 		const sess = displaySessionForWorkspace(w);
 		if (!sess) continue;
+		const totalSessions = w.panes.reduce((sum, p) => sum + p.sessions.length, 0);
 		parts.push(
 			w.id,
 			w.customName ?? "",
-			String(w.sessions.length),
+			String(totalSessions),
 			sess.id,
 			sess.customName ?? "",
 			sess.cwd,
@@ -96,15 +104,23 @@ export function selectActiveWorkspace(
 	return state.workspaces.find((w) => w.id === state.activeWorkspaceId);
 }
 
+export function selectActivePaneForWorkspace(
+	workspace: Workspace,
+): Pane | undefined {
+	return workspace.panes.find((p) => p.id === workspace.activePaneId);
+}
+
 export function selectActiveSession(
 	state: Pick<SessionState, "workspaces" | "activeWorkspaceId">,
 ): Session | undefined {
 	const ws = selectActiveWorkspace(state);
-	return ws?.sessions.find((s) => s.id === ws.activeSessionId);
+	if (!ws) return undefined;
+	const pane = selectActivePaneForWorkspace(ws);
+	return pane?.sessions.find((s) => s.id === pane.activeSessionId);
 }
 
 /**
- * Find a session by id across all workspaces.
+ * Find a session by id across all workspaces and panes.
  * Use this in component selectors instead of iterating sessions directly.
  */
 export function findSession(
@@ -112,10 +128,22 @@ export function findSession(
 	sessionId: string,
 ): Session | undefined {
 	for (const ws of workspaces) {
-		const s = ws.sessions.find((x) => x.id === sessionId);
-		if (s) return s;
+		for (const pane of ws.panes) {
+			const s = pane.sessions.find((x) => x.id === sessionId);
+			if (s) return s;
+		}
 	}
 	return undefined;
+}
+
+/**
+ * Find the pane that owns a given session within a workspace.
+ */
+export function findPaneForSession(
+	workspace: Workspace,
+	sessionId: string,
+): Pane | undefined {
+	return workspace.panes.find((p) => p.sessions.some((s) => s.id === sessionId));
 }
 
 /**
@@ -127,14 +155,17 @@ export function buildMountedTerminalRows(
 ): Array<{ sessionId: string; isActive: boolean }> {
 	const rows: Array<{ sessionId: string; isActive: boolean }> = [];
 	for (const w of state.workspaces) {
-		for (const sess of w.sessions) {
-			if (!sess.isMounted) continue;
-			rows.push({
-				sessionId: sess.id,
-				isActive:
-					w.id === state.activeWorkspaceId &&
-					sess.id === w.activeSessionId,
-			});
+		for (const pane of w.panes) {
+			for (const sess of pane.sessions) {
+				if (!sess.isMounted) continue;
+				rows.push({
+					sessionId: sess.id,
+					isActive:
+						w.id === state.activeWorkspaceId &&
+						pane.id === w.activePaneId &&
+						sess.id === pane.activeSessionId,
+				});
+			}
 		}
 	}
 	rows.sort((a, b) => a.sessionId.localeCompare(b.sessionId));

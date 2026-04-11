@@ -1,4 +1,5 @@
 import { LuDot, LuFolder } from "react-icons/lu";
+import { toast } from "sonner";
 import {
 	HEADER_REPO_ICON,
 	HEADER_REPO_SEP,
@@ -10,6 +11,12 @@ export interface TitlebarCwdBranchLineProps {
 	cwd: string;
 	/** Current git branch for that directory, when known. */
 	branch: string | null;
+}
+
+function copyToClipboard(text: string) {
+	navigator.clipboard.writeText(text).then(() => {
+		toast.success(`Copied ${text}`, { duration: 2000 });
+	});
 }
 
 /**
@@ -27,7 +34,8 @@ export function TitlebarCwdBranchLine({ cwd, branch }: TitlebarCwdBranchLineProp
 				aria-hidden
 			/>
 			<span
-				className={`min-w-0 max-w-[35cqw] shrink truncate ${HEADER_REPO_TEXT}`}
+				className={`min-w-0 max-w-[35cqw] shrink truncate ${HEADER_REPO_TEXT} cursor-pointer`}
+				onDoubleClick={() => copyToClipboard(cwd)}
 			>
 				{cwd}
 			</span>
@@ -38,7 +46,8 @@ export function TitlebarCwdBranchLine({ cwd, branch }: TitlebarCwdBranchLineProp
 						aria-hidden
 					/>
 					<span
-						className={`min-w-0 shrink truncate ${HEADER_REPO_TEXT}`}
+						className={`min-w-0 shrink truncate ${HEADER_REPO_TEXT} cursor-pointer`}
+						onDoubleClick={() => copyToClipboard(branch)}
 					>
 						{branch}
 					</span>

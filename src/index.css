@@ -40,6 +40,23 @@ html.dark #root {
 	-webkit-app-region: no-drag;
 }
 
+/* Sonner toasts: match app font and reduce size */
+[data-sonner-toast] {
+	font-family: "Geist Mono Variable", "GeistMono", monospace !important;
+	font-size: 11px !important;
+	padding: 8px 12px !important;
+	min-height: unset !important;
+	gap: 6px !important;
+}
+[data-sonner-toast] [data-title] {
+	font-size: 11px !important;
+	line-height: 1.3 !important;
+}
+[data-sonner-toast] [data-description] {
+	font-size: 10px !important;
+	line-height: 1.3 !important;
+}
+
 /* xterm: root + legacy viewport fill the pane. Do NOT set height on `.xterm-screen` — the
    renderer sets buffer height inline; `height: 100% !important` overrides that and breaks scrollback
    metrics (wrong thumb size, drag on the real scrollbar). */

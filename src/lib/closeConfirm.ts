@@ -15,16 +15,20 @@ export function sessionHasActiveWork(session: Session): boolean {
 }
 
 export function workspaceHasActiveWork(workspace: Workspace): boolean {
-	return workspace.sessions.some(sessionHasActiveWork);
+	return workspace.panes.some((pane) =>
+		pane.sessions.some(sessionHasActiveWork),
+	);
 }
 
 /**
- * Close workspace (⌘⇧W, sidebar): confirm if any terminal is busy or there are 3+ tabs.
+ * Close workspace (⌘⇧W, sidebar): confirm if any terminal is busy or there are 3+ tabs total.
  */
 export function workspaceNeedsCloseConfirmation(workspace: Workspace): boolean {
-	return (
-		workspaceHasActiveWork(workspace) || workspace.sessions.length >= 3
+	const totalSessions = workspace.panes.reduce(
+		(sum, p) => sum + p.sessions.length,
+		0,
 	);
+	return workspaceHasActiveWork(workspace) || totalSessions >= 3;
 }
 
 export async function confirmCloseWorkspace(
@@ -50,16 +54,24 @@ export async function confirmCloseTerminalTab(session: Session): Promise<boolean
 }
 
 /**
- * Tab bar / ⌘W: last tab in a workspace follows workspace close rules; otherwise shell-only.
+ * Tab bar / ⌘W: last tab across all panes follows workspace close rules; otherwise shell-only.
  */
 export async function confirmCloseSessionInWorkspace(
 	workspace: Workspace,
 	sessionId: string,
 ): Promise<boolean> {
-	if (workspace.sessions.length <= 1) {
+	const totalSessions = workspace.panes.reduce(
+		(sum, p) => sum + p.sessions.length,
+		0,
+	);
+	if (totalSessions <= 1) {
 		return confirmCloseWorkspace(workspace);
 	}
-	const session = workspace.sessions.find((s) => s.id === sessionId);
+	let session: Session | undefined;
+	for (const pane of workspace.panes) {
+		session = pane.sessions.find((s) => s.id === sessionId);
+		if (session) break;
+	}
 	if (!session) return false;
 	return confirmCloseTerminalTab(session);
 }

@@ -65,18 +65,18 @@ export function buildAppLayoutShortcuts(
 					!sidebarOpen && modDigitKey(e) === n,
 				run: () => {
 					const s = useSessionStore.getState();
-					const ws = s.workspaces.find(
-						(w) => w.id === s.activeWorkspaceId,
-					);
+					const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 					if (!ws) return;
-					const target = ws.sessions[n - 1];
+					const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+					if (!pane) return;
+					const target = pane.sessions[n - 1];
 					if (target) s.activateSession(ws.id, target.id);
 				},
 			};
 		},
 	);
 
-	// ⌘⌥1–9 — focus session tab N inside the active workspace (horizontal tabs)
+	// ⌘⌥1–9 — focus session tab N inside the active pane of the active workspace
 	const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
 		const n = i + 1;
 		return {
@@ -84,11 +84,11 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modOptionDigitKey(e) === n,
 			run: () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
-				const target = ws.sessions[n - 1];
+				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+				if (!pane) return;
+				const target = pane.sessions[n - 1];
 				if (target) s.activateSession(ws.id, target.id);
 			},
 		};
@@ -119,12 +119,12 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modLetter(e, "w") || modLetter(e, "q"),
 			run: async () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
-				const session = ws.sessions.find(
-					(sess) => sess.id === ws.activeSessionId,
+				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+				if (!pane) return;
+				const session = pane.sessions.find(
+					(sess) => sess.id === pane.activeSessionId,
 				);
 				if (!session) return;
 				const ok = await confirmCloseSessionInWorkspace(ws, session.id);
@@ -146,11 +146,11 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modLetter(e, "r"),
 			run: () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
-				useRenameUiStore.getState().openSession(ws.activeSessionId);
+				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+				if (!pane) return;
+				useRenameUiStore.getState().openSession(pane.activeSessionId);
 			},
 		},
 		{
@@ -159,9 +159,7 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modShiftLetter(e, "w"),
 			run: async () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const ok = await confirmCloseWorkspace(ws);
 				if (ok) s.closeWorkspace(ws.id);
@@ -185,16 +183,16 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modBracketKey(e, "left"),
 			run: () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
-				if (!ws || ws.sessions.length === 0) return;
-				const i = ws.sessions.findIndex(
-					(sess) => sess.id === ws.activeSessionId,
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
+				if (!ws) return;
+				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+				if (!pane || pane.sessions.length === 0) return;
+				const i = pane.sessions.findIndex(
+					(sess) => sess.id === pane.activeSessionId,
 				);
 				if (i < 0) return;
-				const prev = (i - 1 + ws.sessions.length) % ws.sessions.length;
-				s.activateSession(ws.id, ws.sessions[prev].id);
+				const prev = (i - 1 + pane.sessions.length) % pane.sessions.length;
+				s.activateSession(ws.id, pane.sessions[prev].id);
 			},
 		},
 		{
@@ -203,16 +201,16 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) => modBracketKey(e, "right"),
 			run: () => {
 				const s = useSessionStore.getState();
-				const ws = s.workspaces.find(
-					(w) => w.id === s.activeWorkspaceId,
-				);
-				if (!ws || ws.sessions.length === 0) return;
-				const i = ws.sessions.findIndex(
-					(sess) => sess.id === ws.activeSessionId,
+				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
+				if (!ws) return;
+				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
+				if (!pane || pane.sessions.length === 0) return;
+				const i = pane.sessions.findIndex(
+					(sess) => sess.id === pane.activeSessionId,
 				);
 				if (i < 0) return;
-				const next = (i + 1) % ws.sessions.length;
-				s.activateSession(ws.id, ws.sessions[next].id);
+				const next = (i + 1) % pane.sessions.length;
+				s.activateSession(ws.id, pane.sessions[next].id);
 			},
 		},
 		{
