@@ -100,9 +100,10 @@ pub async fn list_md_files(app: AppHandle, dir: String) -> Result<Vec<String>, S
 }
 
 async fn list_md_files_via_rg_sidecar(app: &AppHandle, dir: &str) -> Result<Vec<String>, String> {
+    // `bundle.externalBin` is `binaries/rg` on disk, but tauri-build places the binary next to the app as `rg`.
     let sidecar = app
         .shell()
-        .sidecar(Path::new("binaries").join("rg"))
+        .sidecar(Path::new("rg"))
         .map_err(wiki_rg_err)?;
 
     let output = sidecar
