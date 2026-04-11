@@ -9,6 +9,7 @@ mod hooks;
 mod logging;
 mod pick_folders;
 mod pty;
+mod wiki_files;
 
 pub use claude_sessions::*;
 pub use claude_skills::*;
@@ -19,3 +20,4 @@ pub use hooks::*;
 pub use logging::*;
 pub use pick_folders::*;
 pub use pty::*;
+pub use wiki_files::*;

@@ -1,0 +1,2 @@
+# Populated on Linux CI only (see .github/workflows/pr-preflight.yml). macOS: use rg-aarch64-apple-darwin.
+rg-x86_64-unknown-linux-gnu

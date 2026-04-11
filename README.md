@@ -110,6 +110,7 @@ The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, 
 **Claude toolkit**
 
 - Browse **skills**, **slash commands**, and **hooks** in-app
+- **Wiki picker** — open `.md` / `.mdx` from the title bar; lists files under the session cwd via bundled **ripgrep**, then filters in the UI
 - Structured, readable layout — no CLI digging
 - Works with personal (`~/.claude/`) and project (`.claude/`) configs
 
@@ -236,6 +237,19 @@ git clone https://github.com/your-org/blackslate.git
 cd blackslate
 bun install
 ```
+
+**Wiki markdown file picker (bundled ripgrep)** — the title-bar control that opens `.md` / `.mdx` files lists candidates under the **active session’s working directory**. That list is built with a **bundled `rg` sidecar** (Tauri `externalBin`), not whatever `ripgrep` is on your `PATH`, so behaviour matches in **dev and release**.
+
+- **Release** — `bun tauri build` packages the sidecar into the app bundle.
+- **Dev** — after you place the triple-named binary under `src-tauri/binaries/`, `build.rs` copies it to `target/<profile>/binaries/rg` next to the app binary so `tauri dev` can spawn it the same way.
+
+On **macOS**, `bun run build` (used by `tauri build`’s `beforeBuildCommand`) runs **`scripts/ensure-rg-sidecar.sh`**, which downloads `rg` into `src-tauri/binaries/` when needed. You can still run **`bun run setup:rg`** manually any time (same underlying download script).
+
+On non-macOS, that step is skipped so a plain frontend build does not fail; run `setup:rg` on a Mac before packaging the app.
+
+File names, versions, and troubleshooting: [`src-tauri/binaries/README.md`](src-tauri/binaries/README.md).
+
+**How search works:** the Rust command runs ripgrep **once** when you open the picker (`rg --files` with markdown globs, depth and result caps, plus filtering of noisy dot-directories like `.git`). The dialog’s search field **filters that list in the UI** — it does not run ripgrep again. Very large roots (for example your home folder) can hit **macOS privacy / TCC** limits; open the picker from a **project directory** for reliable results.
 
 **Dev** (hot reload — first run compiles Rust, ~1 min; then incremental):
 

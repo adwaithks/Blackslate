@@ -2,6 +2,7 @@ import { TitlebarCwdBranchLine } from "@/components/layout/titlebar/TitlebarCwdB
 import { TitlebarSessionUsageChip } from "@/components/layout/titlebar/TitlebarSessionUsageChip";
 import { TitlebarClaudeMenu } from "@/components/layout/titlebar/TitlebarClaudeMenu";
 import { TitlebarGitPanelToggle } from "@/components/layout/titlebar/TitlebarGitPanelToggle";
+import { WikiFilePicker } from "@/components/wiki/WikiFilePicker";
 import type { TurnUsage } from "@/store/sessions";
 
 export interface TitlebarMainSectionProps {
@@ -41,6 +42,7 @@ export function TitlebarMainSection({
 					cumulativeUsage={cumulativeUsage}
 					lastTurnUsage={lastTurnUsage}
 				/>
+				<WikiFilePicker cwd={headerPwd} />
 				<TitlebarClaudeMenu cwd={headerPwd} />
 				<TitlebarGitPanelToggle
 					open={gitPanelOpen}

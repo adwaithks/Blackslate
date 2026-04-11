@@ -7,6 +7,16 @@
     "core:default",
     "core:window:allow-start-dragging",
     "opener:default",
-    "dialog:default"
+    "dialog:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/rg",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
   ]
 }
