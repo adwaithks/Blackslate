@@ -5,7 +5,6 @@
  */
 
 import { parse } from "@ansi-tools/parser";
-import type { TurnUsage } from "@/store/sessions";
 
 /** DECSCUSR — `\e[… q`. Strip so xterm’s cursor style wins. */
 export function stripShellCursorShapeSequences(text: string): string {
@@ -19,9 +18,7 @@ export type OscEffect =
 	| { type: "shell_state"; state: ShellOscState }
 	| { type: "cwd"; path: string }
 	| { type: "claude_lifecycle"; lifecycle: ClaudeLifecycleOsc }
-	| { type: "tool_label"; label: string | null }
 	| { type: "session_model"; model: string }
-	| { type: "turn_usage"; usage: TurnUsage; model?: string }
 	| { type: "window_title"; raw: string };
 
 function cwdFromOsc7Payload(filePayload: string, homePath: string): string | null {
@@ -58,30 +55,6 @@ export function pullOscSideEffects(
 			case "6974":
 				if (joined === "thinking" || joined === "waiting" || joined === "complete") {
 					effects.push({ type: "claude_lifecycle", lifecycle: joined });
-				}
-				break;
-			case "6975":
-				effects.push({
-					type: "tool_label",
-					label: joined.length > 0 ? joined : null,
-				});
-				break;
-			case "6976":
-				if (!joined.includes("in=")) break;
-				{
-					const pairs = Object.fromEntries(
-						joined.split(";").map((p) => p.split("=")),
-					) as Record<string, string>;
-					effects.push({
-						type: "turn_usage",
-						usage: {
-							inputTokens: parseInt(pairs.in ?? "0", 10) || 0,
-							outputTokens: parseInt(pairs.out ?? "0", 10) || 0,
-							cacheRead: parseInt(pairs.cache_read ?? "0", 10) || 0,
-							cacheWrite: parseInt(pairs.cache_write ?? "0", 10) || 0,
-						},
-						model: pairs.model?.trim() || undefined,
-					});
 				}
 				break;
 			case "6977": {

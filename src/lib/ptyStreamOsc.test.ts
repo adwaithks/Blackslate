@@ -26,25 +26,16 @@ describe("pullOscSideEffects", () => {
 		]);
 	});
 
-	it("parses OSC 6976 with input, output tokens, cache reads and writes and model name", () => {
-		const chunk =
-			"\x1b]6976;in=1;out=2;cache_read=0;cache_write=0;model=m\x07";
-		expect(pullOscSideEffects(chunk, home)).toEqual([
-			{
-				type: "turn_usage",
-				usage: {
-					inputTokens: 1,
-					outputTokens: 2,
-					cacheRead: 0,
-					cacheWrite: 0,
-				},
-				model: "m",
-			},
+	it("parses OSC 6977 session model", () => {
+		expect(
+			pullOscSideEffects("\x1b]6977;claude-sonnet-4-20250514\x07", home),
+		).toEqual([
+			{ type: "session_model", model: "claude-sonnet-4-20250514" },
 		]);
 	});
 
-	it("ignores empty 6976 payload", () => {
-		expect(pullOscSideEffects("\x1b]6976;\x07", home)).toEqual([]);
+	it("ignores empty 6977 payload", () => {
+		expect(pullOscSideEffects("\x1b]6977;\x07", home)).toEqual([]);
 	});
 });
 

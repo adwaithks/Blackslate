@@ -1,4 +1,4 @@
-//! PTY sizing, cwd resolution, and shell `CommandBuilder` (env, login shell, OSC 7 hooks).
+//! PTY sizing, cwd resolution, and shell `CommandBuilder` (env, login shell, zsh integration).
 
 use std::path::PathBuf;
 
@@ -75,15 +75,6 @@ pub(super) fn build_shell_cmd(shell: &str, cwd: PathBuf) -> CommandBuilder {
         if let Some(zdotdir) = setup_zsh_integration() {
             cmd.env("ZDOTDIR", zdotdir);
         }
-    } else if shell.ends_with("bash") {
-        let osc7 = r#"printf '\033]7;file://%s%s\a' "${HOSTNAME:-$(hostname)}" "$PWD""#;
-        let existing = std::env::var("PROMPT_COMMAND").unwrap_or_default();
-        let combined = if existing.is_empty() {
-            osc7.to_string()
-        } else {
-            format!("{existing}; {osc7}")
-        };
-        cmd.env("PROMPT_COMMAND", combined);
     }
 
     cmd
@@ -109,15 +100,13 @@ fn setup_zsh_integration() -> Option<std::path::PathBuf> {
     //
     //  blackslate-thinking  UserPromptSubmit + PreToolUse
     //                  OSC 6974;thinking  — start pulsing
-    //                  OSC 6975;{label}   — current tool description (or empty to clear)
     //
     //  blackslate-waiting   Notification
-    //                  OSC 6974;waiting   — pause pulse, clear tool label
+    //                  OSC 6974;waiting   — pause pulse
     //
     //  blackslate-complete  Stop
     //                  OSC 6974;complete  — stop pulsing
-    //                  OSC 6975;          — clear tool label
-    //                  OSC 6976;{usage}   — token counts from transcript JSONL
+    //                  OSC 6977;{model}   — optional model refresh from transcript (latest end_turn)
     //
     //  blackslate-session-start  SessionStart
     //                  OSC 6977;{model}  — API model id from hook JSON (startup / resume / clear / compact)
@@ -184,65 +173,31 @@ except Exception:
     )
     .ok()?;
 
-    // blackslate-thinking: Python — parses tool_name/tool_input from stdin.
-    // Works for both UserPromptSubmit (no tool_name → emits clear) and
-    // PreToolUse (has tool_name → emits human-readable description).
+    // blackslate-thinking: Python — UserPromptSubmit + PreToolUse; emit thinking only.
     let hook_thinking = zdotdir.join("blackslate-thinking");
     std::fs::write(
         &hook_thinking,
         r#"#!/usr/bin/env python3
-import sys, json, os
+import sys
 
 with open('/dev/tty', 'wb', buffering=0) as tty:
     tty.write(b'\033]6974;thinking\007')
-    try:
-        d = json.load(sys.stdin)
-        tool = d.get('tool_name', '')
-        if tool:
-            inp = d.get('tool_input') or {}
-            if tool == 'Read':
-                p = inp.get('file_path', '')
-                desc = 'Reading ' + (os.path.basename(p) or p)
-            elif tool in ('Edit', 'MultiEdit'):
-                p = inp.get('file_path', '')
-                desc = 'Editing ' + (os.path.basename(p) or p)
-            elif tool == 'Write':
-                p = inp.get('file_path', '')
-                desc = 'Writing ' + (os.path.basename(p) or p)
-            elif tool == 'Bash':
-                cmd = (inp.get('command') or '').split('\n')[0]
-                first = cmd.split()[0] if cmd.split() else ''
-                desc = ('Running ' + first[:30]) if first else 'Running bash'
-            elif tool in ('Glob', 'Grep'):
-                desc = 'Searching ' + (inp.get('pattern') or inp.get('glob') or '')[:30]
-            elif tool == 'WebFetch':
-                desc = 'Fetching URL'
-            elif tool == 'WebSearch':
-                desc = 'Search: ' + (inp.get('query') or '')[:30]
-            elif tool == 'Agent':
-                desc = 'Agent: ' + (inp.get('description') or inp.get('prompt') or '')[:40]
-            elif tool == 'AskUserQuestion':
-                desc = 'Asking a question'
-            else:
-                desc = tool
-            desc = ''.join(c for c in desc if ord(c) >= 32 and c not in '\x07\x1b')
-            tty.write(('\033]6975;' + desc + '\007').encode())
-        else:
-            tty.write(b'\033]6975;\007')
-    except Exception:
-        pass
+# Drain stdin so Claude's hook runner does not block on a full pipe.
+try:
+    sys.stdin.read()
+except Exception:
+    pass
 "#,
     )
     .ok()?;
 
-    // blackslate-waiting: simple shell — pause + clear tool label.
+    // blackslate-waiting: simple shell — pause pulse.
     let hook_waiting = zdotdir.join("blackslate-waiting");
-    std::fs::write(&hook_waiting, "#!/bin/sh\nprintf '\\033]6974;waiting\\007' >/dev/tty\nprintf '\\033]6975;\\007' >/dev/tty\n").ok()?;
+    std::fs::write(&hook_waiting, "#!/bin/sh\nprintf '\\033]6974;waiting\\007' >/dev/tty\n").ok()?;
 
-    // blackslate-complete: Python — emits complete + reads transcript for token usage.
+    // blackslate-complete: Python — emits complete + optionally refreshes model from transcript.
     // The Stop hook can fire before the final `end_turn` row is flushed to the JSONL
-    // transcript, so we sleep 1s first. Then we grab the latest `end_turn` assistant
-    // message which carries the aggregated output_tokens for the whole turn.
+    // transcript, so we sleep 1s first, then read `model` from the latest end_turn row.
     let hook_complete = zdotdir.join("blackslate-complete");
     std::fs::write(
         &hook_complete,
@@ -251,26 +206,18 @@ import sys, json, os, time
 
 with open('/dev/tty', 'wb', buffering=0) as tty:
     tty.write(b'\033]6974;complete\007')
-    tty.write(b'\033]6975;\007')
     try:
         d = json.load(sys.stdin)
         tp = d.get('transcript_path', '')
         if tp:
-            def emit_usage(msg):
-                usage = msg.get('usage') or {}
-                if usage.get('input_tokens') is None:
-                    return False
-                parts = [
-                    'in='         + str(usage.get('input_tokens', 0)),
-                    'out='        + str(usage.get('output_tokens', 0)),
-                    'cache_read=' + str(usage.get('cache_read_input_tokens', 0)),
-                    'cache_write='+ str(usage.get('cache_creation_input_tokens', 0)),
-                ]
+            def emit_model(msg):
                 model = msg.get('model', '')
-                if model:
-                    safe_model = ''.join(c for c in model if c not in '\x07\x1b;')
-                    parts.append('model=' + safe_model)
-                tty.write(('\033]6976;' + ';'.join(parts) + '\007').encode())
+                if not isinstance(model, str) or not model:
+                    return False
+                safe = ''.join(c for c in model if c not in '\x07\x1b;')
+                if not safe:
+                    return False
+                tty.write(('\033]6977;' + safe + '\007').encode())
                 return True
 
             time.sleep(1)
@@ -283,8 +230,8 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
                     msg = obj.get('message') or obj
                     if msg.get('role') != 'assistant':
                         continue
-                    if msg.get('stop_reason') == 'end_turn' and (msg.get('usage') or {}).get('input_tokens') is not None:
-                        emit_usage(msg)
+                    if msg.get('stop_reason') == 'end_turn':
+                        emit_model(msg)
                         break
                 except Exception:
                     continue

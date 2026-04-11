@@ -21,17 +21,9 @@ export interface GitInfo {
 	dirty: boolean;
 }
 
-/** Token usage for the most-recently completed Claude turn (from Stop hook + transcript). */
-export interface TurnUsage {
-	inputTokens: number;
-	outputTokens: number;
-	cacheRead: number;
-	cacheWrite: number;
-}
-
 /**
  * Fine-grained Claude Code state, driven by lifecycle hooks (OSC 6974):
- *   'thinking'  — Claude is processing (UserPromptSubmit or PreToolUse hook)
+ *   'thinking'  — Claude is processing (UserPromptSubmit or PreToolUse hook emits OSC 6974)
  *   'waiting'   — Claude paused for permission or input (Notification hook)
  *   'complete'  — Claude finished its entire turn (Stop hook)
  *   null        — Claude not active, or state not yet determined
@@ -95,7 +87,7 @@ export interface Session {
 	claudeState: ClaudeState;
 	/** AI-generated session name from Claude Code's OSC 0 window title (e.g. "New coding session"). */
 	claudeSessionTitle: string | null;
-	/** API model id: SessionStart OSC 6977, then Stop OSC 6976 `model=` when present. */
+	/** API model id from SessionStart (OSC 6977) and optional Stop-hook transcript refresh (OSC 6977). */
 	claudeModel: string | null;
 	/**
 	 * Shell activity state from preexec/precmd hooks (OSC 6973):
@@ -103,16 +95,6 @@ export interface Session {
 	 *   'idle'    — shell is at the prompt (precmd fired)
 	 */
 	shellState: "running" | "idle";
-	/**
-	 * Human-readable description of the tool Claude is currently running,
-	 * e.g. "Reading App.tsx", "Running npm test". Null when no tool is active.
-	 * Set by PreToolUse hook (OSC 6975); cleared on Stop/Notification/UserPromptSubmit.
-	 */
-	currentTool: string | null;
-	/** Token usage from the most recently completed turn (OSC 6976 from Stop hook). */
-	lastTurnUsage: TurnUsage | null;
-	/** Sum of token usage across all completed turns in this terminal session (same source as lastTurnUsage). */
-	cumulativeUsage: TurnUsage | null;
 }
 
 /**
@@ -186,8 +168,6 @@ export interface SessionActions {
 	setSessionCustomName: (sessionId: string, name: string | null) => void;
 	setWorkspaceCustomName: (workspaceId: string, name: string | null) => void;
 	setShellState: (sessionId: string, state: "running" | "idle") => void;
-	setCurrentTool: (sessionId: string, tool: string | null) => void;
-	setLastTurnUsage: (sessionId: string, usage: TurnUsage | null) => void;
 
 	// ── Layout persistence ───────────────────────────────────────────────────
 	/**

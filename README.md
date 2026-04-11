@@ -63,7 +63,7 @@ Every terminal treats the agent as just another process printing to a pipe. You 
 
 **The tools are powerful. The workspace isn't built for them.**
 
-Blackslate wraps the terminal in an intelligent workspace layer. It doesn't replace the shell — it reads it. When Claude Code is running, the UI surfaces what matters: token usage in the title bar, agent indicators on every tab, git diffs beside your work, and past sessions a click away.
+Blackslate wraps the terminal in an intelligent workspace layer. It doesn't replace the shell — it reads it. When Claude Code is running, the UI surfaces what matters: agent indicators on every tab, git diffs beside your work, and past sessions a click away.
 
 The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, shell, and process management are solved problems. The unsolved problem is the experience of working *alongside* an agent — and that's entirely a UI/UX problem.
 
@@ -302,7 +302,7 @@ blackslate/
 <summary><strong>Architecture notes</strong></summary>
 <br />
 
-- **Shell integration without dotfile mutation** — OSC 7 cwd reporting is injected at session creation via a temporary `ZDOTDIR` override (zsh) and a `PROMPT_COMMAND` prefix (bash). Your dotfiles are never touched.
+- **Shell integration without dotfile mutation** — OSC 7 cwd reporting (and related hooks) is injected at session creation via a temporary `ZDOTDIR` override when the shell is zsh. Your dotfiles are never touched.
 - **Agent detection** — `tcgetpgrp` on the PTY master returns the foreground process group; `sysinfo` walks the tree from the shell PID. Both paths are checked, so detection works whether `claude` is a foreground job or a nested subprocess.
 - **Event coalescing** — the PTY reader accumulates output for up to 4 ms or 8 KB before emitting a Tauri IPC event. High throughput during agent output bursts; imperceptible latency in interactive use.
 - **No xterm.js unmounting** — all `TerminalPane` instances stay mounted at all times. Inactive sessions are hidden with `visibility: hidden`, so xterm keeps measuring container dimensions. Switching is instant with no PTY state loss.

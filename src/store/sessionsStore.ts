@@ -16,7 +16,6 @@ import type {
 	PersistedSessionState,
 	Session,
 	SessionStore,
-	TurnUsage,
 	Workspace,
 } from "@/store/sessionsTypes";
 
@@ -38,9 +37,6 @@ function makeSession(cwd = "~", isMounted = false): Session {
 		claudeSessionTitle: null,
 		claudeModel: null,
 		shellState: "idle",
-		currentTool: null,
-		lastTurnUsage: null,
-		cumulativeUsage: null,
 	};
 }
 
@@ -448,57 +444,6 @@ export const useSessionStore = create<SessionStore>()(
 						shellState,
 					),
 				}));
-			},
-
-			setCurrentTool(sessionId, currentTool) {
-				set((s) => ({
-					workspaces: patchSessionById(
-						s.workspaces,
-						sessionId,
-						"currentTool",
-						currentTool,
-					),
-				}));
-			},
-
-			setLastTurnUsage(sessionId, lastTurnUsage) {
-				set((s) => {
-					const exists = s.workspaces.some((ws) =>
-						ws.panes.some((p) =>
-							p.sessions.some((sess) => sess.id === sessionId),
-						),
-					);
-					if (!exists) return s;
-
-					return {
-						workspaces: s.workspaces.map((ws) => ({
-							...ws,
-							panes: ws.panes.map((pane) => ({
-								...pane,
-								sessions: pane.sessions.map((sess) => {
-									if (sess.id !== sessionId) return sess;
-									if (lastTurnUsage === null) {
-										return { ...sess, lastTurnUsage: null };
-									}
-									const prev = sess.cumulativeUsage;
-									const cumulative: TurnUsage = prev
-										? {
-												inputTokens:
-													prev.inputTokens + lastTurnUsage.inputTokens,
-												outputTokens:
-													prev.outputTokens + lastTurnUsage.outputTokens,
-												cacheRead:
-													prev.cacheRead + lastTurnUsage.cacheRead,
-												cacheWrite:
-													prev.cacheWrite + lastTurnUsage.cacheWrite,
-											}
-										: { ...lastTurnUsage };
-									return { ...sess, lastTurnUsage, cumulativeUsage: cumulative };
-								}),
-							})),
-						})),
-					};
-				});
 			},
 
 			// ── Layout persistence ───────────────────────────────────────────

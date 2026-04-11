@@ -1,4 +1,3 @@
-import type { TurnUsage } from "@/store/sessions";
 import { TitlebarSidebarSection } from "@/components/layout/titlebar/TitlebarSidebarSection";
 import { TitlebarMainSection } from "@/components/layout/titlebar/TitlebarMainSection";
 
@@ -10,8 +9,6 @@ export interface AppTitlebarProps {
 	onToggleSidebar: () => void;
 	gitPanelOpen: boolean;
 	onToggleGitPanel: () => void;
-	cumulativeUsage: TurnUsage | null;
-	lastTurnUsage: TurnUsage | null;
 }
 
 export function AppTitlebar({
@@ -22,8 +19,6 @@ export function AppTitlebar({
 	onToggleSidebar,
 	gitPanelOpen,
 	onToggleGitPanel,
-	cumulativeUsage,
-	lastTurnUsage,
 }: AppTitlebarProps) {
 	return (
 		<div
@@ -44,8 +39,6 @@ export function AppTitlebar({
 				headerBranch={headerBranch}
 				gitPanelOpen={gitPanelOpen}
 				onToggleGitPanel={onToggleGitPanel}
-				cumulativeUsage={cumulativeUsage}
-				lastTurnUsage={lastTurnUsage}
 			/>
 		</div>
 	);

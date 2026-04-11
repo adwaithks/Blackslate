@@ -106,9 +106,6 @@ export function sessionFromPersisted(
 		claudeSessionTitle: null,
 		claudeModel: null,
 		shellState: "idle",
-		currentTool: null,
-		lastTurnUsage: null,
-		cumulativeUsage: null,
 	};
 }
 

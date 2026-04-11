@@ -20,8 +20,6 @@ export function selectAppHeaderSlice(state: SessionState): {
 	sessionId: string | null;
 	cwd: string;
 	branch: string | null;
-	cumulativeUsage: Session["cumulativeUsage"];
-	lastTurnUsage: Session["lastTurnUsage"];
 } {
 	const sess = selectActiveSession(state);
 	if (!sess) {
@@ -29,16 +27,12 @@ export function selectAppHeaderSlice(state: SessionState): {
 			sessionId: null,
 			cwd: "~",
 			branch: null,
-			cumulativeUsage: null,
-			lastTurnUsage: null,
 		};
 	}
 	return {
 		sessionId: sess.id,
 		cwd: sess.cwd,
 		branch: sess.git?.branch ?? null,
-		cumulativeUsage: sess.cumulativeUsage,
-		lastTurnUsage: sess.lastTurnUsage,
 	};
 }
 
