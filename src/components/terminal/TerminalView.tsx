@@ -7,7 +7,6 @@ import {
 } from "@/store/sessions";
 import { TerminalPane } from "./TerminalPane";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
-import { MessageComposer } from "./MessageComposer";
 import { useTerminalSurface } from "@/hooks/useTerminalSurface";
 import { useTerminalFileDropToPty } from "@/hooks/useTerminalFileDropToPty";
 
@@ -71,8 +70,6 @@ export function TerminalView() {
 
 	useSessionStore(selectActiveWorkspaceTabBarSignature);
 
-	const showMessageComposer = false; // on the way
-
 	const terminalSurface = useTerminalSurface();
 
 	return (
@@ -80,10 +77,6 @@ export function TerminalView() {
 			<WorkspaceTabBar />
 
 			<TerminalStack terminalSurface={terminalSurface} />
-
-			<div className="bg-background">
-				{showMessageComposer && <MessageComposer />}
-			</div>
 		</div>
 	);
 }
