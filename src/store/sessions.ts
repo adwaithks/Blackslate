@@ -7,6 +7,8 @@
 export type {
 	ClaudeState,
 	GitInfo,
+	Pane,
+	PersistedPane,
 	Session,
 	SessionActions,
 	SessionState,
@@ -18,11 +20,13 @@ export type {
 export {
 	buildMountedTerminalRows,
 	selectActiveSession,
+	selectActivePaneForWorkspace,
 	selectActiveWorkspace,
 	selectActiveWorkspaceTabBarSignature,
 	selectAppHeaderSlice,
 	selectSidebarDisplaySignature,
 	findSession,
+	findPaneForSession,
 	selectTerminalStackSignature,
 } from "@/store/sessionsSelectors";
 

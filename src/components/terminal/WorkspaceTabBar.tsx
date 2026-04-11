@@ -71,8 +71,11 @@ export function WorkspaceTabBar() {
 		);
 
 	const workspace = selectActiveWorkspace(useSessionStore.getState());
-	const activeId = workspace?.activeSessionId ?? "";
-	const tabCount = workspace?.sessions.length ?? 0;
+	const activePane = workspace
+		? workspace.panes.find((p) => p.id === workspace.activePaneId)
+		: undefined;
+	const activeId = activePane?.activeSessionId ?? "";
+	const activeSessions = activePane?.sessions ?? [];
 
 	const tabBarRef = useRef<HTMLDivElement>(null);
 	const tabScrollRef = useRef<HTMLDivElement>(null);
@@ -111,7 +114,7 @@ export function WorkspaceTabBar() {
 		});
 
 		return () => cancelAnimationFrame(raf);
-	}, [activeId, tabCount]);
+	}, [activeId, activeSessions.length]);
 
 	if (!workspace) return null;
 
@@ -137,12 +140,17 @@ export function WorkspaceTabBar() {
 				<div
 					ref={tabScrollRef}
 					className="workspace-tabs-scroll min-h-10 min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+					onDoubleClick={(e) => {
+						// Only fire when clicking on empty tab-bar space, not on a tab or its children.
+						if (e.target !== e.currentTarget) return;
+						createSessionInWorkspace(workspace.id);
+					}}
 				>
 					<TabsList
 						variant="line"
 						className="flex h-10 w-max max-w-none min-w-min flex-nowrap rounded-none"
 					>
-						{workspace.sessions.map((session) => (
+						{activeSessions.map((session) => (
 							<SessionTabTrigger
 								key={session.id}
 								session={session}

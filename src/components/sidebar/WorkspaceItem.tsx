@@ -55,7 +55,7 @@ export function WorkspaceItem({
 
 	const dirName = workspaceDisplayName(workspace);
 	const { git } = session;
-	const tabCount = workspace.sessions.length;
+	const tabCount = workspace.panes.reduce((sum, p) => sum + p.sessions.length, 0);
 
 	return (
 		<Tooltip>

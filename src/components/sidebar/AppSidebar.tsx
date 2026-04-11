@@ -21,10 +21,11 @@ import { getWorkspaceDisplaySession } from "@/components/sidebar/getWorkspaceDis
  */
 export function AppSidebar() {
 	useSessionStore(selectSidebarDisplaySignature);
-	const { closeWorkspace, activateWorkspace } = useSessionStore(
+	const { closeWorkspace, activateWorkspace, createWorkspace } = useSessionStore(
 		useShallow((s) => ({
 			closeWorkspace: s.closeWorkspace,
 			activateWorkspace: s.activateWorkspace,
+			createWorkspace: s.createWorkspace,
 		})),
 	);
 	const { workspaces, activeWorkspaceId } = useSessionStore.getState();
@@ -54,7 +55,13 @@ export function AppSidebar() {
 						Workspaces
 					</span>
 				</SidebarHeader>
-				<SidebarContent>
+				<SidebarContent
+					onDoubleClick={(e) => {
+						// Only fire on empty space — not when double-clicking a workspace item.
+						if ((e.target as Element).closest("li")) return;
+						createWorkspace();
+					}}
+				>
 					<SidebarGroup className="px-1.5">
 						<SidebarGroupContent>
 							<SidebarMenu className="gap-1">

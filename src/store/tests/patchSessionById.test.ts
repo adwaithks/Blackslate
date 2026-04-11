@@ -51,9 +51,9 @@ describe("patchSessionById", () => {
 
 		const w = next[0];
 		expect(w).not.toBe(ws); // not same object reference, since the session was found and was updated
-		const patched = w.sessions.find((s) => s.id === "a")!;
+		const patched = w.panes[0].sessions.find((s) => s.id === "a")!;
 		expect(patched.cwd).toBe("~/patched"); // the session was updated with the new value
-		expect(w.sessions.find((s) => s.id === "b")).toBe(tabB);
+		expect(w.panes[0].sessions.find((s) => s.id === "b")).toBe(tabB);
 	});
 
 	it("leaves other workspaces as the same object references when they do not contain the session", () => {
@@ -75,7 +75,7 @@ describe("patchSessionById", () => {
 
 		expect(next[0]).toBe(wsA);
 		expect(next[1]).not.toBe(wsB);
-		expect(next[1].sessions[0].cwd).toBe("/after");
+		expect(next[1].panes[0].sessions[0].cwd).toBe("/after");
 	});
 
 	it("patches every workspace that contains the same session id (pathological duplicate ids)", () => {
@@ -95,7 +95,7 @@ describe("patchSessionById", () => {
 
 		const next = patchSessionById([ws1, ws2], dupId, "cwd", "/both");
 
-		expect(next[0].sessions[0].cwd).toBe("/both");
-		expect(next[1].sessions[0].cwd).toBe("/both");
+		expect(next[0].panes[0].sessions[0].cwd).toBe("/both");
+		expect(next[1].panes[0].sessions[0].cwd).toBe("/both");
 	});
 });
