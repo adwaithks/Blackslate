@@ -17,10 +17,12 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 	const [loading, setLoading] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 
-	const close = useCallback(() => setOpen(false), []);
+	const close = useCallback(() => {
+		setOpen(false);
+		requestActiveTerminalFocus();
+	}, []);
 	usePickerDismiss(open, close, containerRef);
 
-	// Fetch md files whenever the dialog opens or cwd changes while open
 	useEffect(() => {
 		if (!open) return;
 		let cancelled = false;
@@ -68,7 +70,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 
 			{open && (
 				<WikiFilePickerDialog
-					cwd={cwd}
+					scanDir={cwd}
 					files={files}
 					loading={loading}
 					onPickFile={handlePickFile}

@@ -17,7 +17,7 @@ const SKIP_DIRS: &[&str] = &[
 ];
 
 /// Recursively find all .md files under `dir`, skipping common noise directories.
-/// Returns absolute paths. Capped at 500 results to avoid overwhelming the UI.
+/// Returns absolute paths. Descends at most 5 directory levels; capped at 500 results.
 #[tauri::command]
 pub fn list_md_files(dir: String) -> Vec<String> {
     let root = Path::new(&dir);
@@ -32,7 +32,7 @@ pub fn list_md_files(dir: String) -> Vec<String> {
 }
 
 fn collect_md_files(dir: &Path, results: &mut Vec<String>, depth: usize) {
-    if depth > 10 || results.len() >= 500 {
+    if depth > 5 || results.len() >= 500 {
         return;
     }
 
