@@ -4,9 +4,11 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import { findSession, useSessionStore } from "@/store/sessions";
 import {
-	pullOscSideEffects,
+	claudeLifecycleFromOsc6974Payload,
+	cwdFromOsc7Payload,
+	isClaudeProductWindowTitle,
+	shellStateFromOsc6973Payload,
 	stripClaudeWindowTitlePrefix,
-	stripShellCursorShapeSequences,
 } from "@/lib/ptyStreamOsc";
 
 // ---------------------------------------------------------------------------
@@ -19,13 +21,6 @@ export function getHomeDir(): Promise<string> {
 	if (!homeDirPromise) homeDirPromise = invoke<string>("get_home_dir");
 	return homeDirPromise;
 }
-
-// ---------------------------------------------------------------------------
-// PTY data decoding — module-level to avoid per-chunk allocation.
-// ---------------------------------------------------------------------------
-
-const TEXT_DECODER = new TextDecoder();
-const TEXT_ENCODER = new TextEncoder();
 
 interface UsePtyOptions {
 	terminal: Terminal | null;
@@ -58,6 +53,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		let unlistenData: UnlistenFn | null = null;
 		let unlistenExit: UnlistenFn | null = null;
 		let onDataDisposable: IDisposable | null = null;
+		let oscDisposables: IDisposable[] = [];
+		const ptyTextDecoder = new TextDecoder();
 		let pollTimer: ReturnType<typeof setInterval> | null = null;
 		// Fit / ResizeObserver can run while `run()` is awaiting; PTY is not in Rust yet.
 		let ptyRegistered = false;
@@ -86,6 +83,58 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			const { cols, rows } = term;
 
 			const home = await getHomeDir().catch(() => "");
+			if (!active) return;
+
+			// OSC side effects: xterm’s parser sees the same bytes as the screen (handles splits).
+			oscDisposables = [
+				term.parser.registerOscHandler(7, (data) => {
+					const cwd = cwdFromOsc7Payload(data, home);
+					if (cwd !== null) setCwd(sessionId, cwd);
+					return true;
+				}),
+				term.parser.registerOscHandler(6973, (data) => {
+					const st = shellStateFromOsc6973Payload(data);
+					if (st === "running") setShellState(sessionId, "running");
+					else if (st === "idle") setShellState(sessionId, "idle");
+					return true;
+				}),
+				term.parser.registerOscHandler(6974, (data) => {
+					const lifecycle = claudeLifecycleFromOsc6974Payload(data);
+					if (lifecycle !== null) {
+						claudeOscActive = true;
+						setClaudeState(sessionId, lifecycle);
+					}
+					return true;
+				}),
+				term.parser.registerOscHandler(6977, (data) => {
+					const m = data.trim();
+					if (m) setClaudeModel(sessionId, m);
+					return true;
+				}),
+				term.onTitleChange((rawTitle) => {
+					if (rawTitle.length > 0) {
+						const name = stripClaudeWindowTitlePrefix(rawTitle);
+						if (isClaudeProductWindowTitle(name)) {
+							claudeOscActive = true;
+						} else if (
+							name &&
+							claudeOscActive &&
+							name !== lastSessionTitle
+						) {
+							lastSessionTitle = name;
+							setClaudeSessionTitle(sessionId, name);
+						}
+					} else if (claudeOscActive) {
+						clearClaudeOscState();
+					}
+				}),
+			];
+
+			if (!active) {
+				for (const d of oscDisposables) d.dispose();
+				oscDisposables = [];
+				return;
+			}
 
 			// Register data listener before creating the session so no output is missed.
 			unlistenData = await listen<string>(
@@ -97,54 +146,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 					const bytes = new Uint8Array(raw.length);
 					for (let i = 0; i < raw.length; i++)
 						bytes[i] = raw.charCodeAt(i);
-					const chunk = TEXT_DECODER.decode(bytes);
-
-					// DECSCUSR: strip before paint so xterm cursor style wins (see `ptyStreamOsc.ts`).
-					const withoutCursor = stripShellCursorShapeSequences(chunk);
-					term.write(
-						withoutCursor === chunk
-							? bytes
-							: TEXT_ENCODER.encode(withoutCursor),
-					);
-
-					for (const e of pullOscSideEffects(withoutCursor, home)) {
-						switch (e.type) {
-							case "shell_state":
-								setShellState(sessionId, e.state);
-								break;
-							case "cwd":
-								setCwd(sessionId, e.path);
-								break;
-							case "claude_lifecycle":
-								claudeOscActive = true;
-								setClaudeState(sessionId, e.lifecycle);
-								break;
-							case "session_model":
-								setClaudeModel(sessionId, e.model);
-								break;
-							case "window_title": {
-								const rawTitle = e.raw;
-								if (rawTitle.length > 0) {
-									const name = stripClaudeWindowTitlePrefix(rawTitle);
-									if (name === "Claude Code") {
-										claudeOscActive = true;
-									} else if (
-										name &&
-										claudeOscActive &&
-										name !== lastSessionTitle
-									) {
-										lastSessionTitle = name;
-										setClaudeSessionTitle(sessionId, name);
-									}
-								} else if (claudeOscActive) {
-									clearClaudeOscState();
-								}
-								break;
-							}
-							default:
-								break;
-						}
-					}
+					const chunk = ptyTextDecoder.decode(bytes, { stream: true });
+					term.write(chunk);
 				},
 			);
 
@@ -156,6 +159,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			if (!active) {
 				unlistenData?.();
 				unlistenExit?.();
+				for (const d of oscDisposables) d.dispose();
+				oscDisposables = [];
 				return;
 			}
 
@@ -171,6 +176,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 			if (!active) {
 				invoke("pty_close", { id: ptyId }).catch(() => {});
+				for (const d of oscDisposables) d.dispose();
+				oscDisposables = [];
 				return;
 			}
 
@@ -224,6 +231,9 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 
 		return () => {
 			active = false;
+			ptyTextDecoder.decode(new Uint8Array(), { stream: false });
+			for (const d of oscDisposables) d.dispose();
+			oscDisposables = [];
 			if (pollTimer !== null) {
 				clearInterval(pollTimer);
 				pollTimer = null;
