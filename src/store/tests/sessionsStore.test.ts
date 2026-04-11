@@ -9,6 +9,7 @@ const UNKNOWN_SESSION_ID = "00000000-0000-4000-8000-000000000088";
 let useSessionStore: SessionsStoreModule["useSessionStore"];
 
 beforeEach(async () => {
+	localStorage.clear();
 	vi.resetModules();
 	// creates a brand new store instance for each test
 	// since create() runs each time before each test

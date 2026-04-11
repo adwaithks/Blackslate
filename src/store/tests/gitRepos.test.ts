@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stubZustandPersistEnv } from "@/test/stubZustandPersistEnv";
-
 type GitReposModule = typeof import("@/store/gitRepos");
 
 let useGitReposStore: GitReposModule["useGitReposStore"];
 
 beforeEach(async () => {
-	stubZustandPersistEnv();
+	localStorage.clear();
 	vi.resetModules();
 	({ useGitReposStore } = await import("@/store/gitRepos"));
 	await useGitReposStore.persist.rehydrate();

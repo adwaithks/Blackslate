@@ -6,7 +6,6 @@ import {
 	MAX_FONT_SIZE,
 	MIN_FONT_SIZE,
 } from "@/store/appConfig";
-import { stubZustandPersistEnv } from "@/test/stubZustandPersistEnv";
 
 const PERSIST_KEY = "blackslate-settings";
 
@@ -15,7 +14,7 @@ type AppConfigModule = typeof import("@/store/appConfig");
 let useAppConfigStore: AppConfigModule["useAppConfigStore"];
 
 beforeEach(async () => {
-	stubZustandPersistEnv();
+	localStorage.clear();
 	vi.resetModules();
 	({ useAppConfigStore } = await import("@/store/appConfig"));
 	await useAppConfigStore.persist.rehydrate();
@@ -103,7 +102,7 @@ async function rehydrateFromPersisted(
 	state: Record<string, unknown>,
 	version: number,
 ): Promise<AppConfigModule["useAppConfigStore"]> {
-	stubZustandPersistEnv();
+	localStorage.clear();
 	localStorage.setItem(PERSIST_KEY, JSON.stringify({ state, version }));
 	vi.resetModules();
 	const m = await import("@/store/appConfig");
