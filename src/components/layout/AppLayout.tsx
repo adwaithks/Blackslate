@@ -68,8 +68,6 @@ export function AppLayout() {
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}
 						onToggleGitPanel={() => setGitPanelOpen((o) => !o)}
-						cumulativeUsage={headerSlice.cumulativeUsage ?? null}
-						lastTurnUsage={headerSlice.lastTurnUsage ?? null}
 					/>
 					<AppMainArea
 						gitPanelOpen={gitPanelOpen}

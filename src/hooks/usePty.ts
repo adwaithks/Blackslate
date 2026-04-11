@@ -42,8 +42,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 	);
 	const setClaudeModel = useSessionStore((s) => s.setClaudeModel);
 	const setShellState = useSessionStore((s) => s.setShellState);
-	const setCurrentTool = useSessionStore((s) => s.setCurrentTool);
-	const setLastTurnUsage = useSessionStore((s) => s.setLastTurnUsage);
 	const resizeFnRef = useRef<(cols: number, rows: number) => void>(() => {});
 
 	const sendResize = useCallback((cols: number, rows: number) => {
@@ -82,7 +80,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 			setClaudeState(sessionId, null);
 			setClaudeSessionTitle(sessionId, null);
 			setClaudeModel(sessionId, null);
-			setCurrentTool(sessionId, null);
 		};
 
 		const run = async () => {
@@ -122,15 +119,8 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 								claudeOscActive = true;
 								setClaudeState(sessionId, e.lifecycle);
 								break;
-							case "tool_label":
-								setCurrentTool(sessionId, e.label);
-								break;
 							case "session_model":
 								setClaudeModel(sessionId, e.model);
-								break;
-							case "turn_usage":
-								setLastTurnUsage(sessionId, e.usage);
-								if (e.model) setClaudeModel(sessionId, e.model);
 								break;
 							case "window_title": {
 								const rawTitle = e.raw;
@@ -257,8 +247,6 @@ export function usePty({ terminal, sessionId }: UsePtyOptions) {
 		setClaudeSessionTitle,
 		setClaudeModel,
 		setShellState,
-		setCurrentTool,
-		setLastTurnUsage,
 	]);
 
 	return { sendResize };

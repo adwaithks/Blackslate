@@ -4,7 +4,7 @@ import type { Session } from "@/store/sessionsTypes";
  * Claude Code `/model` targets — single source of truth for the header picker.
  *
  * - `id` is sent verbatim: `/model <id>` (Claude Code aliases: haiku, sonnet, opus).
- * - `label` is the menu row text; `session.claudeModel` is set from Stop-hook OSC 6976 (`model=`).
+ * - `label` is the menu row text; `session.claudeModel` is set from OSC 6977 (SessionStart and optional Stop-hook transcript refresh).
  * - `matchKeywords` map that string (API slug, e.g. claude-sonnet-…) back to a row; first match wins.
  */
 
@@ -50,7 +50,7 @@ export function labelForClaudeModelId(id: string): string | undefined {
 }
 
 /**
- * Map `session.claudeModel` (6976 transcript slug) to a picker id, if any keyword matches.
+ * Map `session.claudeModel` (API slug from the PTY stream) to a picker id, if any keyword matches.
  */
 export function resolveClaudeModelIdFromParsedLabel(
 	label: string | null,
