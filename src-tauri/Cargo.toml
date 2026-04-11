@@ -29,4 +29,5 @@ anyhow = "1"
 base64 = "0.22"
 sysinfo = "0.33"
 tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
 

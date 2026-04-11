@@ -6,6 +6,8 @@ import { selectActiveSession, useSessionStore } from "@/store/sessions";
 import { WikiFilePickerDialog } from "./WikiFilePickerDialog";
 import { usePickerDismiss } from "@/components/header/claudeSessionPicker/usePickerDismiss";
 import { requestActiveTerminalFocus } from "@/lib/focusActiveTerminal";
+import { wikiListErrorFromInvoke } from "./wikiRipgrep";
+import type { WikiListError } from "./wikiPickerTypes";
 
 interface WikiFilePickerProps {
 	cwd: string;
@@ -15,6 +17,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 	const [open, setOpen] = useState(false);
 	const [files, setFiles] = useState<string[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [listError, setListError] = useState<WikiListError | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const close = useCallback(() => {
@@ -27,12 +30,16 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 		if (!open) return;
 		let cancelled = false;
 		setLoading(true);
+		setListError(null);
 		setFiles([]);
 		invoke<string[]>("list_md_files", { dir: cwd })
 			.then((result) => {
 				if (!cancelled) setFiles(result);
 			})
-			.catch(console.error)
+			.catch((e) => {
+				if (cancelled) return;
+				setListError(wikiListErrorFromInvoke(e));
+			})
 			.finally(() => {
 				if (!cancelled) setLoading(false);
 			});
@@ -73,6 +80,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 					scanDir={cwd}
 					files={files}
 					loading={loading}
+					listError={listError}
 					onPickFile={handlePickFile}
 					onClose={close}
 				/>

@@ -25,3 +25,6 @@ dist-ssr
 *.sw?
 CLAUDE.md
 docs/
+
+# Tauri sidecars (fetch via scripts/download-rg-sidecar.sh)
+src-tauri/binaries/rg-*
