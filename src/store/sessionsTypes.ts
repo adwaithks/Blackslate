@@ -12,7 +12,7 @@
  * Only the fields in `PersistedSession` / `PersistedPane` / `PersistedWorkspace` are
  * written; runtime-only fields are stripped before each write and reset on restore.
  *
- * PTY wiring in `usePty`; OSC effects from `ptyStreamOsc.ts` (`@ansi-tools/parser`).
+ * PTY wiring in `usePty`; OSC side effects via xterm (`registerOscHandler`, `onTitleChange`) plus helpers in `ptyStreamOsc.ts`.
  * This store is the single source of truth for cwd, git, Claude UI state, etc.
  */
 
@@ -22,13 +22,11 @@ export interface GitInfo {
 }
 
 /**
- * Fine-grained Claude Code state, driven by lifecycle hooks (OSC 6974):
- *   'thinking'  — Claude is processing (UserPromptSubmit or PreToolUse hook emits OSC 6974)
- *   'waiting'   — Claude paused for permission or input (Notification hook)
- *   'complete'  — Claude finished its entire turn (Stop hook)
- *   null        — Claude not active, or state not yet determined
+ * Fine-grained Claude Code state from OSC 6974 (trimmed payload).
+ * Common values: `thinking`, `waiting`, `complete`. Other non-empty strings are kept for
+ * forward-compatible hook tokens the UI may not style specially yet.
  */
-export type ClaudeState = "thinking" | "waiting" | "complete" | null;
+export type ClaudeState = string | null;
 
 /**
  * Persisted fields — the subset written to localStorage on every mutation.

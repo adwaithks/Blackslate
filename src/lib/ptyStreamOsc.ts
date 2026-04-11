@@ -1,85 +1,78 @@
 /**
- * PTY stream helpers: strip cursor CSI for xterm, map OSC codes to UI effects.
- * Uses [`@ansi-tools/parser`](https://www.npmjs.com/package/@ansi-tools/parser) per chunk
- * (same as prior regex-on-chunk behavior: a split OSC across reads can be missed).
+ * PTY stream helpers: OSC 7 → display cwd for session UI; Claude window-title cleanup.
+ * OSC 6973 / 6974 / 6977 / window title are handled by xterm (`registerOscHandler`, `onTitleChange`) in `usePty`.
  */
 
-import { parse } from "@ansi-tools/parser";
-
-/** DECSCUSR — `\e[… q`. Strip so xterm’s cursor style wins. */
-export function stripShellCursorShapeSequences(text: string): string {
-	return text.replace(/\x1b\[[0-9;]* ?q/g, "");
+function tildeHomePath(path: string, homePath: string): string {
+	const homeNorm = homePath.replace(/\/+$/, "");
+	if (!homeNorm) return path;
+	if (path === homeNorm) return "~";
+	if (path.startsWith(homeNorm + "/")) {
+		return "~" + path.slice(homeNorm.length);
+	}
+	return path;
 }
 
-export type ShellOscState = "running" | "idle";
-export type ClaudeLifecycleOsc = "thinking" | "waiting" | "complete";
-
-export type OscEffect =
-	| { type: "shell_state"; state: ShellOscState }
-	| { type: "cwd"; path: string }
-	| { type: "claude_lifecycle"; lifecycle: ClaudeLifecycleOsc }
-	| { type: "session_model"; model: string }
-	| { type: "window_title"; raw: string };
-
-function cwdFromOsc7Payload(filePayload: string, homePath: string): string | null {
+/**
+ * Map OSC 7 payload to a cwd string (tilde when under `homePath`).
+ * Accepts `file://…` URLs and bare absolute paths (e.g. `/Users/me/proj`).
+ */
+export function cwdFromOsc7Payload(
+	filePayload: string,
+	homePath: string,
+): string | null {
+	const trimmed = filePayload.trim();
+	if (trimmed.startsWith("/")) {
+		let path: string;
+		try {
+			path = decodeURIComponent(trimmed);
+		} catch {
+			return null;
+		}
+		return tildeHomePath(path, homePath);
+	}
 	try {
-		const path = decodeURIComponent(new URL(filePayload).pathname);
-		return path.startsWith(homePath)
-			? "~" + path.slice(homePath.length)
-			: path;
+		const path = decodeURIComponent(new URL(trimmed).pathname);
+		return tildeHomePath(path, homePath);
 	} catch {
 		return null;
 	}
 }
 
-/** Ordered OSC-driven updates for one decoded PTY chunk. */
-export function pullOscSideEffects(
-	chunk: string,
-	homePath: string,
-): OscEffect[] {
-	const effects: OscEffect[] = [];
-	for (const c of parse(chunk)) {
-		if (c.type !== "OSC") continue;
-		const joined = c.params.join(";");
+/** Shell activity from OSC 6973 payload (`running` / `prompt` → idle). */
+export function shellStateFromOsc6973Payload(
+	data: string,
+): "running" | "idle" | null {
+	const t = data.trim();
+	if (t === "running") return "running";
+	if (t === "prompt") return "idle";
+	return null;
+}
 
-		switch (c.command) {
-			case "6973":
-				if (joined === "running") effects.push({ type: "shell_state", state: "running" });
-				else if (joined === "prompt") effects.push({ type: "shell_state", state: "idle" });
-				break;
-			case "7": {
-				const cwd = cwdFromOsc7Payload(joined, homePath);
-				if (cwd !== null) effects.push({ type: "cwd", path: cwd });
-				break;
-			}
-			case "6974":
-				if (joined === "thinking" || joined === "waiting" || joined === "complete") {
-					effects.push({ type: "claude_lifecycle", lifecycle: joined });
-				}
-				break;
-			case "6977": {
-				const m = joined.trim();
-				if (m) effects.push({ type: "session_model", model: m });
-				break;
-			}
-			case "0":
-			case "2":
-				effects.push({ type: "window_title", raw: joined });
-				break;
-			default:
-				break;
-		}
-	}
-	return effects;
+/** Non-empty trimmed OSC 6974 lifecycle token, or null. Unknown tokens are kept for forward compatibility. */
+export function claudeLifecycleFromOsc6974Payload(data: string): string | null {
+	const t = data.trim();
+	return t.length > 0 ? t : null;
 }
 
 /**
- * Claude prefixes OSC 0/2 titles with spinner / braille / symbols. Drop that noise by
- * keeping the title from the first Unicode letter or digit onward (spaces etc. after
- * that stay intact).
+ * Window title after stripping Claude’s leading spinner/symbol noise: first letter/digit onward,
+ * or from the first emoji if there is no letter/digit (glyph-only session names).
  */
 export function stripClaudeWindowTitlePrefix(title: string): string {
 	const i = title.search(/[\p{L}\p{N}]/u);
-	if (i === -1) return "";
-	return title.slice(i).trimEnd();
+	if (i !== -1) return title.slice(i).trimEnd();
+
+	// Spinners like ✳ are Extended_Pictographic too — use the last pictograph as the session glyph.
+	const picts = [...title.matchAll(/\p{Extended_Pictographic}/gu)];
+	if (picts.length > 0) {
+		const last = picts[picts.length - 1];
+		return last[0];
+	}
+	return "";
+}
+
+/** True when the title names the Claude product (English, localized “Claude …”, etc.). */
+export function isClaudeProductWindowTitle(name: string): boolean {
+	return name === "Claude Code" || name.startsWith("Claude ");
 }

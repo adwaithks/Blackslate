@@ -1,41 +1,99 @@
 import { describe, expect, it } from "vitest";
 import {
-	pullOscSideEffects,
+	claudeLifecycleFromOsc6974Payload,
+	cwdFromOsc7Payload,
+	isClaudeProductWindowTitle,
+	shellStateFromOsc6973Payload,
 	stripClaudeWindowTitlePrefix,
 } from "./ptyStreamOsc";
 
-describe("pullOscSideEffects", () => {
+describe("cwdFromOsc7Payload", () => {
 	const home = "/Users/me";
 
-	it("emits multiple OSC in stream order", () => {
-		const chunk =
-			"\x1b]6973;running\x07" +
-			"text\x1b]6973;prompt\x07" +
-			"\x1b]6974;waiting\x07";
-		expect(pullOscSideEffects(chunk, home)).toEqual([
-			{ type: "shell_state", state: "running" },
-			{ type: "shell_state", state: "idle" },
-			{ type: "claude_lifecycle", lifecycle: "waiting" },
-		]);
+	it("maps a file URL under home to tilde form", () => {
+		expect(cwdFromOsc7Payload("file://box/Users/me/proj", home)).toBe(
+			"~/proj",
+		);
 	});
 
-	it("parses OSC 7 cwd", () => {
-		const chunk = "\x1b]7;file://box/Users/me/proj\x07";
-		expect(pullOscSideEffects(chunk, home)).toEqual([
-			{ type: "cwd", path: "~/proj" },
-		]);
+	it("returns absolute path when outside home", () => {
+		expect(cwdFromOsc7Payload("file://box/tmp/x", home)).toBe("/tmp/x");
 	});
 
-	it("parses OSC 6977 session model", () => {
-		expect(
-			pullOscSideEffects("\x1b]6977;claude-sonnet-4-20250514\x07", home),
-		).toEqual([
-			{ type: "session_model", model: "claude-sonnet-4-20250514" },
-		]);
+	it("returns null for invalid payloads", () => {
+		expect(cwdFromOsc7Payload("not-a-url", home)).toBeNull();
 	});
 
-	it("ignores empty 6977 payload", () => {
-		expect(pullOscSideEffects("\x1b]6977;\x07", home)).toEqual([]);
+	it("normalizes HOME with a trailing slash so tilde cwd stays ~/proj", () => {
+		expect(cwdFromOsc7Payload("file://h/Users/me/proj", "/Users/me/")).toBe(
+			"~/proj",
+		);
+	});
+
+	it("accepts a bare absolute path (no file:// scheme)", () => {
+		expect(cwdFromOsc7Payload("/Users/me/proj", home)).toBe("~/proj");
+	});
+});
+
+describe("shellStateFromOsc6973Payload", () => {
+	it("trims trailing whitespace on running", () => {
+		expect(shellStateFromOsc6973Payload("running ")).toBe("running");
+	});
+});
+
+describe("claudeLifecycleFromOsc6974Payload", () => {
+	it("preserves unknown lifecycle tokens", () => {
+		expect(claudeLifecycleFromOsc6974Payload("paused_for_input")).toBe(
+			"paused_for_input",
+		);
+	});
+
+	it("returns null for empty payload", () => {
+		expect(claudeLifecycleFromOsc6974Payload("   ")).toBeNull();
+	});
+});
+
+describe("isClaudeProductWindowTitle", () => {
+	it("matches localized Claude product titles", () => {
+		const stripped = stripClaudeWindowTitlePrefix("✳ Claude コード");
+		expect(stripped).toBe("Claude コード");
+		expect(isClaudeProductWindowTitle(stripped)).toBe(true);
+	});
+});
+
+/** Mirrors `usePty` PTY chunks with `TextDecoder` `{ stream: true }`. */
+function mergePtyB64ChunksLikeUsePty(parts: string[]): string {
+	const dec = new TextDecoder();
+	let out = "";
+	for (const b64 of parts) {
+		const raw = atob(b64);
+		const bytes = new Uint8Array(raw.length);
+		for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+		out += dec.decode(bytes, { stream: true });
+	}
+	out += dec.decode();
+	return out;
+}
+
+describe("PTY UTF-8 streaming decode (usePty)", () => {
+	it("merges a 4-byte emoji when the PTY read cuts through the middle of its UTF-8", () => {
+		const encoder = new TextEncoder();
+		const emoji = "\u{1F600}";
+		const emojiBytes = encoder.encode(emoji);
+		expect(emojiBytes.length).toBe(4);
+
+		const text = `before${emoji}after`;
+		const fullBytes = encoder.encode(text);
+		const i = fullBytes.indexOf(emojiBytes[0]);
+		expect(i).toBeGreaterThanOrEqual(0);
+		const splitInsideCodepoint = i + 2;
+		const b64a = btoa(
+			String.fromCharCode(...fullBytes.subarray(0, splitInsideCodepoint)),
+		);
+		const b64b = btoa(
+			String.fromCharCode(...fullBytes.subarray(splitInsideCodepoint)),
+		);
+		expect(mergePtyB64ChunksLikeUsePty([b64a, b64b])).toBe(text);
 	});
 });
 
@@ -57,5 +115,9 @@ describe("stripClaudeWindowTitlePrefix", () => {
 
 	it("returns empty when there is no letter or digit", () => {
 		expect(stripClaudeWindowTitlePrefix("⠂⠂·")).toBe("");
+	});
+
+	it("keeps an emoji-only session glyph after the spinner", () => {
+		expect(stripClaudeWindowTitlePrefix("✳ \u{1F680}")).toBe("\u{1F680}");
 	});
 });
