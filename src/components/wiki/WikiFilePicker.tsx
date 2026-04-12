@@ -6,6 +6,7 @@ import { selectActiveTerminal, useTerminalStore } from "@/store/terminals";
 import { WikiFilePickerDialog } from "./WikiFilePickerDialog";
 import { usePickerDismiss } from "@/components/header/claudeSessionPicker/usePickerDismiss";
 import { requestActiveTerminalFocus } from "@/lib/focusActiveTerminal";
+import { toastError } from "@/lib/toastError";
 import { wikiListErrorFromInvoke } from "./wikiRipgrep";
 import type { WikiListError } from "./wikiPickerTypes";
 
@@ -64,7 +65,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 		invoke("pty_write", {
 			id: active.ptyId,
 			data: `${active.claudeCodeActive ? "@" : ""}${absolutePath} `,
-		}).catch(console.error);
+		}).catch((e) => toastError("Could not insert path into terminal", e));
 		setOpen(false);
 		requestActiveTerminalFocus();
 	}

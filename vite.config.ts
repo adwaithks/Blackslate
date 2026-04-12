@@ -19,37 +19,40 @@ function injectAppThemeColors(): Plugin {
   };
 }
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
-// https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [injectAppThemeColors(), react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+export default defineConfig(({ command }) => ({
+	plugins: [injectAppThemeColors(), react(), tailwindcss()],
+	// Strip console.* calls and debugger from production bundles (tauri build / vite build).
+	// References like `.catch(console.error)` are kept; only direct calls are removed.
+	esbuild: {
+		drop: command === "build" ? (["console", "debugger"] as const) : [],
+	},
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+		},
+	},
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
-  clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
-  server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
-    },
-  },
+	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
+	//
+	// 1. prevent Vite from obscuring rust errors
+	clearScreen: false,
+	// 2. tauri expects a fixed port, fail if that port is not available
+	server: {
+		port: 1420,
+		strictPort: true,
+		host: host || false,
+		hmr: host
+			? {
+					protocol: "ws",
+					host,
+					port: 1421,
+				}
+			: undefined,
+		watch: {
+			// 3. tell Vite to ignore watching `src-tauri`
+			ignored: ["**/src-tauri/**"],
+		},
+	},
 }));

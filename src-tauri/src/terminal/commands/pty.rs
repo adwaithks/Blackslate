@@ -17,22 +17,12 @@ pub async fn pty_create(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> CommandResult<()> {
-    eprintln!("[blackslate][cmd] pty_create id={id} cols={cols} rows={rows} cwd={cwd:?}");
-    let result = state.sessions.create(id.clone(), cols, rows, cwd, app);
-    match &result {
-        Ok(_) => eprintln!("[blackslate][cmd] pty_create ok id={id}"),
-        Err(e) => eprintln!("[blackslate][cmd] pty_create err id={id}: {e}"),
-    }
-    result
+    state.sessions.create(id, cols, rows, cwd, app)
 }
 
 #[tauri::command]
 pub async fn pty_write(id: String, data: String, state: State<'_, AppState>) -> CommandResult<()> {
-    let result = state.sessions.write(&id, data.as_bytes());
-    if let Err(ref e) = result {
-        eprintln!("[blackslate][cmd] pty_write err id={id}: {e}");
-    }
-    result
+    state.sessions.write(&id, data.as_bytes())
 }
 
 #[tauri::command]
@@ -42,13 +32,11 @@ pub async fn pty_resize(
     rows: u16,
     state: State<'_, AppState>,
 ) -> CommandResult<()> {
-    eprintln!("[blackslate][cmd] pty_resize id={id} cols={cols} rows={rows}");
     state.sessions.resize(&id, cols, rows)
 }
 
 #[tauri::command]
 pub async fn pty_close(id: String, state: State<'_, AppState>) -> CommandResult<()> {
-    eprintln!("[blackslate][cmd] pty_close id={id}");
     state.sessions.close(&id);
     Ok(())
 }

@@ -9,9 +9,8 @@ import {
 	useTerminalStore,
 } from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
-import { useAppConfigStore, appThemeValue } from "@/store/appConfig";
+import { useAppConfigStore } from "@/store/appConfig";
 import { useHomeDir } from "@/hooks/app/useHomeDir";
-import { useApplyAppTheme } from "@/hooks/app/useApplyAppTheme";
 import { useAppLayoutShortcuts } from "@/hooks/app/useAppLayoutShortcuts";
 import { useWindowAndQuitCloseGuard } from "@/hooks/app/useWindowAndQuitCloseGuard";
 import { AppTitlebar } from "@/components/layout/AppTitlebar";
@@ -29,11 +28,7 @@ export function AppLayout() {
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [gitPanelOpen, setGitPanelOpen] = useState(false);
 
-	const { increaseFontSize, decreaseFontSize, appTheme } =
-		useAppConfigStore();
-
-	useApplyAppTheme(appThemeValue(appTheme));
-
+	const { increaseFontSize, decreaseFontSize } = useAppConfigStore();
 	useAppLayoutShortcuts({
 		sidebarOpen,
 		setSidebarOpen,

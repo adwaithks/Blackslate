@@ -5,6 +5,7 @@ import { Terminal } from "@xterm/xterm";
 import { findTerminal, useTerminalStore } from "@/store/terminals";
 import { decodePtyBase64PayloadChunk } from "@/lib/decodePtyBase64PayloadChunk";
 import { getHomeDir } from "@/lib/getHomeDir";
+import { toastError, toastErrorThrottled } from "@/lib/toastError";
 import { registerPtyOscHandlers } from "./registerPtyOscHandlers";
 import {
 	abortAfterListeners,
@@ -51,8 +52,12 @@ export function usePty({ terminal, terminalId }: UsePtyOptions) {
 		resizeTargetRef.current = (cols: number, rows: number) => {
 			// Skip resize until the shell exists and while the tab is still open.
 			if (!ptyMount.isEffectActive || !ptyMount.isShellReady) return;
-			invoke("pty_resize", { id: ptyMount.ptyId, cols, rows }).catch(
-				console.error,
+			invoke("pty_resize", { id: ptyMount.ptyId, cols, rows }).catch((err) =>
+				toastErrorThrottled(
+					`pty-resize-${ptyMount.ptyId}`,
+					"Could not resize terminal",
+					err,
+				),
 			);
 		};
 
@@ -131,7 +136,11 @@ export function usePty({ terminal, terminalId }: UsePtyOptions) {
 			ptyMount.disposeTypingToShell = term.onData((data) => {
 				if (unmounted(ptyMount, "none")) return;
 				invoke("pty_write", { id: ptyId, data }).catch((err) =>
-					console.error("[pty_write]", err),
+					toastErrorThrottled(
+						`pty-write-${ptyId}`,
+						"Could not send input to terminal",
+						err,
+					),
 				);
 			});
 
@@ -139,7 +148,7 @@ export function usePty({ terminal, terminalId }: UsePtyOptions) {
 		};
 
 		run().catch((err) => {
-			console.error("[pty] setup error:", err);
+			toastError("Could not start terminal", err);
 			if (!unmounted(ptyMount, "none")) {
 				term.writeln(`\r\n\x1b[31m[blackslate error] ${err}\x1b[0m`);
 			}

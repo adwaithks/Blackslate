@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { toastError } from "@/lib/toastError";
 
 // Add shortcuts by putting more entries in the list you pass to useAppShortcuts.
 
@@ -124,7 +125,9 @@ export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 				if (def.when(e)) {
 					e.preventDefault();
 					e.stopPropagation();
-					void Promise.resolve(def.run()).catch(console.error);
+					void Promise.resolve(def.run()).catch((e) =>
+						toastError("Shortcut action failed", e),
+					);
 					return;
 				}
 			}

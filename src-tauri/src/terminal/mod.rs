@@ -3,7 +3,6 @@ use std::path::PathBuf;
 mod agent_detect;
 mod error;
 mod events;
-pub mod logger;
 mod manager;
 mod session;
 
