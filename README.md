@@ -142,6 +142,19 @@ The philosophy: **augment at the UI/UX layer, not at the protocol layer.** PTY, 
 
 ---
 
+## Alpha — what to expect
+
+> **This is Alpha software.** Use it, break it, report issues — but go in with open eyes.
+
+- **Breaking changes ship without notice** — shortcuts, config, persisted state, and IPC signatures can change between any two releases.
+- **Data loss is possible** — workspace layout and session history may be wiped by an update.
+- **macOS 13+ / zsh only** — other platforms and shells are untested and unsupported.
+- **Provided "as is"** under the [MIT License](LICENSE) — no warranty, no liability. See the license for the full disclaimer.
+
+If you need stability, pin to a release tag.
+
+---
+
 ## Keyboard shortcuts
 
 All shortcuts use **⌘** on macOS.
@@ -230,11 +243,11 @@ Rust is infrastructure only — PTY lifecycle, process detection, git and projec
 
 ## Getting started
 
-**Prerequisites** — macOS 13+, [Rust](https://rustup.rs) stable, [Bun](https://bun.sh) (or Node 20+), Xcode CLI Tools (`xcode-select --install`).
+**Prerequisites** — macOS 13+, [Rust](https://rustup.rs) stable, [Bun](https://bun.sh), Xcode CLI Tools (`xcode-select --install`), Git, Python 3 (used by hook scripts — macOS ships Python 3 via Xcode CLI Tools). The repo assumes **Bun** for installs and scripts ([CONTRIBUTING.md](CONTRIBUTING.md)); Node 20+ is optional if you adapt commands to npm yourself.
 
 ```bash
-git clone https://github.com/your-org/blackslate.git
-cd blackslate
+git clone https://github.com/adwaithks/Blackslate.git
+cd Blackslate
 bun install
 ```
 
@@ -317,7 +330,7 @@ blackslate/
 
 ## Contributing
 
-Issues and **pull requests are welcome**. The project is under active development — larger refactors or behaviour changes may land without a long deprecation window. Pin to a release or commit if you need stability.
+Issues and **pull requests are welcome**. For environment setup, branching, tests, and releases, see **[CONTRIBUTING.md](CONTRIBUTING.md)**. The project is under active development — larger refactors or behaviour changes may land without a long deprecation window. Pin to a release or commit if you need stability.
 
 **Hard constraints:**
 
