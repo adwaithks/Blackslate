@@ -1,4 +1,4 @@
-//! PTY session lifecycle: one shell per `PtySession`, with optional file logging and a blocking reader task.
+//! PTY session lifecycle: one shell per `PtySession` and a blocking reader task.
 
 mod pty_session;
 mod reader;

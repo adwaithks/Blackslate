@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { selectActiveTerminal, useTerminalStore } from "@/store/terminals";
+import { toastError } from "@/lib/toastError";
 
 function shellEscapePosix(path: string): string {
 	// Safe for sh/bash/zsh: wrap in single quotes, escape inner single quotes.
@@ -29,14 +30,17 @@ export function useTerminalFileDropToPty(): void {
 				if (!ptyId) return;
 
 				const escaped = paths.map(shellEscapePosix).join(" ");
-				// Leading/trailing space matches typical terminal behavior.
-				await invoke("pty_write", { id: ptyId, data: ` ${escaped} ` });
+				try {
+					// Leading/trailing space matches typical terminal behavior.
+					await invoke("pty_write", { id: ptyId, data: ` ${escaped} ` });
+				} catch (e) {
+					toastError("Could not paste dropped paths into terminal", e);
+				}
 			});
 		};
 
 		void setup().catch((e) => {
-			// Non-fatal: drag/drop is an enhancement.
-			console.error("[terminal] file drop hook failed", e);
+			toastError("Could not enable drag and drop", e);
 		});
 
 		return () => {

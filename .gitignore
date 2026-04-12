@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+*.tsbuildinfo
 dist
 dist-ssr
 *.local
@@ -24,7 +25,8 @@ dist-ssr
 *.sln
 *.sw?
 CLAUDE.md
-docs/
+docs/*
+*.tsbuildinfo
 
 # Tauri sidecars (fetch via scripts/download-rg-sidecar.sh)
 src-tauri/binaries/rg-*

@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { confirmCloseWindow } from "@/lib/closeConfirm";
+import { toastError } from "@/lib/toastError";
 
 // Ask "are you sure?" before closing the window or using Quit from the menu.
 // The app has to block closing first, then show the dialog, then exit if you agree.
@@ -27,7 +28,7 @@ export function useWindowAndQuitCloseGuard(): void {
 						await finishClose();
 					}
 				} catch (e) {
-					console.error("[quit] confirm failed", e);
+					toastError("Could not quit", e);
 				}
 			});
 			if (cancelled) {
@@ -43,7 +44,7 @@ export function useWindowAndQuitCloseGuard(): void {
 						await finishClose();
 					}
 				} catch (e) {
-					console.error("[close] confirm failed", e);
+					toastError("Could not close window", e);
 				}
 			});
 			if (cancelled) {

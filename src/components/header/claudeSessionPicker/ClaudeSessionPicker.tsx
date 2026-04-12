@@ -7,6 +7,7 @@ import { buildResumePtyPayload } from "./resumeClaudeInput";
 import { ClaudeSessionPickerDropdown } from "./ClaudeSessionPickerDropdown";
 import { useClaudeSessionsList } from "./useClaudeSessionsList";
 import { usePickerDismiss } from "./usePickerDismiss";
+import { toastError } from "@/lib/toastError";
 
 interface ClaudeSessionPickerProps {
 	// Current terminal folder (sessions are listed for this folder).
@@ -50,8 +51,8 @@ export function ClaudeSessionPicker({
 			sessionId,
 			activeSession.claudeCodeActive,
 		);
-		invoke("pty_write", { id: activeSession.ptyId, data }).catch(
-			console.error,
+		invoke("pty_write", { id: activeSession.ptyId, data }).catch((e) =>
+			toastError("Could not resume session", e),
 		);
 		setOpen(false);
 	}

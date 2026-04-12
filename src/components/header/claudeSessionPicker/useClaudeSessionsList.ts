@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { toastError } from "@/lib/toastError";
 import type { ClaudeSession } from "./types";
 
 // Fetch session history when the picker opens. Clear the list when the folder changes so you don't see the wrong project's sessions.
@@ -14,7 +15,10 @@ export function useClaudeSessionsList(open: boolean, cwd: string) {
 			.then((data) => {
 				setSessions(data);
 			})
-			.catch(console.error)
+			.catch((e) => {
+				setSessions([]);
+				toastError("Could not load Claude sessions", e);
+			})
 			.finally(() => setLoading(false));
 	}, [open, cwd]);
 

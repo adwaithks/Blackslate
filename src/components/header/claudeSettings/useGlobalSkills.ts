@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { toastError } from "@/lib/toastError";
 import type { SkillInfo } from "./types";
 
 // Load machine-wide skills and slash commands once when this tab mounts.
@@ -12,7 +13,10 @@ export function useGlobalSkills() {
 		setLoading(true);
 		invoke<SkillInfo[]>("list_global_skills")
 			.then(setAll)
-			.catch(console.error)
+			.catch((e) => {
+				setAll([]);
+				toastError("Could not load global skills", e);
+			})
 			.finally(() => setLoading(false));
 	}, []);
 
