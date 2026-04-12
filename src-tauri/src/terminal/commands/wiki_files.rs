@@ -1,5 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use serde::Serialize;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
@@ -88,15 +89,54 @@ fn forbidden_dot_parent_dir(segment: &str) -> bool {
     !ALLOWED_DOT_DIRS.iter().any(|&allowed| allowed == segment)
 }
 
+/// Ask git for the root of the repository containing `start`.
+/// Handles worktrees, submodules, and bare repos correctly.
+/// Returns `None` when `start` is not inside any git repository.
+async fn find_git_root(start: &Path) -> Option<PathBuf> {
+    let output = tokio::process::Command::new("git")
+        .args(["-C", &start.to_string_lossy(), "rev-parse", "--show-toplevel"])
+        .output()
+        .await
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&output.stdout);
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(trimmed))
+}
+
+/// Response returned by [`list_md_files`].
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListMdFilesResult {
+    /// The directory that was actually scanned (git root when inside a repo, otherwise `dir`).
+    pub scan_dir: String,
+    /// Absolute paths of every matching `.md` / `.mdx` file.
+    pub files: Vec<String>,
+}
+
 /// List `.md` / `.mdx` under `dir` using the bundled ripgrep sidecar only.
+/// If `dir` is inside a git repository the scan always starts from the git root,
+/// so the visible docs are consistent regardless of which sub-directory the
+/// terminal is currently in.
 #[tauri::command]
-pub async fn list_md_files(app: AppHandle, dir: String) -> Result<Vec<String>, String> {
+pub async fn list_md_files(app: AppHandle, dir: String) -> Result<ListMdFilesResult, String> {
     let root = Path::new(&dir);
     if !root.is_dir() {
-        return Ok(vec![]);
+        return Ok(ListMdFilesResult { scan_dir: dir, files: vec![] });
     }
 
-    list_md_files_via_rg_sidecar(&app, &dir).await
+    let scan_dir = find_git_root(root)
+        .await
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or(dir);
+
+    let files = list_md_files_via_rg_sidecar(&app, &scan_dir).await?;
+    Ok(ListMdFilesResult { scan_dir, files })
 }
 
 async fn list_md_files_via_rg_sidecar(app: &AppHandle, dir: &str) -> Result<Vec<String>, String> {
@@ -178,7 +218,8 @@ async fn list_md_files_via_rg_sidecar(app: &AppHandle, dir: &str) -> Result<Vec<
 
 #[cfg(test)]
 mod tests {
-    use super::{markdown_path_allowed, stderr_is_only_ignorable_access_errors};
+    use super::{find_git_root, markdown_path_allowed, stderr_is_only_ignorable_access_errors};
+
 
     #[test]
     fn allows_normal_paths() {
@@ -204,6 +245,23 @@ mod tests {
     #[test]
     fn rejects_unknown_dot_dir() {
         assert!(!markdown_path_allowed("/proj/.cache/pkg/readme.md"));
+    }
+
+    #[tokio::test]
+    async fn find_git_root_finds_ancestor() {
+        // This test file lives inside a git repo — git rev-parse should return Some.
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let result = find_git_root(manifest_dir).await;
+        assert!(result.is_some(), "expected git to find a root above CARGO_MANIFEST_DIR");
+        let root = result.unwrap();
+        assert!(root.join(".git").exists());
+    }
+
+    #[tokio::test]
+    async fn find_git_root_returns_none_for_tmp() {
+        // /tmp is not a git repo on macOS/Linux.
+        let tmp = std::path::Path::new("/tmp");
+        assert!(find_git_root(tmp).await.is_none());
     }
 
     #[test]

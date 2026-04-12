@@ -18,12 +18,14 @@
 				"titleBarStyle": "Overlay",
 				"hiddenTitle": true,
 				"devtools": true,
+				"transparent": true,
 				"backgroundColor": "#141414"
 			}
 		],
 		"security": {
 			"csp": null
-		}
+		},
+		"macOSPrivateApi": true
 	},
 	"bundle": {
 		"active": true,

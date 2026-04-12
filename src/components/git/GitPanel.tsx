@@ -74,11 +74,10 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 	return (
 		<div
 			ref={panelRef}
-			style={{ width: panelWidth }}
+			style={{ width: open ? panelWidth : 0 }}
 			aria-hidden={!open}
 			className={cn(
-				"relative flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-background",
-				!open && "hidden",
+				"relative flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-background overflow-hidden transition-[width] duration-100 ease-out",
 			)}
 		>
 			<div
