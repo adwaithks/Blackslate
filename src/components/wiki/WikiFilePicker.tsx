@@ -13,9 +13,15 @@ interface WikiFilePickerProps {
 	cwd: string;
 }
 
+interface ListMdFilesResult {
+	scanDir: string;
+	files: string[];
+}
+
 export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 	const [open, setOpen] = useState(false);
 	const [files, setFiles] = useState<string[]>([]);
+	const [scanDir, setScanDir] = useState<string>(cwd);
 	const [loading, setLoading] = useState(false);
 	const [listError, setListError] = useState<WikiListError | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -32,9 +38,13 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 		setLoading(true);
 		setListError(null);
 		setFiles([]);
-		invoke<string[]>("list_md_files", { dir: cwd })
+		setScanDir(cwd);
+		invoke<ListMdFilesResult>("list_md_files", { dir: cwd })
 			.then((result) => {
-				if (!cancelled) setFiles(result);
+				if (!cancelled) {
+					setFiles(result.files);
+					setScanDir(result.scanDir);
+				}
 			})
 			.catch((e) => {
 				if (cancelled) return;
@@ -77,7 +87,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 
 			{open && (
 				<WikiFilePickerDialog
-					scanDir={cwd}
+					scanDir={scanDir}
 					files={files}
 					loading={loading}
 					listError={listError}

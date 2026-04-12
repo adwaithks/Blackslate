@@ -38,7 +38,10 @@ function CollapsibleContent({
 	return (
 		<CollapsiblePrimitive.Panel
 			data-slot="collapsible-content"
-			className={cn("overflow-hidden outline-none", className)}
+			className={cn(
+				"h-(--collapsible-panel-height) overflow-hidden outline-none transition-[height] duration-100 ease-out data-starting-style:h-0 data-ending-style:h-0",
+				className,
+			)}
 			{...props}
 		/>
 	);

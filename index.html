@@ -4,6 +4,23 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Blackslate</title>
+		<script>
+			// Synchronously apply the stored app background before first paint so the
+			// transparent WKWebView (macOSPrivateApi) never flashes white or the wrong color.
+			(function () {
+				var THEME_COLORS = __APP_THEME_COLORS__;
+				var DEFAULT_BG = "#000000";
+				try {
+					var raw = localStorage.getItem("blackslate-app-config");
+					if (raw) {
+						var parsed = JSON.parse(raw);
+						var themeId = parsed && parsed.state && parsed.state.appTheme;
+						var bg = THEME_COLORS[themeId] || DEFAULT_BG;
+						document.documentElement.style.backgroundColor = bg;
+					}
+				} catch (e) {}
+			})();
+		</script>
 	</head>
 
 	<body>
