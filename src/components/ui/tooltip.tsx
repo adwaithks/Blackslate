@@ -48,7 +48,7 @@ function TooltipContent({
     TooltipPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   > & {
-    /** Match popup background (defaults to `bg-popover`). */
+    // Optional class for the little arrow so it matches the bubble color.
     arrowClassName?: string;
   }) {
   return (

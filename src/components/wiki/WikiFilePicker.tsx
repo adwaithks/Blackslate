@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { LuBookOpen } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
-import { selectActiveSession, useSessionStore } from "@/store/sessions";
+import { selectActiveTerminal, useTerminalStore } from "@/store/terminals";
 import { WikiFilePickerDialog } from "./WikiFilePickerDialog";
 import { usePickerDismiss } from "@/components/header/claudeSessionPicker/usePickerDismiss";
 import { requestActiveTerminalFocus } from "@/lib/focusActiveTerminal";
@@ -49,7 +49,7 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 	}, [open, cwd]);
 
 	function handlePickFile(absolutePath: string) {
-		const active = selectActiveSession(useSessionStore.getState());
+		const active = selectActiveTerminal(useTerminalStore.getState());
 		if (!active?.ptyId) return;
 		invoke("pty_write", {
 			id: active.ptyId,

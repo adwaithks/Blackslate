@@ -5,7 +5,7 @@ import { SkillItem } from "./SkillItem";
 import { SkillViewer } from "./SkillViewer";
 import { useGlobalSkills } from "./useGlobalSkills";
 
-/** Global registry: filter list + `SkillViewer` (skills or commands, by `kind`). */
+// Machine-wide skills or slash commands: searchable list plus file preview.
 export function GlobalTab({ kind }: { kind: "skill" | "command" }) {
 	const { all, loading } = useGlobalSkills();
 	const [query, setQuery] = useState("");

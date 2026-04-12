@@ -51,7 +51,7 @@ function SheetContent({
 }: SheetPrimitive.Popup.Props & {
 	side?: "top" | "right" | "bottom" | "left";
 	showCloseButton?: boolean;
-	/** When true, portal content stays mounted while closed (hidden). Preserves DOM state. */
+	// If true, keep the panel in the page when closed (just hidden) so inner state isn't destroyed.
 	keepMounted?: boolean;
 }) {
 	return (

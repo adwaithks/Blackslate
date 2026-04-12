@@ -1,9 +1,6 @@
 import type { WikiListError } from "./wikiPickerTypes";
 
-/**
- * Substrings in `list_md_files` `Err` messages (`src-tauri/.../wiki_files.rs`).
- * If you change the Rust prefixes, update these too.
- */
+// Text snippets the wiki file list returns on failure — keep in sync with the Rust side if those strings change.
 const WIKI_RG_UNAVAILABLE = "WIKI_RG_UNAVAILABLE";
 const WIKI_RG_ACCESS_DENIED = "WIKI_RG_ACCESS_DENIED";
 const WIKI_RG_FAILED = "WIKI_RG_FAILED";
@@ -18,7 +15,7 @@ export function formatInvokeError(e: unknown): string {
 	return String(e);
 }
 
-/** Map a failed `invoke` payload to structured wiki picker error state. */
+// Turn a thrown error from the wiki search into a small labeled object for the UI.
 export function wikiListErrorFromInvoke(e: unknown): WikiListError {
 	const message = formatInvokeError(e);
 	if (message.includes(WIKI_RG_UNAVAILABLE)) {

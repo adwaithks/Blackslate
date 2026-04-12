@@ -10,13 +10,11 @@ import { ClaudeSessionPicker } from "@/components/header/ClaudeSessionPicker";
 import { ClaudeSettingsSheet } from "@/components/header/ClaudeSettingsSheet";
 
 export interface TitlebarClaudeMenuProps {
-	/** Active terminal cwd — passed through to session picker. */
+	// Current terminal folder (session picker needs it).
 	cwd: string;
 }
 
-/**
- * Gear menu for Claude Code resources / sessions plus their sheets.
- */
+// Settings icon: open Claude resources/sessions and their side panels.
 export function TitlebarClaudeMenu({ cwd }: TitlebarClaudeMenuProps) {
 	const [claudeSettingsOpen, setClaudeSettingsOpen] = useState(false);
 	const [claudeSessionsOpen, setClaudeSessionsOpen] = useState(false);

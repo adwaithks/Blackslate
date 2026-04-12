@@ -9,30 +9,27 @@ import {
 	SidebarHeader,
 	SidebarMenu,
 } from "@/components/ui/sidebar";
-import { selectSidebarDisplaySignature, useSessionStore } from "@/store/sessions";
+import { selectSidebarDisplaySignature, useTerminalStore } from "@/store/terminals";
 import { confirmCloseWorkspace } from "@/lib/closeConfirm";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceItem } from "@/components/sidebar/WorkspaceItem";
-import { getWorkspaceDisplaySession } from "@/components/sidebar/getWorkspaceDisplaySession";
+import { getWorkspaceDisplayTerminal } from "@/components/sidebar/getWorkspaceDisplayTerminal";
 
-/**
- * Left rail: list of workspaces (each may have multiple terminal tabs).
- * Picking a row calls `activateWorkspace`; × removes the workspace without affecting others.
- */
+// Left list of workspaces (each can have several tabs). Click a row to open that workspace; × closes just that one.
 export function AppSidebar() {
-	useSessionStore(selectSidebarDisplaySignature);
-	const { closeWorkspace, activateWorkspace, createWorkspace } = useSessionStore(
+	useTerminalStore(selectSidebarDisplaySignature);
+	const { closeWorkspace, activateWorkspace, createWorkspace } = useTerminalStore(
 		useShallow((s) => ({
 			closeWorkspace: s.closeWorkspace,
 			activateWorkspace: s.activateWorkspace,
 			createWorkspace: s.createWorkspace,
 		})),
 	);
-	const { workspaces, activeWorkspaceId } = useSessionStore.getState();
+	const { workspaces, activeWorkspaceId } = useTerminalStore.getState();
 
 	const requestCloseWorkspaceFromSidebar = useCallback(
 		async (workspaceId: string) => {
-			const ws = useSessionStore
+			const ws = useTerminalStore
 				.getState()
 				.workspaces.find((w) => w.id === workspaceId);
 			if (!ws) return;
@@ -66,12 +63,12 @@ export function AppSidebar() {
 						<SidebarGroupContent>
 							<SidebarMenu className="gap-1">
 								{workspaces.map((workspace) => {
-									const session = getWorkspaceDisplaySession(workspace);
+									const terminal = getWorkspaceDisplayTerminal(workspace);
 									return (
 										<WorkspaceItem
 											key={workspace.id}
 											workspace={workspace}
-											session={session}
+											terminal={terminal}
 											isActive={
 												workspace.id === activeWorkspaceId
 											}

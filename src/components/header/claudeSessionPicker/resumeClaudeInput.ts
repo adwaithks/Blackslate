@@ -1,7 +1,4 @@
-/**
- * Bytes to send to the PTY so Claude resumes `sessionId`.
- * Inside an active Claude REPL we use `/resume`; otherwise spawn `claude --resume`.
- */
+// Text to paste into the shell to reopen a session: short command if Claude is already running, full command otherwise.
 export function buildResumePtyPayload(
 	sessionId: string,
 	claudeCodeActive: boolean,

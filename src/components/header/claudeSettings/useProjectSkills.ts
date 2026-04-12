@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillInfo } from "./types";
 
-/** `list_project_skills` when `projectPath` is set; idle when null. */
+// Load skills/commands for a project folder; does nothing until a project is picked.
 export function useProjectSkills(projectPath: string | null) {
 	const [all, setAll] = useState<SkillInfo[]>([]);
 	const [loading, setLoading] = useState(false);

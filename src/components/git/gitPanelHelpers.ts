@@ -36,7 +36,7 @@ export function readStoredGitPanelWidth(): number {
 			return Math.min(GIT_PANEL_MAX_W, Math.max(GIT_PANEL_MIN_W, n));
 		}
 	} catch {
-		/* ignore */
+		// ignore storage errors
 	}
 	return GIT_PANEL_DEFAULT_W;
 }

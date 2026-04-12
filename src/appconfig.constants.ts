@@ -1,7 +1,4 @@
-/**
- * Static appearance option lists (terminal theme, app theme) and their id types.
- * `useAppConfigStore` in `store/appConfig.ts` holds the selected ids; this module has no runtime state.
- */
+// Lists of terminal look presets and app chrome colors. The config store remembers picks; this file is just data.
 
 // ─── Terminal themes ──────────────────────────────────────────────────────────
 
@@ -52,7 +49,7 @@ export const TERMINAL_THEME_OPTIONS: TerminalThemeOption[] = [
 	},
 ];
 
-// ─── App theme (base chrome colour → derived UI surfaces via `deriveThemeVars`) ─
+// ─── App chrome colors (one base color → rest of UI is calculated) ─
 
 export type AppThemeId =
 	| "void"
@@ -68,10 +65,10 @@ export type AppThemeId =
 export interface AppThemeOption {
 	id: AppThemeId;
 	label: string;
-	value: string; // Base hex; applied to `--chrome-sidebar-surface` and theme ladder
+	value: string; // Base color hex; sidebar and related colors derive from it
 }
 
-/** Resolve an app theme id to its raw CSS hex value. */
+// Look up the hex for a theme id (falls back to the first option).
 export function appThemeValue(id: AppThemeId): string {
 	return APP_THEME_OPTIONS.find((o) => o.id === id)?.value
 		?? APP_THEME_OPTIONS[0].value;

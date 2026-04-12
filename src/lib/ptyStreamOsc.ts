@@ -1,7 +1,5 @@
-/**
- * PTY stream helpers: OSC 7 → display cwd for session UI; Claude window-title cleanup.
- * OSC 6973 / 6974 / 6977 / window title are handled by xterm (`registerOscHandler`, `onTitleChange`) in `usePty`.
- */
+// Read small pieces of text the shell sends (folder path, busy/idle, Claude status, window title).
+// The terminal widget wires these; see registerPtyOscHandlers.
 
 function tildeHomePath(path: string, homePath: string): string {
 	const homeNorm = homePath.replace(/\/+$/, "");
@@ -13,10 +11,7 @@ function tildeHomePath(path: string, homePath: string): string {
 	return path;
 }
 
-/**
- * Map OSC 7 payload to a cwd string (tilde when under `homePath`).
- * Accepts `file://…` URLs and bare absolute paths (e.g. `/Users/me/proj`).
- */
+// Turn a path payload from the shell into a short folder string (uses ~ when inside the user home).
 export function cwdFromOsc7Payload(
 	filePayload: string,
 	homePath: string,
@@ -39,7 +34,7 @@ export function cwdFromOsc7Payload(
 	}
 }
 
-/** Shell activity from OSC 6973 payload (`running` / `prompt` → idle). */
+// Whether the shell says a command is running or the prompt is idle.
 export function shellStateFromOsc6973Payload(
 	data: string,
 ): "running" | "idle" | null {
@@ -49,21 +44,18 @@ export function shellStateFromOsc6973Payload(
 	return null;
 }
 
-/** Non-empty trimmed OSC 6974 lifecycle token, or null. Unknown tokens are kept for forward compatibility. */
+// Claude lifecycle text from the shell, or null if empty. Unknown words are kept on purpose.
 export function claudeLifecycleFromOsc6974Payload(data: string): string | null {
 	const t = data.trim();
 	return t.length > 0 ? t : null;
 }
 
-/**
- * Window title after stripping Claude’s leading spinner/symbol noise: first letter/digit onward,
- * or from the first emoji if there is no letter/digit (glyph-only session names).
- */
+// Clean up Claude window titles: drop leading decoration, keep the real title text.
 export function stripClaudeWindowTitlePrefix(title: string): string {
 	const i = title.search(/[\p{L}\p{N}]/u);
 	if (i !== -1) return title.slice(i).trimEnd();
 
-	// Spinners like ✳ are Extended_Pictographic too — use the last pictograph as the session glyph.
+	// If there are only symbols, keep the last symbol character as the label.
 	const picts = [...title.matchAll(/\p{Extended_Pictographic}/gu)];
 	if (picts.length > 0) {
 		const last = picts[picts.length - 1];
@@ -72,7 +64,7 @@ export function stripClaudeWindowTitlePrefix(title: string): string {
 	return "";
 }
 
-/** True when the title names the Claude product (English, localized “Claude …”, etc.). */
+// True when the window title is clearly the Claude app, not a user-named session.
 export function isClaudeProductWindowTitle(name: string): boolean {
 	return name === "Claude Code" || name.startsWith("Claude ");
 }

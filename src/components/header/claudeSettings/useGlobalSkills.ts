@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillInfo } from "./types";
 
-/** `list_global_skills` once on mount (global skills/commands tab). */
+// Load machine-wide skills and slash commands once when this tab mounts.
 export function useGlobalSkills() {
 	const [all, setAll] = useState<SkillInfo[]>([]);
 	const [loading, setLoading] = useState(true);

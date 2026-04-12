@@ -11,9 +11,7 @@ export interface TitlebarSidebarSectionProps {
 	onToggleSidebar: () => void;
 }
 
-/**
- * Titlebar grid cell aligned with the left sidebar: new workspace and sidebar visibility.
- */
+// Top-left above the sidebar: new workspace button and show/hide sidebar.
 export function TitlebarSidebarSection({
 	sidebarOpen,
 	onCreateWorkspace,

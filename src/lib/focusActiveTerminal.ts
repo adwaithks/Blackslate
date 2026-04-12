@@ -1,4 +1,4 @@
-/** Dispatched when chrome (e.g. header Select) should yield focus to the active xterm. */
+// Custom event name: "give keyboard focus back to the visible terminal."
 export const FOCUS_ACTIVE_TERMINAL_EVENT = "blackslate:focus-active-terminal";
 
 export function requestActiveTerminalFocus(): void {

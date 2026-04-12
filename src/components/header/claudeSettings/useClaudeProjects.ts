@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ClaudeProject } from "./types";
 
-/** `list_claude_projects` once (project picker dropdown). */
+// Load known assistant projects once for the project dropdown.
 export function useClaudeProjects() {
 	const [projects, setProjects] = useState<ClaudeProject[]>([]);
 

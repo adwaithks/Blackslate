@@ -1,7 +1,4 @@
-/**
- * Minimal color math for deriving the app theme from a single base chrome colour.
- * All inputs/outputs are hex strings (#RRGGBB or #RRGGBBAA).
- */
+// Turn one chosen chrome color into the rest of the app's colors (hex strings in and out).
 
 const APP_BG_R = 0x06;
 const APP_BG_G = 0x06;
@@ -13,7 +10,7 @@ export interface RGB {
 	b: number;
 }
 
-/** Parse #RRGGBB or #RRGGBBAA → { r, g, b } (0-255), alpha-composited over app bg. */
+// Read a #RGB hex (with optional transparency) and return solid red/green/blue numbers.
 export function parseHexToOpaque(hex: string): RGB {
 	const r = parseInt(hex.slice(1, 3), 16);
 	const g = parseInt(hex.slice(3, 5), 16);
@@ -27,25 +24,25 @@ export function parseHexToOpaque(hex: string): RGB {
 	};
 }
 
-/** RGB → #rrggbb */
+// Pack red/green/blue into a #hex color.
 export function rgbToHex({ r, g, b }: RGB): string {
 	const h = (v: number) => v.toString(16).padStart(2, "0");
 	return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-/** Lighten an RGB by `amount` (0-255), clamped. */
+// Nudge each channel brighter, capped at white.
 export function lighten({ r, g, b }: RGB, amount: number): RGB {
 	const c = (v: number) => Math.min(255, v + amount);
 	return { r: c(r), g: c(g), b: c(b) };
 }
 
-/** Darken an RGB by `amount` (0-255), clamped. */
+// Nudge each channel darker, capped at black.
 export function darken({ r, g, b }: RGB, amount: number): RGB {
 	const c = (v: number) => Math.max(0, v - amount);
 	return { r: c(r), g: c(g), b: c(b) };
 }
 
-/** Relative luminance (WCAG 2.0). */
+// How bright a color reads to the eye (used to pick text color and "light vs dark" mode).
 export function luminance({ r, g, b }: RGB): number {
 	const f = (v: number) => {
 		const s = v / 255;
@@ -54,22 +51,15 @@ export function luminance({ r, g, b }: RGB): number {
 	return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
 
-/** Surfaces above this luminance are treated as "light" for theme derivation. */
+// If a background is brighter than this, we treat the UI as "light theme" styling.
 export const LIGHT_SURFACE_THRESHOLD = 0.18;
 
-/** True when the resolved app theme base colour is a "light" surface. */
+// Whether the chosen base background counts as light (affects text and terminal pairing).
 export function isLightSurface(baseHex: string): boolean {
 	return luminance(parseHexToOpaque(baseHex)) > LIGHT_SURFACE_THRESHOLD;
 }
 
-/**
- * Derive the full set of theme CSS variables from a single base hex colour.
- * Returns a record of CSS property name → value string.
- *
- * Elevation ladder (dark mode, darkest → lightest):
- *   terminal (−4) < background (base) < card (+6) < border (+8)
- *   < muted (+12) < popover (+14) < accent (+16) < ring (+35)
- */
+// From one base color, fill in background, text, borders, cards, terminal strip, etc.
 export function deriveThemeVars(baseHex: string): Record<string, string> {
 	const base = parseHexToOpaque(baseHex);
 	const backgroundHex = rgbToHex(base);

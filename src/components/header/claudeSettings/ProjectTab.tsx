@@ -6,7 +6,7 @@ import { SkillItem } from "./SkillItem";
 import { SkillViewer } from "./SkillViewer";
 import { useProjectSkills } from "./useProjectSkills";
 
-/** Project-scoped skills/commands: pick a Claude project, then filter + viewer. */
+// Per-project skills or slash commands: choose a project, then search and preview files.
 export function ProjectTab({ kind }: { kind: "skill" | "command" }) {
 	const [selectedProject, setSelectedProject] =
 		useState<ClaudeProject | null>(null);

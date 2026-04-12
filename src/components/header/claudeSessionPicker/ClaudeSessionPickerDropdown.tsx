@@ -14,13 +14,11 @@ interface ClaudeSessionPickerDropdownProps {
 	sessions: ClaudeSession[];
 	loading: boolean;
 	onPickSession: (sessionId: string) => void;
-	/** `fixed` — under titlebar when opened from Claude menu (no anchor button). */
+	// fixed = park the panel under the top bar (gear menu). anchor = position under the control that opened it.
 	variant?: "anchor" | "fixed";
 }
 
-/**
- * cmdk panel: filterable list of past sessions for the current `cwd` (set by parent).
- */
+// Searchable list of past sessions for the folder the parent passes in.
 export function ClaudeSessionPickerDropdown({
 	sessions,
 	loading,

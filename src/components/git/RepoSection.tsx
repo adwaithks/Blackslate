@@ -1,3 +1,6 @@
+// One fold-open block per repo. While the panel is open we recheck status every few seconds.
+// Changed and staged files are merged into one list (same file can be both). Click a row to diff and stage/unstage.
+
 import {
 	memo,
 	useCallback,
@@ -13,29 +16,48 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TbChevronDown, TbX } from "react-icons/tb";
+import { TbChevronDown, TbFile, TbX } from "react-icons/tb";
 import { cn } from "@/lib/utils";
-import { TbFile } from "react-icons/tb";
-import type {
-	GitFile,
-	GitFileStatus,
-	GitStatus,
-} from "@/components/git/gitTypes";
+import type { GitFile, GitFileStatus, GitStatus } from "@/components/git/gitTypes";
 import { sumLineStats, repoName } from "@/components/git/gitPanelHelpers";
 import { RepoSectionInnerSkeleton } from "@/components/git/GitPanelSkeletons";
 import { GitDiffViewerSheet } from "@/components/git/GitDiffViewerSheet";
 import { useGitReposStore } from "@/store/gitRepos";
 
-type StatusState =
-	| { kind: "loading" }
-	| { kind: "not-git" }
-	| { kind: "ready"; status: GitStatus };
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface RepoSectionProps {
 	repoPath: string;
 	panelOpen: boolean;
 	isFirst?: boolean;
 }
+
+// Loading, not a git folder, or we have a full status snapshot.
+type RepoStatusState =
+	| { kind: "loading" }
+	| { kind: "not-git" }
+	| { kind: "ready"; status: GitStatus };
+
+// Latest poll from the app backend; includes a short fingerprint so we can skip redraws when nothing changed.
+type GitStatusPollResult = {
+	changed: boolean;
+	hash: string;
+	status: GitStatus | null;
+};
+
+// One line in the list: file plus whether it's waiting to commit, changed on disk, or both.
+type MergedPanelFile = {
+	path: string;
+	file: GitFile;
+	staged: boolean;
+	unstaged: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// Small UI pieces
+// ---------------------------------------------------------------------------
 
 const STATUS_DOT_COLORS: Record<GitFileStatus, [string, string]> = {
 	modified: ["border-orange-400/70", "bg-orange-400/70"],
@@ -60,9 +82,7 @@ function StatusDot({ status }: { status: GitFileStatus }) {
 	);
 }
 
-/**
- * Compact panel row: file-type icon + path + status dot. Clicking opens the diff sheet.
- */
+// One line: icon, path (folder + filename), status color. Click opens the diff sheet.
 function PanelFileRow({
 	file,
 	onClick,
@@ -115,49 +135,70 @@ function PanelFileRow({
 	);
 }
 
-/**
- * One tracked repo: collapsible header + flat file list. Polling and git actions
- * all live here; changes/staged management is inside the diff sheet.
- */
-function RepoSectionImpl({
-	repoPath,
-	panelOpen,
-	isFirst = false,
-}: RepoSectionProps) {
-	const removeRepo = useGitReposStore((s) => s.removeRepo);
-	const [state, setState] = useState<StatusState>({ kind: "loading" });
-	const [open, setOpen] = useState(true);
-	const [diffOpen, setDiffOpen] = useState(false);
-	const [pendingDiffOpen, setPendingDiffOpen] = useState<{
-		path: string;
-		source: "changes" | "staged";
-	} | null>(null);
-	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const lastHashRef = useRef<string | null>(null);
+// ---------------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------------
 
-	type GitStatusPoll = {
-		changed: boolean;
-		hash: string;
-		status: GitStatus | null;
-	};
+// Git has two lists (staged vs not). We show one list; if a path is in both, one row shows both states.
+function mergeUnstagedAndStagedForPanel(status: GitStatus): MergedPanelFile[] {
+	const byPath = new Map<string, MergedPanelFile>();
+
+	for (const file of status.unstaged) {
+		byPath.set(file.path, {
+			path: file.path,
+			file,
+			staged: false,
+			unstaged: true,
+		});
+	}
+
+	for (const file of status.staged) {
+		const existing = byPath.get(file.path);
+		if (existing) {
+			byPath.set(file.path, { ...existing, staged: true });
+		} else {
+			byPath.set(file.path, {
+				path: file.path,
+				file,
+				staged: true,
+				unstaged: false,
+			});
+		}
+	}
+
+	return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+
+// ---------------------------------------------------------------------------
+// Hook: load + poll git status while the panel is open
+// ---------------------------------------------------------------------------
+
+function useRepoGitStatus(repoPath: string, panelOpen: boolean) {
+	const [state, setState] = useState<RepoStatusState>({ kind: "loading" });
+	const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const lastStatusHashRef = useRef<string | null>(null);
 
 	const refresh = useCallback(async () => {
 		try {
-			const prevHash = lastHashRef.current;
-			const polled = await invoke<GitStatusPoll | null>(
+			const polled = await invoke<GitStatusPollResult | null>(
 				"get_git_status_poll",
 				{
 					cwd: repoPath,
-					prevHash,
+					prevHash: lastStatusHashRef.current,
 				},
 			);
+
 			if (polled === null) {
 				setState({ kind: "not-git" });
-			} else {
-				lastHashRef.current = polled.hash;
-				if (!polled.changed || polled.status === null) return;
-				setState({ kind: "ready", status: polled.status });
+				return;
 			}
+
+			lastStatusHashRef.current = polled.hash;
+
+			// Backend says “same as last time” — skip updating React state.
+			if (!polled.changed || polled.status === null) return;
+
+			setState({ kind: "ready", status: polled.status });
 		} catch {
 			setState({ kind: "not-git" });
 		}
@@ -165,76 +206,79 @@ function RepoSectionImpl({
 
 	useEffect(() => {
 		if (!panelOpen) {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
+			if (pollTimerRef.current) {
+				clearInterval(pollTimerRef.current);
+				pollTimerRef.current = null;
 			}
 			return;
 		}
+
 		void refresh();
-		intervalRef.current = setInterval(refresh, 3000);
+		pollTimerRef.current = setInterval(refresh, 3000);
+
 		return () => {
-			if (intervalRef.current) clearInterval(intervalRef.current);
-			intervalRef.current = null;
+			if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+			pollTimerRef.current = null;
 		};
 	}, [panelOpen, refresh]);
 
-	const act = useCallback(
-		async (cmd: string, args?: Record<string, string>) => {
-			await invoke(cmd, { cwd: repoPath, ...args });
+	return { state, refresh };
+}
+
+// ---------------------------------------------------------------------------
+// Main section
+// ---------------------------------------------------------------------------
+
+function RepoSectionImpl({
+	repoPath,
+	panelOpen,
+	isFirst = false,
+}: RepoSectionProps) {
+	const removeRepo = useGitReposStore((s) => s.removeRepo);
+	const { state, refresh } = useRepoGitStatus(repoPath, panelOpen);
+
+	const [sectionExpanded, setSectionExpanded] = useState(true);
+	const [diffSheetOpen, setDiffSheetOpen] = useState(false);
+	const [fileToOpenInDiff, setFileToOpenInDiff] = useState<{
+		path: string;
+		source: "changes" | "staged";
+	} | null>(null);
+
+	// Run a Tauri git command, then refresh the lists (stage, discard, etc.).
+	const runGitCommandThenRefresh = useCallback(
+		async (command: string, args?: Record<string, string>) => {
+			await invoke(command, { cwd: repoPath, ...args });
 			await refresh();
 		},
 		[repoPath, refresh],
 	);
 
 	const status = state.kind === "ready" ? state.status : null;
-	const lineStats =
-		status !== null
-			? sumLineStats([...status.unstaged, ...status.staged])
-			: { add: 0, del: 0 };
 
-	// Deduplicated flat list for the panel: unstaged files + staged-only files.
-	const allFiles: Array<{
-		path: string;
-		file: GitFile;
-		staged: boolean;
-		unstaged: boolean;
-	}> = useMemo(() => {
-		if (!status) return [];
-		const map = new Map<
-			string,
-			{ path: string; file: GitFile; staged: boolean; unstaged: boolean }
-		>();
-		for (const f of status.unstaged) {
-			map.set(f.path, {
-				path: f.path,
-				file: f,
-				staged: false,
-				unstaged: true,
-			});
-		}
-		for (const f of status.staged) {
-			const prev = map.get(f.path);
-			if (prev) {
-				map.set(f.path, { ...prev, staged: true });
-			} else {
-				map.set(f.path, {
-					path: f.path,
-					file: f,
-					staged: true,
-					unstaged: false,
-				});
-			}
-		}
-		return [...map.values()].sort((a, b) => a.path.localeCompare(b.path));
+	const lineStats = useMemo(() => {
+		if (!status) return { add: 0, del: 0 };
+		return sumLineStats([...status.unstaged, ...status.staged]);
 	}, [status]);
+
+	const mergedFiles = useMemo(
+		() => (status ? mergeUnstagedAndStagedForPanel(status) : []),
+		[status],
+	);
 
 	if (state.kind === "not-git") return null;
 
+	function openDiffForFile(entry: MergedPanelFile) {
+		setFileToOpenInDiff({
+			path: entry.path,
+			source: entry.unstaged ? "changes" : "staged",
+		});
+		setDiffSheetOpen(true);
+	}
+
 	return (
 		<Collapsible
-			open={open}
-			onOpenChange={setOpen}
+			open={sectionExpanded}
+			onOpenChange={setSectionExpanded}
 			className="border-b pb-2 border-border"
 		>
 			<div className="group/header relative">
@@ -248,7 +292,7 @@ function RepoSectionImpl({
 						<TbChevronDown
 							className={cn(
 								"size-3 shrink-0 text-muted-foreground/50 transition-transform duration-150",
-								open ? "rotate-0" : "-rotate-90",
+								sectionExpanded ? "rotate-0" : "-rotate-90",
 							)}
 							aria-hidden
 						/>
@@ -307,25 +351,17 @@ function RepoSectionImpl({
 				<div className="min-h-0">
 					{state.kind === "loading" ? (
 						<RepoSectionInnerSkeleton />
-					) : allFiles.length === 0 ? (
+					) : mergedFiles.length === 0 ? (
 						<p className="px-3 py-3 text-xs text-muted-foreground/35">
 							No changes
 						</p>
 					) : (
 						<div className="pt-0.5">
-							{allFiles.map((f) => (
+							{mergedFiles.map((entry) => (
 								<PanelFileRow
-									key={f.path}
-									file={f.file}
-									onClick={() => {
-										setPendingDiffOpen({
-											path: f.path,
-											source: f.unstaged
-												? "changes"
-												: "staged",
-										});
-										setDiffOpen(true);
-									}}
+									key={entry.path}
+									file={entry.file}
+									onClick={() => openDiffForFile(entry)}
 								/>
 							))}
 						</div>
@@ -339,11 +375,11 @@ function RepoSectionImpl({
 					repoDisplayName={repoName(repoPath)}
 					branch={status.branch}
 					status={status}
-					act={act}
-					open={diffOpen}
-					onOpenChange={setDiffOpen}
-					pendingOpen={pendingDiffOpen}
-					onConsumePendingOpen={() => setPendingDiffOpen(null)}
+					act={runGitCommandThenRefresh}
+					open={diffSheetOpen}
+					onOpenChange={setDiffSheetOpen}
+					pendingOpen={fileToOpenInDiff}
+					onConsumePendingOpen={() => setFileToOpenInDiff(null)}
 				/>
 			) : null}
 		</Collapsible>

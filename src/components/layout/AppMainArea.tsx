@@ -4,15 +4,13 @@ import { TerminalView } from "@/components/terminal/TerminalView";
 import { GitPanel } from "@/components/git/GitPanel";
 
 interface AppMainAreaProps {
-	/** Git panel visibility */
+	// Whether the source-control side panel is open.
 	gitPanelOpen: boolean;
-	/** Absolute cwd for git status (same as titlebar path when home is known). */
+	// Full folder path for git (matches the title bar when we know your home folder).
 	gitActiveCwd: string;
 }
 
-/**
- * Sidebar + terminal + optional git panel. flex-1 fills space below the titlebar.
- */
+// Left list, middle terminal, optional right git panel. Grows to fill space under the title bar.
 function AppMainAreaImpl({ gitPanelOpen, gitActiveCwd }: AppMainAreaProps) {
 	return (
 		<div className="flex min-h-0 flex-1">

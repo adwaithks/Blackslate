@@ -2,21 +2,18 @@ import { useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { LuHistory } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
-import { selectActiveSession, useSessionStore } from "@/store/sessions";
+import { selectActiveTerminal, useTerminalStore } from "@/store/terminals";
 import { buildResumePtyPayload } from "./resumeClaudeInput";
 import { ClaudeSessionPickerDropdown } from "./ClaudeSessionPickerDropdown";
 import { useClaudeSessionsList } from "./useClaudeSessionsList";
 import { usePickerDismiss } from "./usePickerDismiss";
 
 interface ClaudeSessionPickerProps {
-	/** Absolute path of the active terminal cwd — from AppTitlebar / layout. */
+	// Current terminal folder (sessions are listed for this folder).
 	cwd: string;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
-	/**
-	 * `menu` — no Sessions button; panel uses fixed position (titlebar Claude menu).
-	 * `button` — default trigger beside other controls.
-	 */
+	// menu = opened from the gear dropdown (no extra button). button = normal trigger next to other controls.
 	trigger?: "button" | "menu";
 }
 
@@ -41,8 +38,8 @@ export function ClaudeSessionPicker({
 	const closePicker = useCallback(() => setOpen(false), [setOpen]);
 	usePickerDismiss(open, closePicker, containerRef);
 
-	const { workspaces, activeWorkspaceId } = useSessionStore();
-	const activeSession = selectActiveSession({
+	const { workspaces, activeWorkspaceId } = useTerminalStore();
+	const activeSession = selectActiveTerminal({
 		workspaces,
 		activeWorkspaceId,
 	});

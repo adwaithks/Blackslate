@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/tooltip";
 import {
 	workspaceDisplayName,
-	type Session,
+	type Terminal,
 	type Workspace,
-} from "@/store/sessions";
+} from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import {
 	HEADER_REPO_ICON,
@@ -33,20 +33,18 @@ import {
 
 interface WorkspaceItemProps {
 	workspace: Workspace;
-	/** Active session within this workspace — drives the row label, cwd, and Claude line. */
-	session: Session;
+	// The tab we're showing for this workspace (name, folder path, assistant line).
+	terminal: Terminal;
 	isActive: boolean;
 	onActivate: () => void;
 	onClose: () => void;
 }
 
-/**
- * One workspace row: switch workspace on click, close on the × (does not bubble to activate).
- * Tooltip repeats name + full cwd for overflow cases.
- */
+// One row in the sidebar: click to open that workspace, × closes only that workspace (doesn't also select it).
+// Hover shows the full name and path when text is cut off.
 export function WorkspaceItem({
 	workspace,
-	session,
+	terminal,
 	isActive,
 	onActivate,
 	onClose,
@@ -54,8 +52,8 @@ export function WorkspaceItem({
 	const openRenameWorkspace = useRenameUiStore((s) => s.openWorkspace);
 
 	const dirName = workspaceDisplayName(workspace);
-	const { git } = session;
-	const tabCount = workspace.panes.reduce((sum, p) => sum + p.sessions.length, 0);
+	const { git } = terminal;
+	const tabCount = workspace.panes.reduce((sum, p) => sum + p.terminals.length, 0);
 
 	return (
 		<Tooltip>
@@ -141,16 +139,16 @@ export function WorkspaceItem({
 											HEADER_REPO_TEXT,
 										)}
 									>
-										{session.cwd}
+										{terminal.cwd}
 									</span>
 								</div>
 
 								{/* Row 3: Claude model name if active */}
-								{session.claudeCodeActive &&
-									session.claudeModel && (
+								{terminal.claudeCodeActive &&
+									terminal.claudeModel && (
 										<div className="flex w-full items-center gap-1 pl-[14px]">
 											<ClaudeIndicator
-												model={session.claudeModel}
+												model={terminal.claudeModel}
 											/>
 										</div>
 									)}
@@ -238,7 +236,7 @@ export function WorkspaceItem({
 						aria-hidden
 					/>
 					<span className="min-w-0 flex-1 break-all text-[10px] leading-snug tracking-wide text-popover-foreground/85">
-						{session.cwd}
+						{terminal.cwd}
 					</span>
 				</div>
 			</TooltipContent>

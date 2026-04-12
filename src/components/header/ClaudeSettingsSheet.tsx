@@ -18,11 +18,7 @@ const TOP_TAB_ICONS: Record<TopTab, IconType> = {
 	hooks: LuWebhook,
 };
 
-/**
- * Right sheet: browse Claude Code skills, slash commands, and hooks (global vs per-project).
- * Data comes from Tauri commands (`list_*`); layout is tab × scope.
- * Opened from the titlebar gear menu (no built-in trigger).
- */
+// Side panel to browse assistant skills, slash commands, and hooks (whole machine vs one project). Opened from the gear menu.
 export function ClaudeSettingsSheet({
 	open,
 	onOpenChange,

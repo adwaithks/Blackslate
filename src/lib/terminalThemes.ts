@@ -1,22 +1,11 @@
 import type { ITheme } from "@xterm/xterm";
 
-/** Dark themes: opaque light selection (xterm blends inactive selection; defaults read as gray/purple). */
+// On dark schemes, selected text uses a clear light highlight so it stays readable when the terminal blurs.
 const DARK_SELECTION_BG = "#ffffff";
 const DARK_SELECTION_FG = "#000000";
 
-/**
- * Terminal colour themes.
- *
- * Each function accepts a `background` override so the caller can force pure
- * black (or any other surface) without touching the rest of the palette.
- *
- * Dark themes have light foregrounds; light themes have dark foregrounds.
- * `resolveTerminalTheme` picks the correct variant based on surface luminance.
- *
- * Usage in TerminalPane.tsx:
- *   import { gruvboxDark } from "@/lib/terminalThemes";
- *   theme: gruvboxDark(surfaceColor),
- */
+// Named color sets for the terminal. You can pass a background so the shell area matches the app surface.
+// Dark palettes use light text; light palettes use dark text. resolveTerminalTheme picks the side that fits.
 
 // ─── Gruvbox Dark ────────────────────────────────────────────────────────────
 // https://github.com/morhetz/gruvbox

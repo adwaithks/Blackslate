@@ -1,10 +1,12 @@
-/**
- * User preferences persisted in localStorage (`blackslate-settings`).
- * Appearance option lists live in `appconfig.constants.ts`.
- */
+// Font size and light/dark look for the app and for the terminal. Saved in the browser under blackslate-app-config.
+// Theme lists live in appconfig.constants.ts.
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import {
+	createJSONStorage,
+	persist,
+	type StorageValue,
+} from "zustand/middleware";
 
 import type { AppThemeId, TerminalThemeId } from "@/appconfig.constants";
 
@@ -19,6 +21,11 @@ export {
 	TERMINAL_THEME_OPTIONS,
 	appThemeValue,
 } from "@/appconfig.constants";
+
+export const APP_CONFIG_STORAGE_KEY = "blackslate-app-config";
+
+// Raise this when you change what we save. Older saved files will be ignored.
+export const APP_CONFIG_PERSIST_VERSION = 1;
 
 export const DEFAULT_FONT_SIZE = 13;
 export const MIN_FONT_SIZE = 5;
@@ -36,13 +43,43 @@ interface AppConfigStore {
 	setAppTheme: (id: AppThemeId) => void;
 }
 
-const LEGACY_THEME_MAP: Record<string, TerminalThemeId> = {
-	gruvboxDark: "gruvbox",
-	oneDark: "one",
-	solarizedDark: "solarized",
-	gruvboxLight: "gruvbox",
-	solarizedLight: "solarized",
-	oneLight: "one",
+const baseJsonStorage = createJSONStorage<AppConfigStore>(() => localStorage);
+
+function persistVersionMatches(parsed: { version?: unknown }): boolean {
+	return (
+		typeof parsed.version === "number" &&
+		parsed.version === APP_CONFIG_PERSIST_VERSION
+	);
+}
+
+// When reading: only accept our current version; otherwise delete the key and use defaults.
+const appConfigPersistStorage = {
+	...baseJsonStorage!,
+	getItem: (name: string) => {
+		const raw = localStorage.getItem(name);
+		if (raw === null) return null;
+		try {
+			const parsed = JSON.parse(raw) as {
+				state: unknown;
+				version?: number;
+			};
+			if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
+				localStorage.removeItem(name);
+				return null;
+			}
+			if (!persistVersionMatches(parsed)) {
+				localStorage.removeItem(name);
+				return null;
+			}
+			return {
+				...parsed,
+				state: parsed.state as AppConfigStore,
+			} as StorageValue<AppConfigStore>;
+		} catch {
+			localStorage.removeItem(name);
+			return null;
+		}
+	},
 };
 
 export const useAppConfigStore = create<AppConfigStore>()(
@@ -76,24 +113,9 @@ export const useAppConfigStore = create<AppConfigStore>()(
 			},
 		}),
 		{
-			// rename sidebarColor to appTheme
-			// normalize terminal theme names eg: oneDark -> one
-			name: "blackslate-settings",
-			version: 2,
-			migrate: (persisted, fromVersion) => {
-				const s = persisted as Record<string, unknown>;
-				if (fromVersion < 2) {
-					if ("sidebarColor" in s && s.appTheme === undefined) {
-						s.appTheme = s.sidebarColor;
-						delete s.sidebarColor;
-					}
-				}
-				const old = s.terminalTheme as string | undefined;
-				if (old && old in LEGACY_THEME_MAP) {
-					s.terminalTheme = LEGACY_THEME_MAP[old];
-				}
-				return s as unknown as AppConfigStore;
-			},
+			name: APP_CONFIG_STORAGE_KEY,
+			version: APP_CONFIG_PERSIST_VERSION,
+			storage: appConfigPersistStorage,
 		},
 	),
 );

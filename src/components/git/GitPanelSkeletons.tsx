@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Shown while the panel is open but the repo list is still empty (cwd discovery). */
+// Shimmer while the panel is open but we're still figuring out repos for the current folder.
 export function GitPanelScrollSkeleton() {
 	return (
 		<div className="flex flex-col">
@@ -32,7 +32,7 @@ export function GitPanelRepoBlockSkeleton() {
 	);
 }
 
-/** Placeholder matching the flat file list layout during `get_git_status`. */
+// Shimmer shaped like the file list while status is loading.
 export function RepoSectionInnerSkeleton() {
 	return (
 		<div className="min-h-0 pt-0.5">

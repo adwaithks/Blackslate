@@ -5,7 +5,7 @@ export interface SkillInfo {
 	path: string;
 	source: string;
 	kind: "skill" | "command";
-	/** All files inside the skill directory (absolute paths). Empty for flat commands. */
+	// Other files bundled with a skill (full paths). Empty for simple one-file commands.
 	files: string[];
 }
 

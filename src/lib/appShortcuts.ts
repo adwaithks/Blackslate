@@ -1,38 +1,30 @@
 import { useEffect, useRef } from "react";
 
-// ---------------------------------------------------------------------------
-// Types — add new shortcuts by extending the list passed to useAppShortcuts.
-// ---------------------------------------------------------------------------
+// Add shortcuts by putting more entries in the list you pass to useAppShortcuts.
 
 export interface ShortcutDefinition {
-	/** Stable id for debugging / future settings UI */
+	// Short name for logs or a future settings screen.
 	id: string;
-	/** Return true when this binding should handle the event (incl. modifiers). */
+	// True when this shortcut should run for this key press (including modifiers).
 	when: (e: KeyboardEvent) => boolean;
 	run: () => void | Promise<void>;
 }
 
-// ---------------------------------------------------------------------------
-// Modifiers — macOS Cmd (`metaKey`) or Ctrl (Windows/Linux)
-// ---------------------------------------------------------------------------
+// Modifier helpers: Command on Mac, Control on Windows/Linux (we accept both where noted).
 
-/** Primary accelerator: ⌘ on macOS, Ctrl elsewhere (both accepted). */
+// Command on Mac, or Control on other systems.
 export function modPrimary(e: KeyboardEvent): boolean {
 	return e.metaKey || e.ctrlKey;
 }
 
-/**
- * ⌘/Ctrl + letter, no Shift/Alt (avoids clashing with shifted symbols).
- * Uses `e.code` (physical Key*) — `e.key` is unreliable in WKWebView with modifiers
- * and varies by keyboard layout.
- */
+// Command or Control plus a letter, without Shift or Alt. Uses the physical key so layouts do not confuse us.
 export function modLetter(e: KeyboardEvent, letter: string): boolean {
 	const upper = letter.length === 1 ? letter.toUpperCase() : letter;
 	const code = `Key${upper}`;
 	return modPrimary(e) && !e.altKey && !e.shiftKey && e.code === code;
 }
 
-/** ⌘ + letter only (no Ctrl) — leaves Ctrl+combinations for the terminal (e.g. tmux). */
+// Command + letter only (no Control), so Control+keys can stay with the shell.
 export function cmdLetter(e: KeyboardEvent, letter: string): boolean {
 	const upper = letter.length === 1 ? letter.toUpperCase() : letter;
 	const code = `Key${upper}`;
@@ -45,7 +37,7 @@ export function cmdLetter(e: KeyboardEvent, letter: string): boolean {
 	);
 }
 
-/** ⌘/Ctrl + Shift + letter, no Alt. */
+// Command or Control + Shift + letter, no Alt.
 export function modShiftLetter(e: KeyboardEvent, letter: string): boolean {
 	const upper = letter.length === 1 ? letter.toUpperCase() : letter;
 	const code = `Key${upper}`;
@@ -68,24 +60,21 @@ export function zoomOutKey(e: KeyboardEvent): boolean {
 	);
 }
 
-/** ⌘/Ctrl + a main-row digit (1–9), no Shift/Alt. Returns the digit or null. */
+// Command or Control + digit 1–9 on the main row. Returns that digit or null.
 export function modDigitKey(e: KeyboardEvent): number | null {
 	if (!modPrimary(e) || e.altKey || e.shiftKey) return null;
 	const m = /^Digit([1-9])$/.exec(e.code);
 	return m ? Number(m[1]) : null;
 }
 
-/**
- * ⌘/Ctrl + ⌥ + digit (1–9) — for workspace switching without clashing with
- * {@link modDigitKey} (session tabs).
- */
+// Command or Control + Option + digit 1–9 (used so it does not clash with plain number keys for tabs).
 export function modOptionDigitKey(e: KeyboardEvent): number | null {
 	if (!modPrimary(e) || !e.altKey || e.shiftKey) return null;
 	const m = /^Digit([1-9])$/.exec(e.code);
 	return m ? Number(m[1]) : null;
 }
 
-/** ⌘/Ctrl + [ or ] (no Shift/Alt). Uses `code` for reliable layout mapping. */
+// Command or Control + [ or ], no Shift or Alt.
 export function modBracketKey(
 	e: KeyboardEvent,
 	which: "left" | "right",
@@ -96,16 +85,14 @@ export function modBracketKey(
 		: e.code === "BracketRight";
 }
 
-// ---------------------------------------------------------------------------
-// Focus — allow shortcuts while xterm is focused (textarea helper)
-// ---------------------------------------------------------------------------
+// Focus: still run shortcuts when the fake terminal is focused (it uses a hidden field).
 
 export function isInsideTerminal(target: EventTarget | null): boolean {
 	if (!target || !(target instanceof Element)) return false;
 	return Boolean(target.closest(".xterm"));
 }
 
-/** Skip when typing in real form fields; never skip inside the terminal surface. */
+// Ignore keys typed into real inputs; never ignore the terminal area.
 export function shouldIgnoreShortcutTarget(e: KeyboardEvent): boolean {
 	if (isInsideTerminal(e.target)) return false;
 	const el = e.target;
@@ -116,14 +103,9 @@ export function shouldIgnoreShortcutTarget(e: KeyboardEvent): boolean {
 	return false;
 }
 
-// ---------------------------------------------------------------------------
-// Hook — register on window capture so PTY / xterm does not see the key.
-// ---------------------------------------------------------------------------
+// Register shortcuts on the document in capture phase so the terminal never sees them.
 
-/**
- * Register global app shortcuts. Pass a factory so handlers always read fresh state.
- * Uses capture phase + stopPropagation so the terminal does not receive the key.
- */
+// Pass a function that returns the list so each press sees up-to-date handlers.
 export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 	const getDefsRef = useRef(getDefs);
 	getDefsRef.current = getDefs;
@@ -149,8 +131,6 @@ export function useAppShortcuts(getDefs: () => ShortcutDefinition[]): void {
 
 		};
 
-		// `document` is more reliable than `window` in some WebViews (WKWebView) for
-		// key events when focus is inside the page.
 		document.addEventListener("keydown", onKeyDown, { capture: true });
 		return () =>
 			document.removeEventListener("keydown", onKeyDown, {

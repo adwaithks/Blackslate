@@ -1,35 +1,23 @@
 import { memo, useEffect } from "react";
-import { useSessionStore, findSession } from "@/store/sessions";
 import { useAppConfigStore } from "@/store/appConfig";
-import { usePty } from "@/hooks/usePty";
-import { useTerminalBootstrap } from "@/hooks/useTerminalBootstrap";
-import { useDebouncedTerminalFitResize } from "@/hooks/useDebouncedTerminalFitResize";
-import { useTerminalSessionCwdMetadata } from "@/hooks/useTerminalSessionCwdMetadata";
-import { useTerminalPaneLayoutEffects } from "@/hooks/useTerminalPaneLayoutEffects";
+import { usePty } from "@/hooks/pty/usePty";
+import { useTerminalBootstrap } from "@/hooks/terminal/useTerminalBootstrap";
+import { useTerminalGitInfoForCwd } from "@/hooks/terminal/useTerminalGitInfoForCwd";
+import { useTerminalPaneLayoutSync } from "@/hooks/terminal/useTerminalPaneLayoutSync";
 import { FOCUS_ACTIVE_TERMINAL_EVENT } from "@/lib/focusActiveTerminal";
 
 interface TerminalPaneProps {
-	sessionId: string;
-	/**
-	 * When true, this pane is the visible session.
-	 * Triggers a fit + focus so the terminal is ready to use immediately
-	 * after switching from another session.
-	 */
+	terminalId: string;
+	// True when this tab is the one you see; we resize and focus it when you switch here.
 	isActive: boolean;
 	terminalSurface: string;
 }
 
-/**
- * One xterm surface + PTY bridge (`usePty`). All layout/font/theme side effects
- * live in hooks so this file stays a wiring diagram.
- *
- * ## Multi-session lifecycle
- * Parent keeps every `TerminalPane` mounted and hides inactive ones with
- * `visibility: hidden` so `fit()` still sees real dimensions. Activation
- * refits and focuses (see `useTerminalPaneLayoutEffects`).
- */
+// One terminal screen wired to the shell. Layout, font, and look are handled in hooks.
+// Parent keeps every tab mounted; hidden tabs stay in the layout so resize still works.
+// When a tab becomes visible, we resize and focus it (see useTerminalPaneLayoutSync).
 function TerminalPaneImpl({
-	sessionId,
+	terminalId,
 	isActive,
 	terminalSurface,
 }: TerminalPaneProps) {
@@ -39,26 +27,18 @@ function TerminalPaneImpl({
 	const { containerRef, terminal, terminalRef, fitAddonRef } =
 		useTerminalBootstrap(fontSize, terminalThemeId, terminalSurface);
 
-	const { sendResize } = usePty({ terminal, sessionId });
+	const { sendResize } = usePty({ terminal, terminalId });
 
-	const debouncedFitAndResizeRef = useDebouncedTerminalFitResize(
-		sendResize,
-		fitAddonRef,
-		terminalRef,
-	);
+	useTerminalGitInfoForCwd(terminalId);
 
-	const cwd = useSessionStore(
-		(s) => findSession(s.workspaces, sessionId)?.cwd ?? "~",
-	);
-	useTerminalSessionCwdMetadata(sessionId, cwd);
-
-	useTerminalPaneLayoutEffects({
+	// Match xterm size, colors, and font to the pane; resize the shell when the grid changes; refit when this tab is shown.
+	useTerminalPaneLayoutSync({
 		terminal,
 		fontSize,
 		terminalThemeId,
 		terminalSurface,
 		containerRef,
-		debouncedFitAndResizeRef,
+		terminalRef,
 		isActive,
 		fitAddonRef,
 		sendResize,
@@ -94,7 +74,7 @@ function TerminalPaneImpl({
 export const TerminalPane = memo(
 	TerminalPaneImpl,
 	(prev, next) =>
-		prev.sessionId === next.sessionId &&
+		prev.terminalId === next.terminalId &&
 		prev.isActive === next.isActive &&
 		prev.terminalSurface === next.terminalSurface,
 );

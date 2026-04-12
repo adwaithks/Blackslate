@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from "react";
 
-/** While `open`, calls `onClose` when the user mousedowns outside `containerRef`. */
+// When open, run onClose if the user clicks outside the given element.
 export function useDismissOnOutsideClick(
 	open: boolean,
 	onClose: () => void,

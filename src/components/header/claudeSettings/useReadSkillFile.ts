@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-/** Loads file text via `read_skill_content` whenever `path` changes. */
+// Load the file at `path` whenever it changes (for the preview pane).
 export function useReadSkillFile(path: string) {
 	const [content, setContent] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);

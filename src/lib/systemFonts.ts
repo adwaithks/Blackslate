@@ -1,6 +1,4 @@
-/**
- * Reads font stacks from CSS (`@theme` in index.css) so xterm matches the rest of the app.
- */
+// Ask the page which monospace font is configured so the terminal matches the app.
 const GEIST_MONO_STACK = '"Geist Mono Variable", ui-monospace, monospace';
 
 export function getThemeFont(

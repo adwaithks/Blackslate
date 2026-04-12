@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decodePtyBase64PayloadChunk } from "./decodePtyBase64PayloadChunk";
 import {
 	claudeLifecycleFromOsc6974Payload,
 	cwdFromOsc7Payload,
@@ -61,15 +62,12 @@ describe("isClaudeProductWindowTitle", () => {
 	});
 });
 
-/** Mirrors `usePty` PTY chunks with `TextDecoder` `{ stream: true }`. */
+// Same chunk-merging as the live terminal hook so tests match real behavior.
 function mergePtyB64ChunksLikeUsePty(parts: string[]): string {
 	const dec = new TextDecoder();
 	let out = "";
 	for (const b64 of parts) {
-		const raw = atob(b64);
-		const bytes = new Uint8Array(raw.length);
-		for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-		out += dec.decode(bytes, { stream: true });
+		out += decodePtyBase64PayloadChunk(dec, b64);
 	}
 	out += dec.decode();
 	return out;

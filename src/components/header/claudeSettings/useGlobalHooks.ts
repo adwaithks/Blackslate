@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { HookInfo } from "./types";
 
-/** `list_global_hooks` on mount (hooks → global). */
+// Load machine-wide automation hooks once when this tab mounts.
 export function useGlobalHooks() {
 	const [hooks, setHooks] = useState<HookInfo[]>([]);
 	const [loading, setLoading] = useState(true);

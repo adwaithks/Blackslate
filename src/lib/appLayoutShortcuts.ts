@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import { useSessionStore } from "@/store/sessions";
+import { useTerminalStore } from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import {
-	confirmCloseSessionInWorkspace,
+	confirmCloseTerminalInWorkspace,
 	confirmCloseWorkspace,
 } from "@/lib/closeConfirm";
 import type { ShortcutDefinition } from "@/lib/appShortcuts";
@@ -17,11 +17,11 @@ import {
 	zoomOutKey,
 } from "@/lib/appShortcuts";
 
-// App-wide keyboard shortcuts (see useAppShortcuts in appShortcuts.ts).
-// Handlers use useSessionStore.getState() so workspace list is always current.
+// Keyboard shortcuts for layout: workspaces, tabs, sidebar, git panel, zoom.
+// Handlers read the latest store with getState() so lists stay current.
 
 export interface AppLayoutShortcutDeps {
-	/** When false, ⌘1–9 switch terminal tabs instead of workspaces. */
+	// When the sidebar is hidden, number keys pick tabs instead of workspaces.
 	sidebarOpen: boolean;
 	setSidebarOpen: Dispatch<SetStateAction<boolean>>;
 	setGitPanelOpen: Dispatch<SetStateAction<boolean>>;
@@ -48,7 +48,7 @@ export function buildAppLayoutShortcuts(
 			when: (e: KeyboardEvent) =>
 				sidebarOpen && modDigitKey(e) === n,
 			run: () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces[n - 1];
 				if (ws) s.activateWorkspace(ws.id);
 			},
@@ -64,32 +64,32 @@ export function buildAppLayoutShortcuts(
 				when: (e: KeyboardEvent) =>
 					!sidebarOpen && modDigitKey(e) === n,
 				run: () => {
-					const s = useSessionStore.getState();
+					const s = useTerminalStore.getState();
 					const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 					if (!ws) return;
 					const pane = ws.panes.find((p) => p.id === ws.activePaneId);
 					if (!pane) return;
-					const target = pane.sessions[n - 1];
-					if (target) s.activateSession(ws.id, target.id);
+					const target = pane.terminals[n - 1];
+					if (target) s.activateTerminal(ws.id, target.id);
 				},
 			};
 		},
 	);
 
-	// ⌘⌥1–9 — focus session tab N inside the active pane of the active workspace
+	// ⌘⌥1–9 — focus terminal tab N inside the active pane of the active workspace
 	const gotoTabShortcuts = Array.from({ length: 9 }, (_, i) => {
 		const n = i + 1;
 		return {
 			id: `goto-tab-${n}`,
 			when: (e: KeyboardEvent) => modOptionDigitKey(e) === n,
 			run: () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
 				if (!pane) return;
-				const target = pane.sessions[n - 1];
-				if (target) s.activateSession(ws.id, target.id);
+				const target = pane.terminals[n - 1];
+				if (target) s.activateTerminal(ws.id, target.id);
 			},
 		};
 	});
@@ -102,15 +102,15 @@ export function buildAppLayoutShortcuts(
 			// ⌘N
 			id: "new-workspace",
 			when: (e: KeyboardEvent) => modLetter(e, "n"),
-			run: () => useSessionStore.getState().createWorkspace(),
+			run: () => useTerminalStore.getState().createWorkspace(),
 		},
 		{
 			// ⌘T
 			id: "new-tab",
 			when: (e: KeyboardEvent) => modLetter(e, "t"),
 			run: () => {
-				const s = useSessionStore.getState();
-				s.createSessionInWorkspace(s.activeWorkspaceId);
+				const s = useTerminalStore.getState();
+				s.createTerminalInWorkspace(s.activeWorkspaceId);
 			},
 		},
 		{
@@ -118,39 +118,42 @@ export function buildAppLayoutShortcuts(
 			id: "close-tab",
 			when: (e: KeyboardEvent) => modLetter(e, "w") || modLetter(e, "q"),
 			run: async () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
 				if (!pane) return;
-				const session = pane.sessions.find(
-					(sess) => sess.id === pane.activeSessionId,
+				const activeTerminal = pane.terminals.find(
+					(t) => t.id === pane.activeTerminalId,
 				);
-				if (!session) return;
-				const ok = await confirmCloseSessionInWorkspace(ws, session.id);
-				if (ok) s.closeSession(ws.id, session.id);
+				if (!activeTerminal) return;
+				const ok = await confirmCloseTerminalInWorkspace(
+					ws,
+					activeTerminal.id,
+				);
+				if (ok) s.closeTerminal(ws.id, activeTerminal.id);
 			},
 		},
 		{
-			// ⌘⇧R — rename active workspace (same modifier rules as ⌘B; capture stops PTY)
+			// ⌘⇧R — rename the active workspace
 			id: "rename-active-workspace",
 			when: (e: KeyboardEvent) => modShiftLetter(e, "r"),
 			run: () => {
-				const id = useSessionStore.getState().activeWorkspaceId;
+				const id = useTerminalStore.getState().activeWorkspaceId;
 				useRenameUiStore.getState().openWorkspace(id);
 			},
 		},
 		{
-			// ⌘R — rename active tab (works with xterm focused; event intercepted in capture)
+			// ⌘R — rename the active tab (works while the terminal has focus)
 			id: "rename-active-tab",
 			when: (e: KeyboardEvent) => modLetter(e, "r"),
 			run: () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
 				if (!pane) return;
-				useRenameUiStore.getState().openSession(pane.activeSessionId);
+				useRenameUiStore.getState().openTerminal(pane.activeTerminalId);
 			},
 		},
 		{
@@ -158,7 +161,7 @@ export function buildAppLayoutShortcuts(
 			id: "close-workspace",
 			when: (e: KeyboardEvent) => modShiftLetter(e, "w"),
 			run: async () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const ok = await confirmCloseWorkspace(ws);
@@ -166,7 +169,7 @@ export function buildAppLayoutShortcuts(
 			},
 		},
 		{
-			// ⌘B (not Ctrl+B — terminal / tmux)
+			// ⌘B — sidebar only (Ctrl+B is left for the shell)
 			id: "toggle-sidebar",
 			when: (e: KeyboardEvent) => cmdLetter(e, "b"),
 			run: () => setSidebarOpen((o) => !o),
@@ -182,17 +185,17 @@ export function buildAppLayoutShortcuts(
 			id: "tab-prev",
 			when: (e: KeyboardEvent) => modBracketKey(e, "left"),
 			run: () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
-				if (!pane || pane.sessions.length === 0) return;
-				const i = pane.sessions.findIndex(
-					(sess) => sess.id === pane.activeSessionId,
+				if (!pane || pane.terminals.length === 0) return;
+				const i = pane.terminals.findIndex(
+					(t) => t.id === pane.activeTerminalId,
 				);
 				if (i < 0) return;
-				const prev = (i - 1 + pane.sessions.length) % pane.sessions.length;
-				s.activateSession(ws.id, pane.sessions[prev].id);
+				const prev = (i - 1 + pane.terminals.length) % pane.terminals.length;
+				s.activateTerminal(ws.id, pane.terminals[prev].id);
 			},
 		},
 		{
@@ -200,17 +203,17 @@ export function buildAppLayoutShortcuts(
 			id: "tab-next",
 			when: (e: KeyboardEvent) => modBracketKey(e, "right"),
 			run: () => {
-				const s = useSessionStore.getState();
+				const s = useTerminalStore.getState();
 				const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId);
 				if (!ws) return;
 				const pane = ws.panes.find((p) => p.id === ws.activePaneId);
-				if (!pane || pane.sessions.length === 0) return;
-				const i = pane.sessions.findIndex(
-					(sess) => sess.id === pane.activeSessionId,
+				if (!pane || pane.terminals.length === 0) return;
+				const i = pane.terminals.findIndex(
+					(t) => t.id === pane.activeTerminalId,
 				);
 				if (i < 0) return;
-				const next = (i + 1) % pane.sessions.length;
-				s.activateSession(ws.id, pane.sessions[next].id);
+				const next = (i + 1) % pane.terminals.length;
+				s.activateTerminal(ws.id, pane.terminals[next].id);
 			},
 		},
 		{
