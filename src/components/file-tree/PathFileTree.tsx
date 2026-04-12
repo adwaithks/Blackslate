@@ -134,10 +134,7 @@ export interface PathFileTreeProps {
 	onSelect: (path: string) => void;
 }
 
-/**
- * Collapsible sidebar tree built from a flat list of paths (e.g. absolute file paths).
- * Directories are inferred; `rootDir` strips the prefix for nesting under the first segment.
- */
+// Folder tree built from a flat path list. Folders are implied. rootDir is stripped so the tree starts at the right place.
 export function PathFileTree({
 	files,
 	rootDir,

@@ -1,22 +1,21 @@
 import { create } from "zustand";
 
 export type RenameUiTarget =
-	| { kind: "session"; sessionId: string }
+	| { kind: "terminal"; terminalId: string }
 	| { kind: "workspace"; workspaceId: string };
 
 type RenameUiState = {
 	target: RenameUiTarget | null;
-	openSession: (sessionId: string) => void;
+	openTerminal: (terminalId: string) => void;
 	openWorkspace: (workspaceId: string) => void;
 	close: () => void;
 };
 
-// When i want to rename a session or workspace, i can use this store to set the target
-// which can be either a session or a workspace. And then i can use the target
-// to open the rename dialog and now i know what i want to rename - workspace or session.
+// Remembers whether the rename dialog should edit a tab or a workspace, and which id.
 export const useRenameUiStore = create<RenameUiState>((set) => ({
 	target: null,
-	openSession: (sessionId) => set({ target: { kind: "session", sessionId } }),
+	openTerminal: (terminalId) =>
+		set({ target: { kind: "terminal", terminalId } }),
 	openWorkspace: (workspaceId) =>
 		set({ target: { kind: "workspace", workspaceId } }),
 	close: () => set({ target: null }),

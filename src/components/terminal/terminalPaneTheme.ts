@@ -20,7 +20,7 @@ function withMinAlpha(hex: string, minAlpha: number): string {
 	return `${hex.slice(0, 7)}${aa}`;
 }
 
-/** Each user-facing id maps to a dark and light function from terminalThemes. */
+// Settings menu name → pair of dark and light terminal palettes.
 const THEME_PAIR: Record<string, { dark: ThemeFn; light: ThemeFn }> = {
 	gruvbox:   { dark: terminalThemes.gruvboxDark,   light: terminalThemes.gruvboxLight },
 	dracula:   { dark: terminalThemes.dracula,       light: terminalThemes.oneLight },
@@ -32,18 +32,16 @@ const THEME_PAIR: Record<string, { dark: ThemeFn; light: ThemeFn }> = {
 
 const DEFAULT_PAIR = THEME_PAIR.gruvbox;
 
-/** Maps user-facing theme id + surface → full `ITheme`. Light/dark is automatic. */
+// Pick the full terminal colors from a menu id and the current background (auto light vs dark).
 export function resolveTerminalTheme(themeId: string, background: string) {
 	const pair = THEME_PAIR[themeId] ?? DEFAULT_PAIR;
 	const fn = isLightSurface(background) ? pair.light : pair.dark;
 	const theme = fn(background);
-	// Light themes often use translucent #RRGGBBAA; bump alpha so selection reads.
-	// Dark themes use opaque near-white (#RRGGBB) — `withMinAlpha` is a no-op for those.
+	// Light palettes sometimes use see-through highlight colors; make them solid enough to read.
 	if (theme.selectionBackground) {
 		theme.selectionBackground = withMinAlpha(theme.selectionBackground, 0.45);
 	}
-	// WebGL renderer uses selectionInactive* when the terminal isn’t focused (e.g. after
-	// clicking the sidebar). Without this, xterm falls back to a dim gray/purple tint.
+	// When you click away, use the same highlight so selection doesn't turn a muddy default color.
 	if (theme.selectionBackground && theme.selectionInactiveBackground === undefined) {
 		theme.selectionInactiveBackground = theme.selectionBackground;
 	}

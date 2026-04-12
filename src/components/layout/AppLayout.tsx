@@ -6,24 +6,21 @@ import { RenameEntityDialog } from "@/components/rename/RenameEntityDialog";
 import {
 	cwdToAbsolute,
 	selectAppHeaderSlice,
-	useSessionStore,
-} from "@/store/sessions";
+	useTerminalStore,
+} from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import { useAppConfigStore, appThemeValue } from "@/store/appConfig";
-import { useHomeDir } from "@/hooks/useHomeDir";
-import { useApplyAppTheme } from "@/hooks/useApplyAppTheme";
-import { useAppLayoutShortcuts } from "@/hooks/useAppLayoutShortcuts";
-import { useWindowAndQuitCloseGuard } from "@/hooks/useWindowAndQuitCloseGuard";
+import { useHomeDir } from "@/hooks/app/useHomeDir";
+import { useApplyAppTheme } from "@/hooks/app/useApplyAppTheme";
+import { useAppLayoutShortcuts } from "@/hooks/app/useAppLayoutShortcuts";
+import { useWindowAndQuitCloseGuard } from "@/hooks/app/useWindowAndQuitCloseGuard";
 import { AppTitlebar } from "@/components/layout/AppTitlebar";
 import { AppMainArea } from "@/components/layout/AppMainArea";
 
-/**
- * Root shell: settings modal, shadcn sidebar (workspace list), titlebar, terminal.
- * Keyboard shortcuts live in useAppLayoutShortcuts + lib/appLayoutShortcuts.
- */
+// Main window: settings popup, left workspace list, top bar, terminal area. Keys are wired in useAppLayoutShortcuts.
 export function AppLayout() {
-	const createWorkspace = useSessionStore((s) => s.createWorkspace);
-	const headerSlice = useSessionStore(useShallow(selectAppHeaderSlice));
+	const createWorkspace = useTerminalStore((s) => s.createWorkspace);
+	const headerSlice = useTerminalStore(useShallow(selectAppHeaderSlice));
 	const activeCwd = headerSlice.cwd;
 	const headerBranch = headerSlice.branch;
 	const renameOpen = useRenameUiStore((s) => s.target !== null);

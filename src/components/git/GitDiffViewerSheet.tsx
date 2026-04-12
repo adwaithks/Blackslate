@@ -23,8 +23,8 @@ import {
 	lineTabsStripHeightClass,
 } from "@/components/ui/tabs";
 import { GitFileRow } from "@/components/git/GitFileRow";
-import { useResizableWidth } from "@/hooks/useResizableWidth";
-import { useIsLightTheme } from "@/hooks/useIsLightTheme";
+import { useResizableWidth } from "@/hooks/git/useResizableWidth";
+import { useIsLightTheme } from "@/hooks/app/useIsLightTheme";
 
 type DiffMode = "head_to_worktree" | "head_to_index" | "index_to_worktree";
 
@@ -44,7 +44,7 @@ type DiffTab = {
 	path: string;
 	mode: DiffMode;
 	diff: string | null;
-	/** Full file text for old/new sides — required for @git-diff-view context expansion. */
+	// Whole file text for before/after (lets the diff viewer expand context).
 	oldContent: string | null;
 	newContent: string | null;
 	loading: boolean;
@@ -56,12 +56,8 @@ function filenameFromPath(path: string) {
 	return segments[segments.length - 1] ?? path;
 }
 
-/**
- * `DiffView` memoizes its internal `DiffFile` with `useMemo(..., [data])` using
- * reference equality. A fresh inline `data={{...}}` on every parent render
- * recreates the file and resets expand/collapse state — including when the
- * git panel poll updates `status` upstream.
- */
+// The diff widget only updates when this `data` object stays the same by reference.
+// Building a new object every render would reset expand/collapse (e.g. when status refreshes).
 function SheetDiffView({
 	path,
 	diff,
@@ -122,7 +118,7 @@ export function GitDiffViewerSheet({
 	act: (cmd: string, args?: Record<string, string>) => Promise<void>;
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
-	/** If set, the sheet will open this file (or focus its tab) once. */
+	// When set, open this file once (or jump to its tab if already open).
 	pendingOpen: { path: string; source: "changes" | "staged" } | null;
 	onConsumePendingOpen: () => void;
 }) {
@@ -506,7 +502,7 @@ export function GitDiffViewerSheet({
 
 							<TabsContent
 								value="changes"
-								className="min-h-0 flex-1 overflow-y-auto"
+								className="min-h-0 flex-1 overflow-y-auto pb-5"
 							>
 								{changesFiles.length === 0 ? (
 									<p className="px-3 py-3 text-xs text-muted-foreground/40">
@@ -551,7 +547,7 @@ export function GitDiffViewerSheet({
 
 							<TabsContent
 								value="staged"
-								className="min-h-0 flex-1 overflow-y-auto"
+								className="min-h-0 flex-1 overflow-y-auto pb-5"
 							>
 								{stagedFiles.length === 0 ? (
 									<p className="px-3 py-3 text-xs text-muted-foreground/40">

@@ -10,9 +10,7 @@ export interface TitlebarMainSectionProps {
 	onToggleGitPanel: () => void;
 }
 
-/**
- * Titlebar grid cell above the main content: cwd/repo line, drag strip, Claude menus, git panel.
- */
+// Middle of the top bar: folder line, empty strip you can drag to move the window, Claude and wiki controls, git toggle.
 export function TitlebarMainSection({
 	headerPwd,
 	headerBranch,
@@ -22,7 +20,7 @@ export function TitlebarMainSection({
 	return (
 		<div className="@container/titlebar flex min-w-0 w-full items-center gap-2 border-b border-border bg-background px-3">
 			<TitlebarCwdBranchLine cwd={headerPwd} branch={headerBranch} />
-			{/* WKWebKit only applies drag to nodes with the attribute; an empty flex-1 strip restores window drag in the gap. */}
+			{/* Empty stretch so you can drag the window in the gap; marked so the system treats it as draggable. */}
 			<div
 				className="min-h-8 min-w-0 flex-1 self-stretch"
 				data-tauri-drag-region

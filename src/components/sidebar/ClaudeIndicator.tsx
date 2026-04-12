@@ -4,9 +4,7 @@ interface ClaudeIndicatorProps {
 	model: string | null;
 }
 
-/**
- * Simple Claude Code indicator: icon + "Code" label.
- */
+// Small badge showing the assistant is active (icon plus model name or "Code").
 export function ClaudeIndicator({ model }: ClaudeIndicatorProps) {
 	return (
 		<span

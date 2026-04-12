@@ -11,11 +11,11 @@ describe("useRenameUiStore", () => {
 		expect(useRenameUiStore.getState().target).toBeNull();
 	});
 
-	it("openSession sets a session target", () => {
-		useRenameUiStore.getState().openSession("sess-1");
+	it("openTerminal sets a terminal target", () => {
+		useRenameUiStore.getState().openTerminal("term-1");
 		expect(useRenameUiStore.getState().target).toEqual({
-			kind: "session",
-			sessionId: "sess-1",
+			kind: "terminal",
+			terminalId: "term-1",
 		});
 	});
 
@@ -28,7 +28,7 @@ describe("useRenameUiStore", () => {
 	});
 
 	it("opening one target replaces the previous target", () => {
-		useRenameUiStore.getState().openSession("a");
+		useRenameUiStore.getState().openTerminal("a");
 		useRenameUiStore.getState().openWorkspace("b");
 		expect(useRenameUiStore.getState().target).toEqual({
 			kind: "workspace",
@@ -37,7 +37,7 @@ describe("useRenameUiStore", () => {
 	});
 
 	it("close clears the target", () => {
-		useRenameUiStore.getState().openSession("x");
+		useRenameUiStore.getState().openTerminal("x");
 		useRenameUiStore.getState().close();
 		expect(useRenameUiStore.getState().target).toBeNull();
 	});

@@ -3,9 +3,7 @@ import {
 	type PathFileTreeProps,
 } from "@/components/file-tree/PathFileTree";
 
-/**
- * Skill bundle file list in the Claude Code resources sheet — delegates to `PathFileTree`.
- */
+// File tree for a skill folder in the resources side panel (same widget as the generic path tree).
 export function SkillFileTree(props: PathFileTreeProps) {
 	return <PathFileTree {...props} />;
 }

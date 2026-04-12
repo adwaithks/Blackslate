@@ -1,4 +1,4 @@
-/** Strip YAML frontmatter (---…---) from markdown content before showing in the preview. */
+// Remove the --- header block at the top of markdown so the preview shows body text only.
 export function stripFrontmatter(content: string): string {
 	if (!content.startsWith("---")) return content;
 	const rest = content.slice(3);

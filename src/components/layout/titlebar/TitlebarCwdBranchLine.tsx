@@ -7,9 +7,9 @@ import {
 } from "@/lib/headerRepoLineStyles";
 
 export interface TitlebarCwdBranchLineProps {
-	/** Absolute working directory shown in the titlebar. */
+	// Full folder path shown in the top bar.
 	cwd: string;
-	/** Current git branch for that directory, when known. */
+	// Branch name for that folder, if we know it.
 	branch: string | null;
 }
 
@@ -19,9 +19,7 @@ function copyToClipboard(text: string) {
 	});
 }
 
-/**
- * Folder icon + cwd path and optional git branch (aligned with sidebar session context).
- */
+// Top bar line: folder icon, path, optional branch (matches what you see in the sidebar for that tab).
 export function TitlebarCwdBranchLine({ cwd, branch }: TitlebarCwdBranchLineProps) {
 	return (
 		<span

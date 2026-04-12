@@ -3,12 +3,12 @@ import { useShallow } from "zustand/react/shallow";
 import { IoAdd, IoClose, IoPencil } from "react-icons/io5";
 import { SiClaude } from "react-icons/si";
 import {
-	useSessionStore,
+	useTerminalStore,
 	selectActiveWorkspace,
 	selectActiveWorkspaceTabBarSignature,
 	terminalDisplayName,
-	type Session,
-} from "@/store/sessions";
+	type Terminal,
+} from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,15 +20,12 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
-import { confirmCloseSessionInWorkspace } from "@/lib/closeConfirm";
+import { confirmCloseTerminalInWorkspace } from "@/lib/closeConfirm";
 
-/** Pixels to apply for one wheel “line” (DOM_DELTA_LINE) — matches typical browser step. */
+// How many pixels one mouse-wheel "line" counts as (matches most browsers).
 const WHEEL_LINE_PX = 16;
 
-/**
- * Map vertical mouse wheel / trackpad to horizontal scroll on `el`.
- * Returns true if the event was consumed (caller should preventDefault / stopPropagation).
- */
+// Turn vertical wheel/trackpad movement into sideways scrolling on `el`. Returns true if we handled it.
 function tryScrollHorizontallyFromWheel(
 	e: WheelEvent,
 	el: HTMLDivElement,
@@ -60,26 +57,26 @@ function tryScrollHorizontallyFromWheel(
 }
 
 export function WorkspaceTabBar() {
-	useSessionStore(selectActiveWorkspaceTabBarSignature);
-	const { activateSession, closeSession, createSessionInWorkspace } =
-		useSessionStore(
+	useTerminalStore(selectActiveWorkspaceTabBarSignature);
+	const { activateTerminal, closeTerminal, createTerminalInWorkspace } =
+		useTerminalStore(
 			useShallow((s) => ({
-				activateSession: s.activateSession,
-				closeSession: s.closeSession,
-				createSessionInWorkspace: s.createSessionInWorkspace,
+				activateTerminal: s.activateTerminal,
+				closeTerminal: s.closeTerminal,
+				createTerminalInWorkspace: s.createTerminalInWorkspace,
 			})),
 		);
 
-	const workspace = selectActiveWorkspace(useSessionStore.getState());
+	const workspace = selectActiveWorkspace(useTerminalStore.getState());
 	const activePane = workspace
 		? workspace.panes.find((p) => p.id === workspace.activePaneId)
 		: undefined;
-	const activeId = activePane?.activeSessionId ?? "";
-	const activeSessions = activePane?.sessions ?? [];
+	const activeId = activePane?.activeTerminalId ?? "";
+	const activeTerminals = activePane?.terminals ?? [];
 
 	const tabBarRef = useRef<HTMLDivElement>(null);
 	const tabScrollRef = useRef<HTMLDivElement>(null);
-	const sessionTabRefs = useRef(new Map<string, HTMLButtonElement | null>());
+	const terminalTabRefs = useRef(new Map<string, HTMLButtonElement | null>());
 
 	useLayoutEffect(() => {
 		const row = tabBarRef.current;
@@ -92,7 +89,7 @@ export function WorkspaceTabBar() {
 			e.stopPropagation();
 		};
 
-		// Capture: run before descendants / React; non-passive: allow preventDefault (WKWebView + mouse wheels).
+		// Listen early and allow blocking default scroll so wheel can move tabs sideways.
 		const opts: AddEventListenerOptions = { passive: false, capture: true };
 		row.addEventListener("wheel", onWheel, opts);
 		return () => row.removeEventListener("wheel", onWheel, opts);
@@ -101,7 +98,7 @@ export function WorkspaceTabBar() {
 	useLayoutEffect(() => {
 		const scrollEl = tabScrollRef.current;
 		const activeTab = activeId
-			? (sessionTabRefs.current.get(activeId) ?? null)
+			? (terminalTabRefs.current.get(activeId) ?? null)
 			: null;
 		if (!scrollEl || !activeTab) return;
 
@@ -114,25 +111,22 @@ export function WorkspaceTabBar() {
 		});
 
 		return () => cancelAnimationFrame(raf);
-	}, [activeId, activeSessions.length]);
+	}, [activeId, activeTerminals.length]);
 
 	if (!workspace) return null;
 
-	const requestCloseSession = async (sessionId: string) => {
-		const ok = await confirmCloseSessionInWorkspace(workspace, sessionId);
-		if (ok) closeSession(workspace.id, sessionId);
+	const requestCloseTerminalTab = async (terminalId: string) => {
+		const ok = await confirmCloseTerminalInWorkspace(workspace, terminalId);
+		if (ok) closeTerminal(workspace.id, terminalId);
 	};
 
+	// Tab row: scrolling tabs plus a fixed + column so the add button stays tappable.
 	return (
 		<Tabs
 			className="w-full min-w-0"
 			value={activeId}
-			onValueChange={(id) => activateSession(workspace.id, id as string)}
+			onValueChange={(id) => activateTerminal(workspace.id, id as string)}
 		>
-			{/*
-			 * Grid: scrollable tabs (minmax(0,1fr) so overflow-x works) + fixed + column.
-			 * Sticky + inside flex/overflow is unreliable in WKWebView; this keeps + always clickable.
-			 */}
 			<div
 				ref={tabBarRef}
 				className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch border-b border-border bg-background"
@@ -143,23 +137,23 @@ export function WorkspaceTabBar() {
 					onDoubleClick={(e) => {
 						// Only fire when clicking on empty tab-bar space, not on a tab or its children.
 						if (e.target !== e.currentTarget) return;
-						createSessionInWorkspace(workspace.id);
+						createTerminalInWorkspace(workspace.id);
 					}}
 				>
 					<TabsList
 						variant="line"
 						className="flex h-10 w-max max-w-none min-w-min flex-nowrap rounded-none"
 					>
-						{activeSessions.map((session) => (
-							<SessionTabTrigger
-								key={session.id}
-								session={session}
-								onClose={() => requestCloseSession(session.id)}
+						{activeTerminals.map((term) => (
+							<TerminalTabTrigger
+								key={term.id}
+								terminal={term}
+								onClose={() => requestCloseTerminalTab(term.id)}
 								tabRef={(el) => {
 									if (el) {
-										sessionTabRefs.current.set(session.id, el);
+										terminalTabRefs.current.set(term.id, el);
 									} else {
-										sessionTabRefs.current.delete(session.id);
+										terminalTabRefs.current.delete(term.id);
 									}
 								}}
 							/>
@@ -171,7 +165,7 @@ export function WorkspaceTabBar() {
 					variant="ghost"
 					size="sm"
 					className="h-10 w-9 shrink-0 cursor-pointer rounded-none border-l border-border bg-background px-0 text-muted-foreground hover:bg-muted/40"
-					onClick={() => createSessionInWorkspace(workspace.id)}
+					onClick={() => createTerminalInWorkspace(workspace.id)}
 					title="New tab (⌘T)"
 					aria-label="New tab"
 				>
@@ -182,20 +176,20 @@ export function WorkspaceTabBar() {
 	);
 }
 
-interface SessionTabTriggerProps {
-	session: Session;
+interface TerminalTabTriggerProps {
+	terminal: Terminal;
 	onClose: () => void;
 	tabRef?: (el: HTMLButtonElement | null) => void;
 }
 
-function SessionTabTrigger({
-	session,
+function TerminalTabTrigger({
+	terminal,
 	onClose,
 	tabRef,
-}: SessionTabTriggerProps) {
-	const openRenameSession = useRenameUiStore((s) => s.openSession);
+}: TerminalTabTriggerProps) {
+	const openRenameTerminal = useRenameUiStore((s) => s.openTerminal);
 
-	const label = terminalDisplayName(session);
+	const label = terminalDisplayName(terminal);
 
 	return (
 		<ContextMenu>
@@ -208,13 +202,13 @@ function SessionTabTrigger({
 							"justify-between gap-1 px-2 hover:bg-muted/45 data-active:hover:bg-transparent",
 						)}
 						ref={tabRef}
-						value={session.id}
+						value={terminal.id}
 					>
-						{session.claudeCodeActive && (
+						{terminal.claudeCodeActive && (
 							<SiClaude
 								className={cn(
 									"size-2.5 shrink-0",
-									session.claudeState === "thinking"
+									terminal.claudeState === "thinking"
 										? "animate-pulse text-claude-accent"
 										: "text-claude-accent",
 								)}
@@ -250,7 +244,7 @@ function SessionTabTrigger({
 			<ContextMenuContent className="min-w-44">
 				<ContextMenuItem
 					className="gap-2 text-xs"
-					onClick={() => openRenameSession(session.id)}
+					onClick={() => openRenameTerminal(terminal.id)}
 				>
 					<IoPencil className="size-3.5 opacity-70" aria-hidden />
 					Rename

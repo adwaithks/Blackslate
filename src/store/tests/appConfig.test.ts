@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+	APP_CONFIG_PERSIST_VERSION,
+	APP_CONFIG_STORAGE_KEY,
 	DEFAULT_FONT_SIZE,
 	FONT_SIZE_STEP,
 	MAX_FONT_SIZE,
 	MIN_FONT_SIZE,
 } from "@/store/appConfig";
-
-const PERSIST_KEY = "blackslate-settings";
 
 type AppConfigModule = typeof import("@/store/appConfig");
 
@@ -98,83 +98,70 @@ describe("useAppConfigStore", () => {
 	});
 });
 
-async function rehydrateFromPersisted(
-	state: Record<string, unknown>,
-	version: number,
-): Promise<AppConfigModule["useAppConfigStore"]> {
-	localStorage.clear();
-	localStorage.setItem(PERSIST_KEY, JSON.stringify({ state, version }));
-	vi.resetModules();
-	const m = await import("@/store/appConfig");
-	await m.useAppConfigStore.persist.rehydrate();
-	return m.useAppConfigStore;
-}
-
-describe("useAppConfigStore persist migration", () => {
-	it("v1: maps sidebarColor to appTheme", async () => {
-		const store = await rehydrateFromPersisted(
-			{
-				fontSize: 13,
-				terminalTheme: "gruvbox",
-				sidebarColor: "aurora",
-			},
-			1,
-		);
-		expect(store.getState().appTheme).toBe("aurora");
+describe("useAppConfigStore persist version", () => {
+	it("drops invalid JSON and keeps defaults", async () => {
+		localStorage.setItem(APP_CONFIG_STORAGE_KEY, "not-json{");
+		vi.resetModules();
+		({ useAppConfigStore } = await import("@/store/appConfig"));
+		await useAppConfigStore.persist.rehydrate();
+		expect(localStorage.getItem(APP_CONFIG_STORAGE_KEY)).toBeNull();
+		expect(useAppConfigStore.getState().fontSize).toBe(DEFAULT_FONT_SIZE);
 	});
 
-	it("v1: maps legacy terminal theme strings", async () => {
-		const store = await rehydrateFromPersisted(
-			{
-				fontSize: 13,
-				terminalTheme: "oneDark",
-				sidebarColor: "void",
-			},
-			1,
+	it("drops blob when version field is missing", async () => {
+		localStorage.setItem(
+			APP_CONFIG_STORAGE_KEY,
+			JSON.stringify({
+				state: {
+					fontSize: 14,
+					terminalTheme: "gruvbox",
+					appTheme: "void",
+				},
+			}),
 		);
-		expect(store.getState().terminalTheme).toBe("one");
-		expect(store.getState().appTheme).toBe("void");
+		vi.resetModules();
+		({ useAppConfigStore } = await import("@/store/appConfig"));
+		await useAppConfigStore.persist.rehydrate();
+		expect(localStorage.getItem(APP_CONFIG_STORAGE_KEY)).toBeNull();
+		expect(useAppConfigStore.getState().fontSize).toBe(DEFAULT_FONT_SIZE);
 	});
 
-	it("v1: applies both sidebarColor and terminal migrations together", async () => {
-		const store = await rehydrateFromPersisted(
-			{
-				fontSize: 20,
-				terminalTheme: "solarizedDark",
-				sidebarColor: "bone",
-			},
-			1,
+	it("drops blob when version is stale", async () => {
+		localStorage.setItem(
+			APP_CONFIG_STORAGE_KEY,
+			JSON.stringify({
+				state: {
+					fontSize: 14,
+					terminalTheme: "gruvbox",
+					appTheme: "void",
+				},
+				version: APP_CONFIG_PERSIST_VERSION - 1,
+			}),
 		);
-		const s = store.getState();
-		expect(s.fontSize).toBe(20);
-		expect(s.terminalTheme).toBe("solarized");
-		expect(s.appTheme).toBe("bone");
+		vi.resetModules();
+		({ useAppConfigStore } = await import("@/store/appConfig"));
+		await useAppConfigStore.persist.rehydrate();
+		expect(localStorage.getItem(APP_CONFIG_STORAGE_KEY)).toBeNull();
+		expect(useAppConfigStore.getState().fontSize).toBe(DEFAULT_FONT_SIZE);
 	});
 
-	it("v2: loads state without running v1 sidebar migration", async () => {
-		const store = await rehydrateFromPersisted(
-			{
-				fontSize: 11,
-				terminalTheme: "tokyoNight",
-				appTheme: "ember",
-			},
-			2,
+	it("drops blob when version is newer than this app expects", async () => {
+		localStorage.setItem(
+			APP_CONFIG_STORAGE_KEY,
+			JSON.stringify({
+				state: {
+					fontSize: 22,
+					terminalTheme: "nord",
+					appTheme: "pearl",
+				},
+				version: APP_CONFIG_PERSIST_VERSION + 1,
+			}),
 		);
-		const s = store.getState();
-		expect(s.fontSize).toBe(11);
-		expect(s.terminalTheme).toBe("tokyoNight");
-		expect(s.appTheme).toBe("ember");
-	});
-
-	it("v1: leaves appTheme as default merge when sidebarColor was absent", async () => {
-		const store = await rehydrateFromPersisted(
-			{
-				fontSize: 9,
-				terminalTheme: "gruvbox",
-			},
-			1,
-		);
-		expect(store.getState().fontSize).toBe(9);
-		expect(store.getState().appTheme).toBe("void");
+		vi.resetModules();
+		({ useAppConfigStore } = await import("@/store/appConfig"));
+		await useAppConfigStore.persist.rehydrate();
+		expect(localStorage.getItem(APP_CONFIG_STORAGE_KEY)).toBeNull();
+		expect(useAppConfigStore.getState().fontSize).toBe(DEFAULT_FONT_SIZE);
+		expect(useAppConfigStore.getState().terminalTheme).toBe("gruvbox");
 	});
 });

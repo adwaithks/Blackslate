@@ -12,7 +12,7 @@ export function WikiRgAccessDeniedCallout({ detail }: { detail?: string }) {
 			<p className="mt-2">
 				<strong className="text-foreground/80">Fix:</strong>{" "}
 				<code className="rounded bg-muted/50 px-1 py-px font-mono text-[10px]">cd</code> into
-				a project (or open a session there) and open wikis again so the search root is a
+				a project (or open a terminal there) and open wikis again so the search root is a
 				normal repo folder, not <code className="font-mono text-[10px]">~</code>.
 			</p>
 			{detail ? (

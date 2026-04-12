@@ -238,7 +238,7 @@ cd blackslate
 bun install
 ```
 
-**Wiki markdown file picker (bundled ripgrep)** — the title-bar control that opens `.md` / `.mdx` files lists candidates under the **active session’s working directory**. That list is built with a **bundled `rg` sidecar** (Tauri `externalBin`), not whatever `ripgrep` is on your `PATH`, so behaviour matches in **dev and release**.
+**Wiki markdown file picker (bundled ripgrep)** — the title-bar control that opens `.md` / `.mdx` files lists candidates under the **active terminal tab’s working directory**. That list is built with a **bundled `rg` sidecar** (Tauri `externalBin`), not whatever `ripgrep` is on your `PATH`, so behaviour matches in **dev and release**.
 
 - **Release** — `bun tauri build` packages the sidecar into the app bundle.
 - **Dev** — after you place the triple-named binary under `src-tauri/binaries/`, `build.rs` copies it to `target/<profile>/binaries/rg` next to the app binary so `tauri dev` can spawn it the same way.
@@ -274,15 +274,18 @@ blackslate/
 ├── src/                            # React frontend
 │   ├── components/
 │   │   ├── layout/                 # AppLayout — titlebar, sidebar, main pane
-│   │   ├── sidebar/                # AppSidebar — session list + metadata
+│   │   ├── sidebar/                # AppSidebar — workspace list + active terminal metadata
 │   │   ├── terminal/               # TerminalPane, TerminalView
 │   │   ├── header/                 # Titlebar, Claude menu, Claude settings sheet
 │   │   └── settings/               # SettingsDialog — terminal + app theme, font
 │   ├── hooks/
-│   │   └── usePty.ts               # PTY ↔ xterm.js bridge + OSC 7 parser
+│   │   ├── pty/                    # usePty + PTY mount helpers
+│   │   ├── terminal/               # xterm bootstrap, fit/resize, surface, file drop
+│   │   ├── git/                    # git panel resize, repo root, footer message
+│   │   └── app/                    # theme, shortcuts, home dir, window close guard, mobile
 │   ├── appconfig.constants.ts      # Terminal + app theme option lists
 │   ├── store/
-│   │   ├── sessions.ts             # Zustand session store
+│   │   ├── terminals.ts            # Zustand workspace + terminal-tab store
 │   │   └── appConfig.ts            # Preferences — terminal/app theme, font
 │   └── lib/
 │       ├── terminalThemes.ts       # xterm.js colour theme definitions
@@ -305,7 +308,7 @@ blackslate/
 - **Shell integration without dotfile mutation** — OSC 7 cwd reporting (and related hooks) is injected at session creation via a temporary `ZDOTDIR` override when the shell is zsh. Your dotfiles are never touched.
 - **Agent detection** — `tcgetpgrp` on the PTY master returns the foreground process group; `sysinfo` walks the tree from the shell PID. Both paths are checked, so detection works whether `claude` is a foreground job or a nested subprocess.
 - **Event coalescing** — the PTY reader accumulates output for up to 4 ms or 8 KB before emitting a Tauri IPC event. High throughput during agent output bursts; imperceptible latency in interactive use.
-- **No xterm.js unmounting** — all `TerminalPane` instances stay mounted at all times. Inactive sessions are hidden with `visibility: hidden`, so xterm keeps measuring container dimensions. Switching is instant with no PTY state loss.
+- **No xterm.js unmounting** — all `TerminalPane` instances stay mounted at all times. Inactive tabs are hidden with `visibility: hidden`, so xterm keeps measuring container dimensions. Switching is instant with no PTY state loss.
 - **PTY concurrency** — `SessionManager` uses `RwLock<HashMap<String, Arc<PtySession>>>` so writes, resizes, and agent checks on different sessions proceed in parallel.
 
 </details>

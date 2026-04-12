@@ -1,34 +1,29 @@
 import { confirm } from "@tauri-apps/plugin-dialog";
-import type { Session, Workspace } from "@/store/sessions";
+import type { Terminal, Workspace } from "@/store/terminals";
 
-/** Shell has reported a running command (OSC preexec), not necessarily Claude. */
-export function shellIsActive(session: Session): boolean {
-	return session.shellState === "running";
+// True when the shell says a command is still running (not only Claude).
+export function shellIsActive(terminal: Terminal): boolean {
+	return terminal.shellState === "running";
 }
 
-/**
- * Busy terminal: shell command running or Claude Code active in the PTY.
- * Used for workspace-level rules (when to warn before closing a workspace).
- */
-export function sessionHasActiveWork(session: Session): boolean {
-	return session.shellState === "running" || session.claudeCodeActive;
+// True when something is busy: a running command or Claude turned on for this tab.
+export function terminalHasActiveWork(terminal: Terminal): boolean {
+	return terminal.shellState === "running" || terminal.claudeCodeActive;
 }
 
 export function workspaceHasActiveWork(workspace: Workspace): boolean {
 	return workspace.panes.some((pane) =>
-		pane.sessions.some(sessionHasActiveWork),
+		pane.terminals.some(terminalHasActiveWork),
 	);
 }
 
-/**
- * Close workspace (⌘⇧W, sidebar): confirm if any terminal is busy or there are 3+ tabs total.
- */
+// Ask before closing a whole workspace if something is busy or there are many tabs.
 export function workspaceNeedsCloseConfirmation(workspace: Workspace): boolean {
-	const totalSessions = workspace.panes.reduce(
-		(sum, p) => sum + p.sessions.length,
+	const totalTabs = workspace.panes.reduce(
+		(sum, p) => sum + p.terminals.length,
 		0,
 	);
-	return workspaceHasActiveWork(workspace) || totalSessions >= 3;
+	return workspaceHasActiveWork(workspace) || totalTabs >= 3;
 }
 
 export async function confirmCloseWorkspace(
@@ -41,45 +36,40 @@ export async function confirmCloseWorkspace(
 	);
 }
 
-/**
- * Close a single tab (not the last in the workspace): confirm only if the shell
- * reports an active command.
- */
-export async function confirmCloseTerminalTab(session: Session): Promise<boolean> {
-	if (!shellIsActive(session)) return true;
+// Closing one tab: only ask if a shell command is still running.
+export async function confirmCloseTerminalTab(terminal: Terminal): Promise<boolean> {
+	if (!shellIsActive(terminal)) return true;
 	return confirm(
 		"A shell command is still running in this tab. Close it anyway?",
 		{ title: "Close tab", kind: "warning" },
 	);
 }
 
-/**
- * Tab bar / ⌘W: last tab across all panes follows workspace close rules; otherwise shell-only.
- */
-export async function confirmCloseSessionInWorkspace(
+// Closing the last tab in a workspace is treated like closing the workspace. Otherwise only the shell-running check above.
+export async function confirmCloseTerminalInWorkspace(
 	workspace: Workspace,
-	sessionId: string,
+	terminalId: string,
 ): Promise<boolean> {
-	const totalSessions = workspace.panes.reduce(
-		(sum, p) => sum + p.sessions.length,
+	const totalTabs = workspace.panes.reduce(
+		(sum, p) => sum + p.terminals.length,
 		0,
 	);
-	if (totalSessions <= 1) {
+	if (totalTabs <= 1) {
 		return confirmCloseWorkspace(workspace);
 	}
-	let session: Session | undefined;
+	let terminal: Terminal | undefined;
 	for (const pane of workspace.panes) {
-		session = pane.sessions.find((s) => s.id === sessionId);
-		if (session) break;
+		terminal = pane.terminals.find((t) => t.id === terminalId);
+		if (terminal) break;
 	}
-	if (!session) return false;
-	return confirmCloseTerminalTab(session);
+	if (!terminal) return false;
+	return confirmCloseTerminalTab(terminal);
 }
 
-/** Window close / Quit — always confirm. */
+// Quitting the app: always ask.
 export async function confirmCloseWindow(): Promise<boolean> {
 	return confirm(
-		"Close this window? All terminal sessions will end.",
+		"Close this window? All terminals will end.",
 		{ title: "Blackslate", kind: "warning" },
 	);
 }

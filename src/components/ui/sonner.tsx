@@ -1,5 +1,5 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner";
-import { useIsLightTheme } from "@/hooks/useIsLightTheme";
+import { useIsLightTheme } from "@/hooks/app/useIsLightTheme";
 
 const Toaster = ({ ...props }: ToasterProps) => {
 	const isLight = useIsLightTheme();

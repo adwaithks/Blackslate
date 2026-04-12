@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { HookInfo } from "./types";
 
-/** `list_project_hooks` when a project is selected (hooks → project). */
+// Load automation hooks for the chosen project.
 export function useProjectHooks(projectPath: string | null) {
 	const [hooks, setHooks] = useState<HookInfo[]>([]);
 	const [loading, setLoading] = useState(false);

@@ -1,4 +1,4 @@
-/** In-memory `Storage` for tests (no DOM). */
+// Key/value store that behaves like localStorage but lives only in memory (for tests).
 export function createMemoryStorage(): Storage {
 	const map = new Map<string, string>();
 	return {

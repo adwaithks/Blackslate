@@ -3,10 +3,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-/** Matches `TabsList variant="line"` horizontal height (`group-data-horizontal/tabs:h-10` in CVA). */
+// Height class for the underline-style tab row (40px).
 export const lineTabsStripHeightClass = "h-10";
 
-/** Min-height for flex rows that wrap a line tab strip (keeps layout aligned when the list is `h-10`). */
+// Use on a row that contains that tab strip so surrounding layout stays the same height.
 export const lineTabsStripMinHeightClass = "min-h-10";
 
 function Tabs({

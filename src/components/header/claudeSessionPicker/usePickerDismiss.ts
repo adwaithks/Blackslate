@@ -1,9 +1,6 @@
 import { useEffect, type RefObject } from "react";
 
-/**
- * While `open`, closes the picker on outside mousedown or Escape.
- * `containerRef` is the root that should *not* count as “outside”.
- */
+// When the picker is open, close it on click-away or Escape. Clicks inside containerRef don't count as away.
 export function usePickerDismiss(
 	open: boolean,
 	onClose: () => void,

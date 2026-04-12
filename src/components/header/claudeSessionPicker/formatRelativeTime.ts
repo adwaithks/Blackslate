@@ -1,4 +1,4 @@
-/** Short relative label for an ISO timestamp (picker meta row). */
+// "3h ago" style text from a stored time string (for the session list).
 export function formatRelativeTime(isoTimestamp: string): string {
 	const now = Date.now();
 	const then = new Date(isoTimestamp).getTime();

@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-	findSession,
-	useSessionStore,
+	findTerminal,
+	useTerminalStore,
 	terminalDisplayName,
 	workspaceDisplayName,
-} from "@/store/sessions";
+} from "@/store/terminals";
 import { useRenameUiStore } from "@/store/renameUiStore";
 
-/** Same treatment as `SectionLabel` in {@link SettingsDialog}. */
+// Small uppercase label, same style as in settings.
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return (
 		<p className="pb-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50">
@@ -21,15 +21,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 	);
 }
 
-/**
- * Modal to rename a workspace or terminal tab — shell matches {@link SettingsDialog}.
- */
+// Popup to rename a workspace or a tab; looks like the settings dialog.
 function RenameEntityDialogImpl() {
 	const target = useRenameUiStore((s) => s.target);
 	const closeUi = useRenameUiStore((s) => s.close);
-	const workspaces = useSessionStore((s) => s.workspaces);
-	const setSessionCustomName = useSessionStore((s) => s.setSessionCustomName);
-	const setWorkspaceCustomName = useSessionStore(
+	const workspaces = useTerminalStore((s) => s.workspaces);
+	const setTerminalCustomName = useTerminalStore((s) => s.setTerminalCustomName);
+	const setWorkspaceCustomName = useTerminalStore(
 		(s) => s.setWorkspaceCustomName,
 	);
 
@@ -38,9 +36,9 @@ function RenameEntityDialogImpl() {
 	const initialName =
 		target === null
 			? ""
-			: target.kind === "session"
+			: target.kind === "terminal"
 				? (() => {
-						const s = findSession(workspaces, target.sessionId);
+						const s = findTerminal(workspaces, target.terminalId);
 						return s ? terminalDisplayName(s) : "";
 					})()
 				: (() => {
@@ -60,8 +58,8 @@ function RenameEntityDialogImpl() {
 	function handleSave() {
 		if (!target) return;
 		const trimmed = value.trim();
-		if (target.kind === "session") {
-			setSessionCustomName(target.sessionId, trimmed || null);
+		if (target.kind === "terminal") {
+			setTerminalCustomName(target.terminalId, trimmed || null);
 		} else {
 			setWorkspaceCustomName(target.workspaceId, trimmed || null);
 		}

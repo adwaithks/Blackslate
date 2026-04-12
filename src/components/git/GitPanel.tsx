@@ -2,9 +2,9 @@ import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { cn } from "@/lib/utils";
 import { useGitReposStore } from "@/store/gitRepos";
-import { useGitPanelResize } from "@/hooks/useGitPanelResize";
-import { useSessionRepoRoot } from "@/hooks/useSessionRepoRoot";
-import { useTimedFooterMessage } from "@/hooks/useTimedFooterMessage";
+import { useGitPanelResize } from "@/hooks/git/useGitPanelResize";
+import { useTerminalRepoRoot } from "@/hooks/git/useTerminalRepoRoot";
+import { useTimedFooterMessage } from "@/hooks/git/useTimedFooterMessage";
 import {
 	repoName,
 	isRepoAlreadyTracked,
@@ -15,31 +15,29 @@ import { RepoSection } from "@/components/git/RepoSection";
 
 interface GitPanelProps {
 	activeCwd: string;
-	/** Panel stays mounted when false (`display:none`) so list state and discovery effects survive toggles. */
+	// When closed we hide it but keep it in the tree so lists and folder checks don't reset.
 	open: boolean;
 }
 
-/**
- * Right-hand git status panel: tracked repos, stage/discard/unstage, resize handle.
- */
+// Right strip: repos you track, stage/undo/discard, drag to resize.
 export function GitPanel({ activeCwd, open }: GitPanelProps) {
 	const { repos, addRepos } = useGitReposStore();
 	const [addingFolders, setAddingFolders] = useState(false);
 	const [addingCurrent, setAddingCurrent] = useState(false);
 	const [footerMsg, setFooterMsg] = useTimedFooterMessage();
 
-	const sessionRepoRoot = useSessionRepoRoot(activeCwd, open);
+	const cwdRepoRoot = useTerminalRepoRoot(activeCwd, open);
 	const { panelRef, panelWidth, onResizeMouseDown } = useGitPanelResize();
 
-	const sessionRootFolderName =
-		sessionRepoRoot !== undefined && sessionRepoRoot !== null
-			? repoName(sessionRepoRoot)
+	const cwdRepoFolderName =
+		cwdRepoRoot !== undefined && cwdRepoRoot !== null
+			? repoName(cwdRepoRoot)
 			: null;
 
-	const showAddSessionRepo =
-		sessionRepoRoot !== undefined &&
-		sessionRepoRoot !== null &&
-		!isRepoAlreadyTracked(sessionRepoRoot, repos);
+	const showAddCwdRepo =
+		cwdRepoRoot !== undefined &&
+		cwdRepoRoot !== null &&
+		!isRepoAlreadyTracked(cwdRepoRoot, repos);
 
 	const handleAddRepo = useCallback(async () => {
 		setAddingFolders(true);
@@ -92,16 +90,16 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 				addingFolders={addingFolders}
 				addingCurrent={addingCurrent}
 				onAddFolders={handleAddRepo}
-				onAddSessionRepo={handleAddRepoImIn}
-				sessionRepoRoot={sessionRepoRoot}
-				showAddSessionRepo={showAddSessionRepo}
-				sessionRootFolderName={sessionRootFolderName}
+				onAddCwdRepo={handleAddRepoImIn}
+				cwdRepoRoot={cwdRepoRoot}
+				showAddCwdRepo={showAddCwdRepo}
+				cwdRepoFolderName={cwdRepoFolderName}
 				footerMsg={footerMsg}
 			/>
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{repos.length === 0 ? (
-					open && sessionRepoRoot === undefined ? (
+					open && cwdRepoRoot === undefined ? (
 						<GitPanelScrollSkeleton />
 					) : (
 						<p className="px-4 py-6 text-center text-xs leading-relaxed text-muted-foreground/40">

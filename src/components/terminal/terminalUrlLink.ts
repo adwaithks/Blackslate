@@ -5,11 +5,7 @@ import type { Terminal } from "@xterm/xterm";
 const URL_REGEX_SRC =
 	/(https?|ftp):\/\/[^\s"'<>[\]{}|\\^`]*[^\s"':,.!?{}|\\^~[\]`()<>]/.source;
 
-/**
- * Registers xterm link handling for this instance:
- * - `registerLinkProvider`: hover + click opens URL via Tauri opener.
- * - `onWriteParsed` + decorations: persistent blue underline on URL text in the buffer.
- */
+// Make web links in the terminal clickable (underline, hand cursor) and open in the system browser.
 export function attachTerminalUrlLinking(term: Terminal): void {
 	term.registerLinkProvider({
 		provideLinks(lineNumber, callback) {

@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ClaudeSession } from "./types";
 
-/**
- * Loads `list_claude_sessions` when the picker opens; clears cached rows when `cwd`
- * changes so the next open does not flash stale rows from another directory.
- */
+// Fetch session history when the picker opens. Clear the list when the folder changes so you don't see the wrong project's sessions.
 export function useClaudeSessionsList(open: boolean, cwd: string) {
 	const [sessions, setSessions] = useState<ClaudeSession[]>([]);
 	const [loading, setLoading] = useState(false);

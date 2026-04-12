@@ -1,11 +1,5 @@
-/**
- * Returns a debounced version of `fn` that fires only after `waitMs` of
- * inactivity. Call `.cancel()` to clear a pending invocation (e.g. on unmount).
- *
- * This is a plain utility with no React dependency — instantiate it inside a
- * `useRef` initialiser so the same instance (and its internal timer) persists
- * for the component's lifetime.
- */
+// Wrap a function so it runs only after things go quiet for `waitMs`. `.cancel()` drops a pending run (handy on unmount).
+// Not tied to React; keep one instance in a ref if you need the timer to survive renders.
 export function debounce<Args extends unknown[]>(
 	fn: (...args: Args) => void,
 	waitMs: number,
