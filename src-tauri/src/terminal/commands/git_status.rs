@@ -3,6 +3,99 @@ use crate::terminal::resolve_path;
 use std::hash::{Hash, Hasher};
 
 #[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitWorktree {
+    pub path: String,
+    /// Branch name, or `(abc1234…)` for detached HEAD.
+    pub branch: String,
+    pub is_main: bool,
+    pub is_detached: bool,
+}
+
+fn parse_worktree_list(output: &str) -> Vec<GitWorktree> {
+    struct Block {
+        path: String,
+        head: Option<String>,
+        branch: Option<String>,
+        is_detached: bool,
+    }
+
+    let mut blocks: Vec<Block> = Vec::new();
+    let mut current: Option<Block> = None;
+
+    for line in output.lines() {
+        if let Some(p) = line.strip_prefix("worktree ") {
+            if let Some(b) = current.take() {
+                blocks.push(b);
+            }
+            current = Some(Block {
+                path: p.trim().to_string(),
+                head: None,
+                branch: None,
+                is_detached: false,
+            });
+        } else if let Some(h) = line.strip_prefix("HEAD ") {
+            if let Some(ref mut b) = current {
+                b.head = Some(h.trim().to_string());
+            }
+        } else if let Some(r) = line.strip_prefix("branch ") {
+            if let Some(ref mut b) = current {
+                b.branch = Some(
+                    r.trim()
+                        .strip_prefix("refs/heads/")
+                        .unwrap_or(r.trim())
+                        .to_string(),
+                );
+            }
+        } else if line.trim() == "detached" {
+            if let Some(ref mut b) = current {
+                b.is_detached = true;
+            }
+        }
+    }
+    if let Some(b) = current {
+        blocks.push(b);
+    }
+
+    blocks
+        .into_iter()
+        .enumerate()
+        .map(|(i, b)| {
+            let branch = b
+                .branch
+                .or_else(|| {
+                    b.head.as_ref().map(|h| {
+                        let len = h.len().min(7);
+                        format!("({}…)", &h[..len])
+                    })
+                })
+                .unwrap_or_else(|| "HEAD".to_string());
+            GitWorktree {
+                path: b.path,
+                branch,
+                is_main: i == 0,
+                is_detached: b.is_detached,
+            }
+        })
+        .collect()
+}
+
+/// List all worktrees for a git repository. Returns an empty vec on error or when not a git repo.
+#[tauri::command]
+pub async fn get_git_worktrees(repo_path: String) -> Vec<GitWorktree> {
+    let resolved = resolve_path(&repo_path);
+    let cwd_str = resolved.to_string_lossy().into_owned();
+
+    let out = match git_cmd(&cwd_str, &["worktree", "list", "--porcelain"]).await {
+        Ok(o) if o.status.success() => o,
+        _ => return vec![],
+    };
+
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    parse_worktree_list(&stdout)
+}
+
+#[derive(serde::Serialize, Clone)]
 pub struct GitFile {
     pub path: String,
     pub additions: i64, // -1 = binary

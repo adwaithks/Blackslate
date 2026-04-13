@@ -1,6 +1,6 @@
-//! Unit tests for git status **parsing** and **poll hashing** (`parse_name_status`, `parse_numstat`, `hash_status`).
+//! Unit tests for git status **parsing**, **poll hashing**, and **worktree list parsing**.
 
-use super::{GitFile, GitStatusResult};
+use super::{GitFile, GitStatusResult, parse_worktree_list};
 
 /// **What:** Parses `git diff --name-status` lines for modified (`M`) and added (`A`) files.
 /// **Why:** Core mapping from git’s first column to our `GitFile.status` strings; regressions break the git panel labels.
@@ -103,4 +103,70 @@ fn hash_status_differs_when_branch_changes() {
         staged: vec![],
     };
     assert_ne!(super::hash_status(&base), super::hash_status(&other));
+}
+
+// ---------------------------------------------------------------------------
+// parse_worktree_list
+// ---------------------------------------------------------------------------
+
+/// **What:** Parses `git worktree list --porcelain` output with one normal worktree.
+/// **Why:** A repo with no extra worktrees must return exactly one entry marked as main.
+#[test]
+fn parse_worktree_list_single() {
+    let out = "worktree /home/user/my-repo\nHEAD abc1234def56\nbranch refs/heads/main\n\n";
+    let wts = parse_worktree_list(out);
+    assert_eq!(wts.len(), 1);
+    assert_eq!(wts[0].path, "/home/user/my-repo");
+    assert_eq!(wts[0].branch, "main");
+    assert!(wts[0].is_main);
+    assert!(!wts[0].is_detached);
+}
+
+/// **What:** Parses output with a main worktree and one linked worktree.
+/// **Why:** Core multi-worktree case; the first block must be `is_main=true`, the second `is_main=false`.
+#[test]
+fn parse_worktree_list_two_worktrees() {
+    let out = concat!(
+        "worktree /home/user/my-repo\n",
+        "HEAD abc1234\n",
+        "branch refs/heads/main\n",
+        "\n",
+        "worktree /home/user/my-repo-wt\n",
+        "HEAD def5678\n",
+        "branch refs/heads/feature/xyz\n",
+        "\n",
+    );
+    let wts = parse_worktree_list(out);
+    assert_eq!(wts.len(), 2);
+    assert!(wts[0].is_main);
+    assert_eq!(wts[0].branch, "main");
+    assert!(!wts[1].is_main);
+    assert_eq!(wts[1].branch, "feature/xyz");
+    assert_eq!(wts[1].path, "/home/user/my-repo-wt");
+}
+
+/// **What:** Parses a detached HEAD worktree.
+/// **Why:** The `detached` line replaces `branch`; `is_detached` must be true and the display branch
+///          must fall back to a short hash so the UI always has something to show.
+#[test]
+fn parse_worktree_list_detached_head() {
+    let out = concat!(
+        "worktree /home/user/my-repo\n",
+        "HEAD abc1234def56\n",
+        "detached\n",
+        "\n",
+    );
+    let wts = parse_worktree_list(out);
+    assert_eq!(wts.len(), 1);
+    assert!(wts[0].is_detached);
+    // Branch falls back to a short-hash label.
+    assert!(wts[0].branch.starts_with('('), "expected hash label, got {}", wts[0].branch);
+}
+
+/// **What:** Passes an empty string (no output).
+/// **Why:** Edge case when the command fails or the path is not a git repo; must not panic and return empty.
+#[test]
+fn parse_worktree_list_empty_input() {
+    let wts = parse_worktree_list("");
+    assert!(wts.is_empty());
 }

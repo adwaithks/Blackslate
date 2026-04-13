@@ -6,7 +6,7 @@ mod macos_menu;
 use tauri::{Emitter, Manager};
 use terminal::commands::{
     discard_all, discard_file, get_git_diff, get_git_diff_bundle, get_git_status,
-    get_git_status_poll, get_home_dir, git_discover_repo_root, git_info,
+    get_git_status_poll, get_git_worktrees, get_home_dir, git_discover_repo_root, git_info,
     list_claude_projects, list_claude_sessions, list_global_hooks, list_global_skills,
     list_md_files, list_project_hooks, list_project_skills, pick_folders, pty_claude_code_active,
     pty_close,
@@ -49,6 +49,7 @@ pub fn run() {
             discard_all,
             pick_folders,
             git_discover_repo_root,
+            get_git_worktrees,
             list_claude_sessions,
             list_global_skills,
             list_claude_projects,
