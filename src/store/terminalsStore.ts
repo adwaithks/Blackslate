@@ -65,7 +65,11 @@ function terminalFieldUnchanged<K extends keyof Terminal>(
 	if (key === "git" && term.git && value) {
 		const a = term.git;
 		const b = value as GitInfo;
-		return a.branch === b.branch && a.dirty === b.dirty;
+		return (
+			a.branch === b.branch &&
+			a.dirty === b.dirty &&
+			(a.linkedWorktree ?? false) === (b.linkedWorktree ?? false)
+		);
 	}
 	return false;
 }

@@ -26,7 +26,10 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 	const [addingCurrent, setAddingCurrent] = useState(false);
 	const [footerMsg, setFooterMsg] = useTimedFooterMessage();
 
-	const cwdRepoRoot = useTerminalRepoRoot(activeCwd, open);
+	const { repoRoot: cwdRepoRoot, cwdIsLinkedWorktree } = useTerminalRepoRoot(
+		activeCwd,
+		open,
+	);
 	const { panelRef, panelWidth, onResizeMouseDown } = useGitPanelResize();
 
 	const cwdRepoFolderName =
@@ -93,6 +96,7 @@ export function GitPanel({ activeCwd, open }: GitPanelProps) {
 				cwdRepoRoot={cwdRepoRoot}
 				showAddCwdRepo={showAddCwdRepo}
 				cwdRepoFolderName={cwdRepoFolderName}
+				cwdIsLinkedWorktree={cwdIsLinkedWorktree}
 				footerMsg={footerMsg}
 			/>
 

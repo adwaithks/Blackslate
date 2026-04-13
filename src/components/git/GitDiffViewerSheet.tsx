@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GitStatus } from "@/components/git/gitTypes";
 import { sumLineStats } from "@/components/git/gitPanelHelpers";
+import { LuFolderTree } from "react-icons/lu";
 import {
 	TbFile,
 	TbFolder,
@@ -104,6 +105,7 @@ export function GitDiffViewerSheet({
 	repoPath,
 	repoDisplayName,
 	branch,
+	cwdIsLinkedWorktree,
 	status,
 	act,
 	open,
@@ -114,6 +116,7 @@ export function GitDiffViewerSheet({
 	repoPath: string;
 	repoDisplayName: string;
 	branch: string;
+	cwdIsLinkedWorktree?: boolean;
 	status: GitStatus;
 	act: (cmd: string, args?: Record<string, string>) => Promise<void>;
 	open: boolean;
@@ -320,12 +323,23 @@ export function GitDiffViewerSheet({
 				<div className="shrink-0 flex min-h-12 items-center justify-between gap-3 border-b border-border px-3 py-2">
 					<div
 						className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-xs font-medium leading-none text-muted-foreground/80"
-						title={`${repoDisplayName} · ${branch}`}
+						title={
+							cwdIsLinkedWorktree
+								? `${repoDisplayName} · ${branch} (linked worktree)`
+								: `${repoDisplayName} · ${branch}`
+						}
 					>
-						<TbFolder
-							className="size-4 shrink-0 text-muted-foreground/60"
-							aria-hidden
-						/>
+						{cwdIsLinkedWorktree ? (
+							<LuFolderTree
+								className="size-4 shrink-0 text-sky-600/75 dark:text-sky-400/60"
+								aria-hidden
+							/>
+						) : (
+							<TbFolder
+								className="size-4 shrink-0 text-muted-foreground/60"
+								aria-hidden
+							/>
+						)}
 						<span className="min-w-0 shrink truncate text-foreground/85">
 							{repoDisplayName}
 						</span>

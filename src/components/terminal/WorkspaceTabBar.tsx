@@ -164,7 +164,7 @@ export function WorkspaceTabBar() {
 					type="button"
 					variant="ghost"
 					size="sm"
-					className="h-10 w-9 shrink-0 cursor-pointer rounded-none border-l border-border bg-background px-0 text-muted-foreground hover:bg-muted/40"
+					className="h-10 w-9 shrink-0 cursor-pointer rounded-none border-0 border-l border-border bg-background px-0 text-muted-foreground hover:bg-muted/40 focus-visible:border-0 focus-visible:border-l focus-visible:border-ring"
 					onClick={() => createTerminalInWorkspace(workspace.id)}
 					title="New tab (⌘T)"
 					aria-label="New tab"

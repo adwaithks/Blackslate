@@ -9,8 +9,14 @@ export function useTerminalGitInfoForCwd(terminalId: string) {
 	const cwd = useTerminalStore((s) => selectTerminalCwd(s, terminalId));
 
 	useEffect(() => {
-		invoke<GitInfo | null>("git_info", { cwd })
-			.then((git) => setGit(terminalId, git))
+		void Promise.all([
+			invoke<GitInfo | null>("git_info", { cwd }),
+			invoke<boolean>("git_cwd_is_linked_worktree", { cwd }),
+		])
+			.then(([git, linked]) => {
+				if (git) setGit(terminalId, { ...git, linkedWorktree: linked });
+				else setGit(terminalId, null);
+			})
 			.catch(() => setGit(terminalId, null));
 	}, [cwd, terminalId, setGit]);
 }

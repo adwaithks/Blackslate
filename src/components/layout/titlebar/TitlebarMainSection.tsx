@@ -6,6 +6,7 @@ import { WikiFilePicker } from "@/components/wiki/WikiFilePicker";
 export interface TitlebarMainSectionProps {
 	headerPwd: string;
 	headerBranch: string | null;
+	headerCwdIsLinkedWorktree: boolean;
 	gitPanelOpen: boolean;
 	onToggleGitPanel: () => void;
 }
@@ -14,12 +15,17 @@ export interface TitlebarMainSectionProps {
 export function TitlebarMainSection({
 	headerPwd,
 	headerBranch,
+	headerCwdIsLinkedWorktree,
 	gitPanelOpen,
 	onToggleGitPanel,
 }: TitlebarMainSectionProps) {
 	return (
 		<div className="@container/titlebar flex min-w-0 w-full items-center gap-2 border-b border-border bg-background px-3">
-			<TitlebarCwdBranchLine cwd={headerPwd} branch={headerBranch} />
+			<TitlebarCwdBranchLine
+				cwd={headerPwd}
+				branch={headerBranch}
+				cwdIsLinkedWorktree={headerCwdIsLinkedWorktree}
+			/>
 			{/* Empty stretch so you can drag the window in the gap; marked so the system treats it as draggable. */}
 			<div
 				className="min-h-8 min-w-0 flex-1 self-stretch"

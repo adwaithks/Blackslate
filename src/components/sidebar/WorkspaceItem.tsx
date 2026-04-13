@@ -1,3 +1,4 @@
+import { LuFolderTree } from "react-icons/lu";
 import { PiGitBranchDuotone } from "react-icons/pi";
 import { IoClose, IoFolder, IoPencil } from "react-icons/io5";
 import {
@@ -53,6 +54,7 @@ export function WorkspaceItem({
 
 	const dirName = workspaceDisplayName(workspace);
 	const { git } = terminal;
+	const worktreeBranch = git?.linkedWorktree === true;
 	const tabCount = workspace.panes.reduce((sum, p) => sum + p.terminals.length, 0);
 
 	return (
@@ -126,13 +128,20 @@ export function WorkspaceItem({
 											</span>
 										</>
 									)}
-									<IoFolder
-										className={cn(
-											"size-2.5 shrink-0",
-											HEADER_REPO_ICON,
-										)}
-										aria-hidden
-									/>
+									{worktreeBranch ? (
+										<LuFolderTree
+											className="size-2.5 shrink-0 text-sky-600/75 dark:text-sky-400/60"
+											aria-hidden
+										/>
+									) : (
+										<IoFolder
+											className={cn(
+												"size-2.5 shrink-0",
+												HEADER_REPO_ICON,
+											)}
+											aria-hidden
+										/>
+									)}
 									<span
 										className={cn(
 											"min-w-0 flex-1 truncate text-[10px] leading-none tracking-wide",
@@ -231,10 +240,17 @@ export function WorkspaceItem({
 							</span>
 						</>
 					)}
-					<IoFolder
-						className="size-2.5 shrink-0 text-muted-foreground/70"
-						aria-hidden
-					/>
+					{worktreeBranch ? (
+						<LuFolderTree
+							className="size-2.5 shrink-0 text-sky-600/75 dark:text-sky-400/60"
+							aria-hidden
+						/>
+					) : (
+						<IoFolder
+							className="size-2.5 shrink-0 text-muted-foreground/70"
+							aria-hidden
+						/>
+					)}
 					<span className="min-w-0 flex-1 break-all text-[10px] leading-snug tracking-wide text-popover-foreground/85">
 						{terminal.cwd}
 					</span>

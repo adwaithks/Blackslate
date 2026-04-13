@@ -7,6 +7,8 @@
 export interface GitInfo {
 	branch: string;
 	dirty: boolean;
+	/** Linked git worktree checkout (not the primary repo folder). */
+	linkedWorktree?: boolean;
 }
 
 // Rough Claude status coming from the terminal text (for example busy or finished). Null means none.

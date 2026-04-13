@@ -237,6 +237,50 @@ pub async fn git_discover_repo_root(cwd: String) -> Option<String> {
     }
 }
 
+/// `true` when `cwd` is inside a **linked** git worktree (not the primary checkout).
+/// Uses `git rev-parse --git-dir` vs `--git-common-dir`; they differ only for linked worktrees.
+#[tauri::command]
+pub async fn git_cwd_is_linked_worktree(cwd: String) -> bool {
+    let resolved = resolve_path(&cwd);
+    let cwd_str = resolved.to_string_lossy().into_owned();
+    let (d, c) = tokio::join!(
+        git_cmd(
+            &cwd_str,
+            &["rev-parse", "--path-format=absolute", "--git-dir"],
+        ),
+        git_cmd(
+            &cwd_str,
+            &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+        ),
+    );
+    let git_dir = match d {
+        Ok(o) if o.status.success() => {
+            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if s.is_empty() {
+                return false;
+            }
+            s
+        }
+        _ => return false,
+    };
+    let common = match c {
+        Ok(o) if o.status.success() => {
+            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if s.is_empty() {
+                return false;
+            }
+            s
+        }
+        _ => return false,
+    };
+    fn canon(s: &str) -> String {
+        std::fs::canonicalize(s)
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| s.to_string())
+    }
+    canon(&git_dir) != canon(&common)
+}
+
 /// Returns staged and unstaged file lists with diff stats for the repo containing `cwd`.
 #[tauri::command]
 pub async fn get_git_status(cwd: String) -> Option<GitStatusResult> {
