@@ -1,9 +1,12 @@
 import { memo, useEffect } from "react";
+import { TbArrowDown } from "react-icons/tb";
+import { isLightSurface } from "@/lib/colorUtils";
 import { useAppConfigStore } from "@/store/appConfig";
 import { usePty } from "@/hooks/pty/usePty";
 import { useTerminalBootstrap } from "@/hooks/terminal/useTerminalBootstrap";
 import { useTerminalGitInfoForCwd } from "@/hooks/terminal/useTerminalGitInfoForCwd";
 import { useTerminalPaneLayoutSync } from "@/hooks/terminal/useTerminalPaneLayoutSync";
+import { useTerminalScrolledAway } from "@/hooks/terminal/useTerminalScrolledAway";
 import { FOCUS_ACTIVE_TERMINAL_EVENT } from "@/lib/focusActiveTerminal";
 
 interface TerminalPaneProps {
@@ -30,6 +33,8 @@ function TerminalPaneImpl({
 	const { sendResize } = usePty({ terminal, terminalId });
 
 	useTerminalGitInfoForCwd(terminalId);
+
+	const { isScrolledAway, scrollToBottom } = useTerminalScrolledAway(terminal);
 
 	// Match xterm size, colors, and font to the pane; resize the shell when the grid changes; refit when this tab is shown.
 	useTerminalPaneLayoutSync({
@@ -62,11 +67,28 @@ function TerminalPaneImpl({
 
 	return (
 		<div
-			className="w-full h-full pl-2 pt-2"
+			className="relative w-full h-full pl-2 pt-2"
 			style={{ backgroundColor: terminalSurface }}
 			onClick={() => terminal?.focus()}
 		>
 			<div ref={containerRef} className="w-full h-full" />
+			{isScrolledAway && isActive && (
+				<button
+					className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-lg cursor-pointer z-10"
+					style={
+						isLightSurface(terminalSurface)
+							? { backgroundColor: "#0a0a0a", color: "#f5f5f5" }
+							: { backgroundColor: "#f5f5f5", color: "#0a0a0a" }
+					}
+					onClick={(e) => {
+						e.stopPropagation();
+						scrollToBottom();
+					}}
+				>
+					<TbArrowDown size={14} />
+					Scroll to bottom
+				</button>
+			)}
 		</div>
 	);
 }

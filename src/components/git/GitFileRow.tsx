@@ -7,6 +7,7 @@ import type { GitFile } from "@/components/git/gitTypes";
 export interface GitFileRowAction {
 	icon: ReactNode;
 	label: string;
+	positive?: boolean;
 	danger?: boolean;
 	onClick: () => void;
 }
@@ -120,9 +121,11 @@ export function GitFileRow({
 								title={a.label}
 								className={cn(
 									"h-5 w-5 p-0",
-									a.danger
-										? "text-muted-foreground hover:text-destructive"
-										: "text-muted-foreground hover:text-foreground",
+									a.positive
+										? "text-green-500/60 hover:text-green-500"
+										: a.danger
+											? "text-red-500/60 hover:text-red-500"
+											: "text-muted-foreground hover:text-foreground",
 								)}
 							>
 								{a.icon}
