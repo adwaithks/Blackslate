@@ -522,9 +522,10 @@ export function GitDiffViewerSheet({
 													icon: (
 														<TbMinus className="size-3.5" />
 													),
-													label: "Stage file",
+													label: "Discard changes",
+													danger: true,
 													onClick: () =>
-														act("stage_file", {
+														act("discard_file", {
 															path: f.path,
 														}),
 												},
@@ -532,10 +533,10 @@ export function GitDiffViewerSheet({
 													icon: (
 														<TbPlus className="size-3.5" />
 													),
-													label: "Discard changes",
-													danger: true,
+													label: "Stage file",
+													positive: true,
 													onClick: () =>
-														act("discard_file", {
+														act("stage_file", {
 															path: f.path,
 														}),
 												},
@@ -568,6 +569,7 @@ export function GitDiffViewerSheet({
 														<TbMinus className="size-3.5" />
 													),
 													label: "Unstage file",
+													danger: true,
 													onClick: () =>
 														act("unstage_file", {
 															path: f.path,
