@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { lineTabsStripMinHeightClass } from "@/components/ui/tabs";
-import { LuFolderPlus } from "react-icons/lu";
+import { LuFolderPlus, LuFolderTree } from "react-icons/lu";
 import { TbGitBranch } from "react-icons/tb";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,8 @@ interface GitPanelToolbarProps {
 	cwdRepoRoot: string | null | undefined;
 	showAddCwdRepo: boolean;
 	cwdRepoFolderName: string | null;
+	/** When true, quick-add targets a linked worktree path (wording only). */
+	cwdIsLinkedWorktree: boolean | undefined;
 	footerMsg: string | null;
 }
 
@@ -29,6 +31,7 @@ export function GitPanelToolbar({
 	cwdRepoRoot,
 	showAddCwdRepo,
 	cwdRepoFolderName,
+	cwdIsLinkedWorktree,
 	footerMsg,
 }: GitPanelToolbarProps) {
 	const disabled = addingFolders || addingCurrent;
@@ -47,12 +50,26 @@ export function GitPanelToolbar({
 						size="xs"
 						onClick={onAddCwdRepo}
 						disabled={disabled}
-						title={cwdRepoRoot ?? undefined}
+						title={
+							cwdIsLinkedWorktree
+								? `Add this worktree to the panel (${cwdRepoRoot ?? ""})`
+								: (cwdRepoRoot ?? undefined)
+						}
 						className={cn(BTN_ROW, "max-w-[min(100%,11rem)]")}
 					>
-						<TbGitBranch className="size-3 shrink-0" />
+						<span className="flex shrink-0 items-center gap-0.5">
+							{cwdIsLinkedWorktree ? (
+								<LuFolderTree
+									className="size-3 text-sky-600/80 dark:text-sky-400/65"
+									aria-hidden
+								/>
+							) : null}
+							<TbGitBranch className="size-3 shrink-0" />
+						</span>
 						<span className="min-w-0 truncate">
-							Add {cwdRepoFolderName}
+							{cwdIsLinkedWorktree
+								? `Add worktree · ${cwdRepoFolderName ?? ""}`
+								: `Add ${cwdRepoFolderName ?? ""}`}
 						</span>
 					</Button>
 				) : null}

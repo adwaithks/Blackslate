@@ -15,6 +15,7 @@ export function selectAppHeaderSlice(state: TerminalsState): {
 	terminalId: string | null;
 	cwd: string;
 	branch: string | null;
+	cwdIsLinkedWorktree: boolean;
 } {
 	const term = selectActiveTerminal(state);
 	if (!term) {
@@ -22,12 +23,14 @@ export function selectAppHeaderSlice(state: TerminalsState): {
 			terminalId: null,
 			cwd: "~",
 			branch: null,
+			cwdIsLinkedWorktree: false,
 		};
 	}
 	return {
 		terminalId: term.id,
 		cwd: term.cwd,
 		branch: term.git?.branch ?? null,
+		cwdIsLinkedWorktree: term.git?.linkedWorktree === true,
 	};
 }
 
@@ -77,7 +80,7 @@ export function selectSidebarDisplaySignature(state: TerminalsState): string {
 			term.cwd,
 			term.claudeSessionTitle ?? "",
 			term.git
-				? `${term.git.branch}\u001e${term.git.dirty ? "1" : "0"}`
+				? `${term.git.branch}\u001e${term.git.dirty ? "1" : "0"}\u001e${term.git.linkedWorktree ? "1" : "0"}`
 				: "",
 			term.claudeCodeActive ? "1" : "0",
 			term.claudeModel ?? "",

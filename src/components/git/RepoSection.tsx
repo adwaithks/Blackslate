@@ -1,6 +1,5 @@
-// One fold-open block per repo. While the panel is open we recheck status every few seconds.
-// Changed and staged files are merged into one list (same file can be both). Click a row to diff and stage/unstage.
-// When a repo has multiple worktrees each one gets its own nested collapsible.
+// One fold-open block per tracked checkout root (main repo folder or a linked worktree path).
+// While the panel is open we recheck status every few seconds. Add other worktrees via the quick-add button or Add New.
 
 import {
 	memo,
@@ -17,9 +16,10 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LuFolderTree } from "react-icons/lu";
 import { TbChevronDown, TbFile, TbX } from "react-icons/tb";
 import { cn } from "@/lib/utils";
-import type { GitFile, GitFileStatus, GitStatus, GitWorktree } from "@/components/git/gitTypes";
+import type { GitFile, GitFileStatus, GitStatus } from "@/components/git/gitTypes";
 import { sumLineStats, repoName } from "@/components/git/gitPanelHelpers";
 import { RepoSectionInnerSkeleton } from "@/components/git/GitPanelSkeletons";
 import { GitDiffViewerSheet } from "@/components/git/GitDiffViewerSheet";
@@ -229,172 +229,30 @@ function useRepoGitStatus(repoPath: string, panelOpen: boolean) {
 }
 
 // ---------------------------------------------------------------------------
-// Hook: fetch worktrees for a repo, re-poll at a slow cadence
-// ---------------------------------------------------------------------------
-
-function useGitWorktrees(repoPath: string, panelOpen: boolean): GitWorktree[] | null {
-	const [worktrees, setWorktrees] = useState<GitWorktree[] | null>(null);
-	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-	const fetch = useCallback(async () => {
-		const wts = await invoke<GitWorktree[]>("get_git_worktrees", { repoPath });
-		setWorktrees(wts);
-	}, [repoPath]);
-
-	useEffect(() => {
-		if (!panelOpen) {
-			if (timerRef.current) {
-				clearInterval(timerRef.current);
-				timerRef.current = null;
-			}
-			return;
-		}
-
-		void fetch();
-		timerRef.current = setInterval(fetch, 15_000);
-
-		return () => {
-			if (timerRef.current) clearInterval(timerRef.current);
-			timerRef.current = null;
-		};
-	}, [panelOpen, fetch]);
-
-	return worktrees;
-}
-
-// ---------------------------------------------------------------------------
-// WorktreeSubsection — one nested collapsible for a single worktree
-// ---------------------------------------------------------------------------
-
-function WorktreeSubsection({
-	worktree,
-	panelOpen,
-}: {
-	worktree: GitWorktree;
-	panelOpen: boolean;
-}) {
-	const { state, refresh } = useRepoGitStatus(worktree.path, panelOpen);
-	const [expanded, setExpanded] = useState(true);
-	const [diffSheetOpen, setDiffSheetOpen] = useState(false);
-	const [fileToOpenInDiff, setFileToOpenInDiff] = useState<{
-		path: string;
-		source: "changes" | "staged";
-	} | null>(null);
-
-	const runGitCommandThenRefresh = useCallback(
-		async (command: string, args?: Record<string, string>) => {
-			await invoke(command, { cwd: worktree.path, ...args });
-			await refresh({ force: true });
-		},
-		[worktree.path, refresh],
-	);
-
-	const status = state.kind === "ready" ? state.status : null;
-
-	const lineStats = useMemo(() => {
-		if (!status) return { add: 0, del: 0 };
-		return sumLineStats([...status.unstaged, ...status.staged]);
-	}, [status]);
-
-	const mergedFiles = useMemo(
-		() => (status ? mergeUnstagedAndStagedForPanel(status) : []),
-		[status],
-	);
-
-	function openDiffForFile(entry: MergedPanelFile) {
-		setFileToOpenInDiff({
-			path: entry.path,
-			source: entry.unstaged ? "changes" : "staged",
-		});
-		setDiffSheetOpen(true);
-	}
-
-	if (state.kind === "not-git") return null;
-
-	return (
-		<>
-			<Collapsible open={expanded} onOpenChange={setExpanded}>
-				<CollapsibleTrigger className="flex w-full min-w-0 items-center gap-1.5 px-3 py-1 text-left transition-colors hover:bg-muted/20">
-					<TbChevronDown
-						className={cn(
-							"size-3 shrink-0 text-muted-foreground/40 transition-transform duration-150",
-							expanded ? "rotate-0" : "-rotate-90",
-						)}
-						aria-hidden
-					/>
-					<span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden">
-						{state.kind === "loading" ? (
-							<Skeleton className="h-3 w-28 max-w-[55%] rounded-sm" />
-						) : (
-							<span
-								className="min-w-0 truncate text-xs text-foreground/75"
-								title={worktree.branch}
-							>
-								{worktree.branch}
-							</span>
-						)}
-					</span>
-					{status !== null && (lineStats.add > 0 || lineStats.del > 0) && (
-						<span className="shrink-0 text-[11px] tabular-nums opacity-70">
-							<span className="text-green-500/80">+{lineStats.add}</span>
-							<span className="mx-0.5 text-muted-foreground/30"> </span>
-							<span className="text-red-500/80">−{lineStats.del}</span>
-						</span>
-					)}
-				</CollapsibleTrigger>
-
-				<CollapsibleContent>
-					<div className="min-h-0">
-						{state.kind === "loading" ? (
-							<RepoSectionInnerSkeleton />
-						) : mergedFiles.length === 0 ? (
-							<p className="px-3 py-2 text-xs text-muted-foreground/35">
-								No changes
-							</p>
-						) : (
-							<div className="pt-0.5">
-								{mergedFiles.map((entry) => (
-									<PanelFileRow
-										key={entry.path}
-										file={entry.file}
-										onClick={() => openDiffForFile(entry)}
-									/>
-								))}
-							</div>
-						)}
-					</div>
-				</CollapsibleContent>
-			</Collapsible>
-
-			{status !== null ? (
-				<GitDiffViewerSheet
-					repoPath={worktree.path}
-					repoDisplayName={repoName(worktree.path)}
-					branch={status.branch}
-					status={status}
-					act={runGitCommandThenRefresh}
-					open={diffSheetOpen}
-					onOpenChange={setDiffSheetOpen}
-					pendingOpen={fileToOpenInDiff}
-					onConsumePendingOpen={() => setFileToOpenInDiff(null)}
-				/>
-			) : null}
-		</>
-	);
-}
-
-// ---------------------------------------------------------------------------
 // Main section
 // ---------------------------------------------------------------------------
 
 function RepoSectionImpl({ repoPath, panelOpen }: RepoSectionProps) {
 	const removeRepo = useGitReposStore((s) => s.removeRepo);
 
-	const worktrees = useGitWorktrees(repoPath, panelOpen);
-	const isMultiWorktree = worktrees !== null && worktrees.length > 1;
+	const { state, refresh } = useRepoGitStatus(repoPath, panelOpen);
 
-	// Only active in single-worktree mode; disabled once worktrees load and there are multiple.
-	const { state, refresh } = useRepoGitStatus(repoPath, panelOpen && !isMultiWorktree);
+	const [isLinkedWorktree, setIsLinkedWorktree] = useState(false);
+
+	useEffect(() => {
+		if (!panelOpen) return;
+		let cancelled = false;
+		void invoke<boolean>("git_cwd_is_linked_worktree", { cwd: repoPath })
+			.then((v) => {
+				if (!cancelled) setIsLinkedWorktree(v);
+			})
+			.catch(() => {
+				if (!cancelled) setIsLinkedWorktree(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [repoPath, panelOpen]);
 
 	const [sectionExpanded, setSectionExpanded] = useState(true);
 	const [diffSheetOpen, setDiffSheetOpen] = useState(false);
@@ -424,10 +282,7 @@ function RepoSectionImpl({ repoPath, panelOpen }: RepoSectionProps) {
 		[status],
 	);
 
-	// In single-worktree mode we return null when git says this isn't a repo.
-	// In multi-worktree mode this state never updates (polling is off), so we
-	// don't gate on it — each WorktreeSubsection handles its own not-git check.
-	if (!isMultiWorktree && state.kind === "not-git") return null;
+	if (state.kind === "not-git") return null;
 
 	function openDiffForFile(entry: MergedPanelFile) {
 		setFileToOpenInDiff({
@@ -457,35 +312,39 @@ function RepoSectionImpl({ repoPath, panelOpen }: RepoSectionProps) {
 							)}
 							aria-hidden
 						/>
+						{isLinkedWorktree ? (
+							<span
+								className="inline-flex shrink-0 text-sky-600/80 dark:text-sky-400/65"
+								title="Linked git worktree (extra checkout of the same repository)"
+								aria-label="Linked git worktree"
+							>
+								<LuFolderTree className="size-3.5" aria-hidden />
+							</span>
+						) : null}
 						<span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden">
 							<span className="shrink-0 truncate text-xs font-medium text-foreground/85">
 								{repoName(repoPath)}
 							</span>
-							{/* In single-worktree mode show the branch in the repo header (same as before).
-							    In multi-worktree mode the branch lives in each sub-section header. */}
-							{!isMultiWorktree && (
-								<>
+							<>
+								<span
+									className="shrink-0 text-muted-foreground/45"
+									aria-hidden
+								>
+									·
+								</span>
+								{state.kind === "loading" ? (
+									<Skeleton className="h-3 w-24 max-w-[45%] min-w-0 shrink rounded-sm" />
+								) : (
 									<span
-										className="shrink-0 text-muted-foreground/45"
-										aria-hidden
+										className="min-w-0 truncate text-xs text-muted-foreground/70"
+										title={status?.branch}
 									>
-										·
+										{status?.branch ?? ""}
 									</span>
-									{state.kind === "loading" ? (
-										<Skeleton className="h-3 w-24 max-w-[45%] min-w-0 shrink rounded-sm" />
-									) : (
-										<span
-											className="min-w-0 truncate text-xs text-muted-foreground/70"
-											title={status?.branch}
-										>
-											{status?.branch ?? ""}
-										</span>
-									)}
-								</>
-							)}
+								)}
+							</>
 						</span>
-						{!isMultiWorktree &&
-							status !== null &&
+						{status !== null &&
 							(lineStats.add > 0 || lineStats.del > 0) && (
 								<span className="shrink-0 text-[11px] tabular-nums opacity-70 transition-opacity group-hover/header:opacity-0">
 									<span className="text-green-500/80">
@@ -507,7 +366,7 @@ function RepoSectionImpl({ repoPath, panelOpen }: RepoSectionProps) {
 							e.stopPropagation();
 							removeRepo(repoPath);
 						}}
-						title="Remove repository"
+						title="Remove from panel (does not delete the folder or git worktree)"
 						className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:bg-muted/40 hover:text-foreground group-hover/header:opacity-100"
 					>
 						<TbX className="size-3" aria-hidden />
@@ -516,46 +375,33 @@ function RepoSectionImpl({ repoPath, panelOpen }: RepoSectionProps) {
 			</div>
 
 			<CollapsibleContent>
-				{isMultiWorktree ? (
-					// Multi-worktree: one nested collapsible per worktree.
-					<div className="min-h-0 divide-y divide-border/50">
-						{worktrees.map((wt) => (
-							<WorktreeSubsection
-								key={wt.path}
-								worktree={wt}
-								panelOpen={panelOpen}
-							/>
-						))}
-					</div>
-				) : (
-					// Single-worktree: same file list as before.
-					<div className="min-h-0">
-						{state.kind === "loading" ? (
-							<RepoSectionInnerSkeleton />
-						) : mergedFiles.length === 0 ? (
-							<p className="px-3 py-3 text-xs text-muted-foreground/35">
-								No changes
-							</p>
-						) : (
-							<div className="pt-0.5">
-								{mergedFiles.map((entry) => (
-									<PanelFileRow
-										key={entry.path}
-										file={entry.file}
-										onClick={() => openDiffForFile(entry)}
-									/>
-								))}
-							</div>
-						)}
-					</div>
-				)}
+				<div className="min-h-0">
+					{state.kind === "loading" ? (
+						<RepoSectionInnerSkeleton />
+					) : mergedFiles.length === 0 ? (
+						<p className="px-3 py-3 text-xs text-muted-foreground/35">
+							No changes
+						</p>
+					) : (
+						<div className="pt-0.5">
+							{mergedFiles.map((entry) => (
+								<PanelFileRow
+									key={entry.path}
+									file={entry.file}
+									onClick={() => openDiffForFile(entry)}
+								/>
+							))}
+						</div>
+					)}
+				</div>
 			</CollapsibleContent>
 
-			{!isMultiWorktree && status !== null ? (
+			{status !== null ? (
 				<GitDiffViewerSheet
 					repoPath={repoPath}
 					repoDisplayName={repoName(repoPath)}
 					branch={status.branch}
+					cwdIsLinkedWorktree={isLinkedWorktree}
 					status={status}
 					act={runGitCommandThenRefresh}
 					open={diffSheetOpen}

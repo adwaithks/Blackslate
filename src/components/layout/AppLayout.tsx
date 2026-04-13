@@ -22,6 +22,7 @@ export function AppLayout() {
 	const headerSlice = useTerminalStore(useShallow(selectAppHeaderSlice));
 	const activeCwd = headerSlice.cwd;
 	const headerBranch = headerSlice.branch;
+	const headerCwdIsLinkedWorktree = headerSlice.cwdIsLinkedWorktree;
 	const renameOpen = useRenameUiStore((s) => s.target !== null);
 
 	const homeDir = useHomeDir();
@@ -56,6 +57,7 @@ export function AppLayout() {
 						sidebarOpen={sidebarOpen}
 						headerPwd={resolvedCwd}
 						headerBranch={headerBranch}
+						headerCwdIsLinkedWorktree={headerCwdIsLinkedWorktree}
 						onCreateWorkspace={createWorkspace}
 						onToggleSidebar={() => setSidebarOpen((o) => !o)}
 						gitPanelOpen={gitPanelOpen}

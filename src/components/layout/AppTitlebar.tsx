@@ -5,6 +5,7 @@ export interface AppTitlebarProps {
 	sidebarOpen: boolean;
 	headerPwd: string;
 	headerBranch: string | null;
+	headerCwdIsLinkedWorktree: boolean;
 	onCreateWorkspace: () => void;
 	onToggleSidebar: () => void;
 	gitPanelOpen: boolean;
@@ -15,6 +16,7 @@ export function AppTitlebar({
 	sidebarOpen,
 	headerPwd,
 	headerBranch,
+	headerCwdIsLinkedWorktree,
 	onCreateWorkspace,
 	onToggleSidebar,
 	gitPanelOpen,
@@ -37,6 +39,7 @@ export function AppTitlebar({
 			<TitlebarMainSection
 				headerPwd={headerPwd}
 				headerBranch={headerBranch}
+				headerCwdIsLinkedWorktree={headerCwdIsLinkedWorktree}
 				gitPanelOpen={gitPanelOpen}
 				onToggleGitPanel={onToggleGitPanel}
 			/>
