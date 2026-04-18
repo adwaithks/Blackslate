@@ -412,6 +412,10 @@ async fn run_push(
     args: &[&str],
     passphrase: Option<&str>,
 ) -> std::io::Result<std::process::Output> {
+    let full_args: Vec<&str> = std::iter::once("push").chain(args.iter().copied()).collect();
+    eprintln!("[blackslate:push] running: git -C {cwd} {}", full_args.join(" "));
+    eprintln!("[blackslate:push] passphrase provided: {}", passphrase.is_some());
+
     let mut cmd = tokio::process::Command::new("git");
     cmd.arg("-C").arg(cwd).arg("push").args(args);
 
@@ -425,6 +429,7 @@ async fn run_push(
         // Provide passphrase non-interactively via askpass script.
         if let Ok(script) = write_askpass_script(pass) {
             let script_str = script.to_string_lossy().into_owned();
+            eprintln!("[blackslate:push] using askpass script: {script_str}");
             cmd.env("SSH_ASKPASS", &script_str);
             cmd.env("SSH_ASKPASS_REQUIRE", "force");
             cmd.env("GIT_ASKPASS", &script_str);
@@ -434,7 +439,11 @@ async fn run_push(
         }
     }
 
-    cmd.output().await
+    let out = cmd.output().await?;
+    eprintln!("[blackslate:push] exit code: {:?}", out.status.code());
+    eprintln!("[blackslate:push] stdout: {}", String::from_utf8_lossy(&out.stdout).trim());
+    eprintln!("[blackslate:push] stderr: {}", String::from_utf8_lossy(&out.stderr).trim());
+    Ok(out)
 }
 
 /// Push the current branch. Automatically retries with `--set-upstream origin <branch>` when
@@ -446,11 +455,14 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
     let cwd_str = resolved.to_string_lossy().into_owned();
     let pass = passphrase.as_deref();
 
+    eprintln!("[blackslate:push] git_push called for cwd={cwd_str}");
+
     let out = run_push(&cwd_str, &[], pass)
         .await
         .map_err(|e| e.to_string())?;
 
     if out.status.success() {
+        eprintln!("[blackslate:push] push succeeded on first attempt");
         return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
     }
 
@@ -458,18 +470,23 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
     let combined = format!("{}{}", stdout, stderr);
 
+    eprintln!("[blackslate:push] first attempt failed — needs_upstream={} needs_auth={}",
+        push_needs_upstream(&combined), push_needs_auth(&combined));
+
     // Auto-handle missing upstream.
     if push_needs_upstream(&combined) {
         let branch_out = git_cmd(&cwd_str, &["rev-parse", "--abbrev-ref", "HEAD"])
             .await
             .map_err(|e| e.to_string())?;
         let branch = String::from_utf8_lossy(&branch_out.stdout).trim().to_string();
+        eprintln!("[blackslate:push] retrying with --set-upstream origin {branch}");
 
         let out2 = run_push(&cwd_str, &["--set-upstream", "origin", &branch], pass)
             .await
             .map_err(|e| e.to_string())?;
 
         if out2.status.success() {
+            eprintln!("[blackslate:push] push with --set-upstream succeeded");
             return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
         }
 
@@ -479,7 +496,10 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
             String::from_utf8_lossy(&out2.stderr)
         );
 
+        eprintln!("[blackslate:push] --set-upstream also failed — needs_auth={}", push_needs_auth(&combined2));
+
         if push_needs_auth(&combined2) && pass.is_none() {
+            eprintln!("[blackslate:push] returning needs_passphrase=true");
             return Ok(GitPushResult {
                 success: false,
                 needs_passphrase: true,
@@ -492,6 +512,7 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
 
     // Auth required — return as Ok so the frontend can prompt rather than treat it as a crash.
     if push_needs_auth(&combined) && pass.is_none() {
+        eprintln!("[blackslate:push] returning needs_passphrase=true");
         return Ok(GitPushResult {
             success: false,
             needs_passphrase: true,
@@ -499,6 +520,7 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
         });
     }
 
+    eprintln!("[blackslate:push] returning error: {}", combined.trim());
     Err(combined.trim().to_string())
 }
 
