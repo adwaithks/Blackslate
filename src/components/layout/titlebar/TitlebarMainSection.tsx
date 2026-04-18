@@ -11,24 +11,42 @@ import {
 	selectTerminalStackSignature,
 } from "@/store/terminals";
 
-// One commit button per mounted terminal, kept alive so state survives tab switches.
-// Only the active terminal's button is visible; inactive ones are hidden with display:none.
+// One commit button per unique branch, kept alive so state survives tab switches.
+// Only the active branch's button is visible; inactive ones are hidden with display:none.
+// Terminals on the same branch share one button instance (and therefore one commit flow).
 function CommitButtonStack() {
 	const stackSignature = useTerminalStore(selectTerminalStackSignature);
 	const rows = useMemo(() => {
 		const state = useTerminalStore.getState();
-		return buildMountedTerminalRows(state).map(({ terminalId, isActive }) => ({
-			terminalId,
+		const mounted = buildMountedTerminalRows(state);
+
+		// Collapse by branch: each unique branch gets one entry.
+		// The active terminal's cwd wins so git operations target the right repo.
+		const byBranch = new Map<string, { cwd: string; isActive: boolean }>();
+		for (const { terminalId, isActive } of mounted) {
+			const term = findTerminal(state.workspaces, terminalId);
+			if (!term) continue;
+			// Fall back to cwd when there's no branch (e.g. bare repo / detached HEAD).
+			const key = term.git?.branch ?? `~${term.cwd}`;
+			const prev = byBranch.get(key);
+			byBranch.set(key, {
+				cwd: isActive ? term.cwd : (prev?.cwd ?? term.cwd),
+				isActive: (prev?.isActive ?? false) || isActive,
+			});
+		}
+
+		return Array.from(byBranch.entries()).map(([branch, { cwd, isActive }]) => ({
+			branch,
+			cwd,
 			isActive,
-			cwd: findTerminal(state.workspaces, terminalId)?.cwd ?? "~",
 		}));
 	}, [stackSignature]);
 
 	return (
 		<>
-			{rows.map(({ terminalId, isActive, cwd }) => (
+			{rows.map(({ branch, cwd, isActive }) => (
 				<div
-					key={terminalId}
+					key={branch}
 					style={{ display: isActive ? undefined : "none" }}
 				>
 					<TitlebarCommitButton cwd={cwd} />
