@@ -6,6 +6,7 @@ import { LuEye, LuEyeOff, LuFolder } from "react-icons/lu";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toastError";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -13,7 +14,10 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 function useSpinner(active: boolean): string {
 	const [frame, setFrame] = useState(0);
 	useEffect(() => {
-		if (!active) { setFrame(0); return; }
+		if (!active) {
+			setFrame(0);
+			return;
+		}
 		const id = setInterval(
 			() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length),
 			80,
@@ -23,23 +27,30 @@ function useSpinner(active: boolean): string {
 	return SPINNER_FRAMES[frame]!;
 }
 
-type Phase = "idle" | "working" | "passphrase" | "error";
+type Phase = "idle" | "compose" | "working" | "passphrase" | "error";
+
+function buildCommitMessage(title: string, description: string): string {
+	const t = title.trim();
+	const d = description.trim();
+	return d ? `${t}\n\n${d}` : t;
+}
 
 export function TitlebarCommitButton({
 	cwd,
-	hidden,
 	branch,
 	repoName,
 	isWorktree,
 }: {
 	cwd: string;
-	hidden?: boolean;
 	branch?: string;
 	repoName?: string;
 	isWorktree?: boolean;
 }) {
 	const [phase, setPhase] = useState<Phase>("idle");
-	const [statusText, setStatusText] = useState("Commit & Push");
+	const [workLabel, setWorkLabel] = useState("");
+	const [commitTitle, setCommitTitle] = useState("");
+	const [commitDescription, setCommitDescription] = useState("");
+	const [generating, setGenerating] = useState(false);
 	const [errorTitle, setErrorTitle] = useState("");
 	const [errorMessage, setErrorMessage] = useState("");
 	const [passphrase, setPassphrase] = useState("");
@@ -48,9 +59,10 @@ export function TitlebarCommitButton({
 	const [showPassphrase, setShowPassphrase] = useState(false);
 	const [needsUpstream, setNeedsUpstream] = useState(false);
 	const passphraseInputRef = useRef<HTMLInputElement>(null);
+	const titleInputRef = useRef<HTMLInputElement>(null);
 	const spinnerChar = useSpinner(phase === "working");
-	// Set to true to abandon in-flight work without showing errors.
 	const abortRef = useRef(false);
+	const prevCwdRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		if (phase === "passphrase") {
@@ -58,10 +70,36 @@ export function TitlebarCommitButton({
 		}
 	}, [phase]);
 
+	useEffect(() => {
+		if (phase === "compose") {
+			setTimeout(() => titleInputRef.current?.focus(), 30);
+		}
+	}, [phase]);
+
+	// Terminal cwd changed (e.g. `cd`) → drop draft commit message
+	useEffect(() => {
+		if (prevCwdRef.current === null) {
+			prevCwdRef.current = cwd;
+			return;
+		}
+		if (prevCwdRef.current !== cwd) {
+			prevCwdRef.current = cwd;
+			if (phase === "compose") {
+				setPhase("idle");
+				setCommitTitle("");
+				setCommitDescription("");
+				setGenerating(false);
+			}
+		}
+	}, [cwd, phase]);
+
 	function abort() {
 		abortRef.current = true;
 		setPhase("idle");
-		setStatusText("Commit & Push");
+		setWorkLabel("");
+		setCommitTitle("");
+		setCommitDescription("");
+		setGenerating(false);
 		setPassphrase("");
 		setPassphraseError(false);
 		setShowPassphrase(false);
@@ -72,11 +110,11 @@ export function TitlebarCommitButton({
 		setErrorTitle(title);
 		setErrorMessage(message);
 		setPhase("error");
-		setStatusText("Commit & Push");
+		setWorkLabel("");
 	}
 
 	async function doPush(pass?: string): Promise<boolean> {
-		setStatusText("Pushing…");
+		setWorkLabel("Pushing…");
 		try {
 			const result = await invoke<{
 				success: boolean;
@@ -89,12 +127,18 @@ export function TitlebarCommitButton({
 				setUpstream: needsUpstream || undefined,
 			});
 
-			if (abortRef.current) return false;
+			if (abortRef.current) {
+				setPhase("idle");
+				setWorkLabel("");
+				return false;
+			}
 
 			if (result.success) {
 				setPhase("idle");
-				setStatusText("Pushed!");
-				setTimeout(() => setStatusText("Commit & Push"), 2000);
+				setWorkLabel("");
+				setCommitTitle("");
+				setCommitDescription("");
+				toast.success("Pushed");
 				return true;
 			}
 
@@ -108,25 +152,78 @@ export function TitlebarCommitButton({
 					setPassphraseError(false);
 				}
 				setPhase("passphrase");
+				setWorkLabel("");
 				return false;
 			}
+			showError(
+				"Push failed",
+				"Git push did not complete. Check the remote and try again from the command line if needed.",
+			);
 			return false;
 		} catch (err) {
-			if (abortRef.current) return false;
+			if (abortRef.current) {
+				setPhase("idle");
+				setWorkLabel("");
+				return false;
+			}
 			showError("Push failed", String(err));
 			return false;
 		}
 	}
 
-	async function handleClick() {
-		// While working: clicking the button cancels the operation.
+	async function runCommitAndPushFromCompose() {
+		const message = buildCommitMessage(commitTitle, commitDescription);
+		if (!message) {
+			toast("Add a commit title", { description: "The subject line cannot be empty." });
+			return;
+		}
+
+		abortRef.current = false;
+		setPhase("working");
+		setWorkLabel("Committing…");
+
+		try {
+			await invoke("git_commit", { cwd, message });
+			if (abortRef.current) return;
+		} catch (err) {
+			if (abortRef.current) return;
+			showError("Commit failed", String(err));
+			return;
+		}
+
+		await doPush();
+	}
+
+	async function handleGenerateAi() {
+		setGenerating(true);
+		try {
+			const result = await invoke<{ title: string; description: string }>(
+				"git_generate_commit_message",
+				{ cwd },
+			);
+			setCommitTitle(result.title);
+			setCommitDescription(result.description ?? "");
+			toast.success("Filled from AI");
+		} catch (err) {
+			toastError("Could not generate commit message", err);
+		} finally {
+			setGenerating(false);
+		}
+	}
+
+	async function handleMainButtonClick() {
 		if (phase === "working") {
 			abort();
 			return;
 		}
+		if (phase === "compose") {
+			setPhase("idle");
+			setCommitTitle("");
+			setCommitDescription("");
+			return;
+		}
 		if (phase !== "idle") return;
 
-		// Check for staged changes before doing anything.
 		const status = await invoke<{ staged: unknown[]; unstaged: unknown[] } | null>(
 			"get_git_status",
 			{ cwd },
@@ -152,60 +249,35 @@ export function TitlebarCommitButton({
 			return;
 		}
 
-		abortRef.current = false;
-		setPhase("working");
-		setStatusText("Generating…");
-
-		// Generate commit message
-		let message = "";
-		try {
-			const result = await invoke<{ title: string; description: string }>(
-				"git_generate_commit_message",
-				{ cwd },
-			);
-			if (abortRef.current) return;
-			message = result.description.trim()
-				? `${result.title}\n\n${result.description}`
-				: result.title;
-		} catch (err) {
-			if (abortRef.current) return;
-			showError("Could not generate commit message", String(err));
-			return;
-		}
-
-		// Commit
-		setStatusText("Committing…");
-		try {
-			await invoke("git_commit", { cwd, message });
-			if (abortRef.current) return;
-		} catch (err) {
-			if (abortRef.current) return;
-			showError("Commit failed", String(err));
-			return;
-		}
-
-		// Push
-		await doPush();
+		setCommitTitle("");
+		setCommitDescription("");
+		setPhase("compose");
 	}
 
 	async function handlePassphraseSubmit() {
 		if (!passphrase.trim()) return;
 		abortRef.current = false;
 		setPhase("working");
+		setWorkLabel("Pushing…");
 		await doPush(passphrase);
 	}
 
-	// Hidden instances stay mounted so their state (phase, spinner, etc.) survives
-	// terminal switches, but render nothing into the DOM.
-	if (hidden) return null;
+	const mainLabel =
+		phase === "working" ? "Cancel" : phase === "compose" ? "Close" : "Commit & Push";
 
 	return (
 		<div className="relative flex items-center">
 			<button
 				type="button"
-				onClick={handleClick}
-				title={phase === "working" ? "Cancel" : "Commit & Push staged changes"}
-				aria-label={phase === "working" ? "Cancel" : "Commit & Push staged changes"}
+				onClick={handleMainButtonClick}
+				title={
+					phase === "working"
+						? "Cancel"
+						: phase === "compose"
+							? "Close commit dialog"
+							: "Commit & Push staged changes"
+				}
+				aria-label={mainLabel}
 				className="inline-flex h-6 shrink-0 items-center gap-1 rounded-sm px-1.5 text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
 			>
 				{phase === "working" ? (
@@ -218,10 +290,127 @@ export function TitlebarCommitButton({
 				) : (
 					<TbGitCommit className="size-4 shrink-0" aria-hidden />
 				)}
-				<span className="text-xs">{statusText}</span>
+				<span className="text-xs">{mainLabel}</span>
 			</button>
 
-			{/* Passphrase dialog */}
+			{(phase === "compose" || (phase === "working" && workLabel)) && (
+				<>
+					<div className="fixed inset-0 z-50 bg-black/40" />
+					<div className="fixed left-1/2 top-1/2 z-50 flex w-[440px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
+						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
+							<span className="text-xs font-medium tracking-wide text-muted-foreground">
+								{phase === "working" ? workLabel : "Commit & Push"}
+							</span>
+							<button
+								type="button"
+								className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground disabled:opacity-40"
+								onClick={() => {
+									if (phase === "working") return;
+									setPhase("idle");
+									setCommitTitle("");
+									setCommitDescription("");
+									setGenerating(false);
+								}}
+								disabled={phase === "working"}
+								aria-label="Close"
+							>
+								<IoClose className="size-4" />
+							</button>
+						</div>
+						{phase === "compose" ? (
+							<div className="flex flex-col gap-4 p-4">
+								{(repoName || branch) && (
+									<div className="flex items-center gap-3 text-xs text-muted-foreground">
+										{repoName && (
+											<span className="flex items-center gap-1">
+												{isWorktree ? (
+													<TbGitFork className="size-3.5 shrink-0" aria-hidden />
+												) : (
+													<LuFolder className="size-3.5 shrink-0" aria-hidden />
+												)}
+												{repoName}
+											</span>
+										)}
+										{branch && (
+											<span className="flex items-center gap-1">
+												<TbGitBranch className="size-3.5 shrink-0" aria-hidden />
+												{branch}
+											</span>
+										)}
+									</div>
+								)}
+								<div className="flex flex-col gap-1.5">
+									<label className="text-[11px] font-medium text-muted-foreground">
+										Title
+									</label>
+									<Input
+										ref={titleInputRef}
+										value={commitTitle}
+										onChange={(e) => setCommitTitle(e.target.value)}
+										placeholder="Short summary (required)"
+										className="h-9 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
+									/>
+								</div>
+								<div className="flex flex-col gap-1.5">
+									<label className="text-[11px] font-medium text-muted-foreground">
+										Description
+									</label>
+									<Textarea
+										value={commitDescription}
+										onChange={(e) => setCommitDescription(e.target.value)}
+										placeholder="Optional body"
+										rows={4}
+										className="resize-y border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
+									/>
+								</div>
+								<div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
+									<Button
+										type="button"
+										variant="secondary"
+										size="sm"
+										className="mr-auto text-xs"
+										onClick={handleGenerateAi}
+										disabled={generating}
+									>
+										{generating ? "Generating…" : "Generate with AI"}
+									</Button>
+									<button
+										type="button"
+										className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+										onClick={() => {
+											setPhase("idle");
+											setCommitTitle("");
+											setCommitDescription("");
+										}}
+									>
+										Cancel
+									</button>
+									<Button
+										type="button"
+										size="sm"
+										className="bg-primary text-primary-foreground hover:bg-primary/90"
+										onClick={runCommitAndPushFromCompose}
+										disabled={!commitTitle.trim()}
+									>
+										Commit & Push
+									</Button>
+								</div>
+							</div>
+						) : (
+							<div className="flex items-center gap-3 px-4 py-8">
+								<span
+									className="font-mono text-sm"
+									aria-hidden
+								>
+									{spinnerChar}
+								</span>
+								<span className="text-sm text-muted-foreground">{workLabel}</span>
+							</div>
+						)}
+					</div>
+				</>
+			)}
+
 			{phase === "passphrase" && (
 				<>
 					<div className="fixed inset-0 z-50 bg-black/40" />
@@ -243,10 +432,11 @@ export function TitlebarCommitButton({
 								<div className="flex items-center gap-3 text-xs text-muted-foreground">
 									{repoName && (
 										<span className="flex items-center gap-1">
-											{isWorktree
-												? <TbGitFork className="size-3.5 shrink-0" aria-hidden />
-												: <LuFolder className="size-3.5 shrink-0" aria-hidden />
-											}
+											{isWorktree ? (
+												<TbGitFork className="size-3.5 shrink-0" aria-hidden />
+											) : (
+												<LuFolder className="size-3.5 shrink-0" aria-hidden />
+											)}
 											{repoName}
 										</span>
 									)}
@@ -280,10 +470,11 @@ export function TitlebarCommitButton({
 									className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 transition-colors hover:text-muted-foreground"
 									aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
 								>
-									{showPassphrase
-										? <LuEyeOff className="size-3.5" aria-hidden />
-										: <LuEye className="size-3.5" aria-hidden />
-									}
+									{showPassphrase ? (
+										<LuEyeOff className="size-3.5" aria-hidden />
+									) : (
+										<LuEye className="size-3.5" aria-hidden />
+									)}
 								</button>
 							</div>
 							<div className="flex justify-end gap-2">
@@ -308,7 +499,6 @@ export function TitlebarCommitButton({
 					</div>
 				</>
 			)}
-			{/* Error dialog — full output for pre-commit hooks, test failures, push errors */}
 			{phase === "error" && (
 				<>
 					<div className="fixed inset-0 z-50 bg-black/40" />
@@ -321,10 +511,11 @@ export function TitlebarCommitButton({
 								<div className="flex items-center gap-3 ml-2 mr-auto text-xs text-muted-foreground/60">
 									{repoName && (
 										<span className="flex items-center gap-1">
-											{isWorktree
-												? <TbGitFork className="size-3.5 shrink-0" aria-hidden />
-												: <LuFolder className="size-3.5 shrink-0" aria-hidden />
-											}
+											{isWorktree ? (
+												<TbGitFork className="size-3.5 shrink-0" aria-hidden />
+											) : (
+												<LuFolder className="size-3.5 shrink-0" aria-hidden />
+											)}
 											{repoName}
 										</span>
 									)}

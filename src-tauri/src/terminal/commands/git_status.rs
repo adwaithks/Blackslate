@@ -350,7 +350,7 @@ pub async fn discard_all(cwd: String) -> CommandResult<()> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct GeneratedCommitMessage {
     pub title: String,
     pub description: String,
@@ -372,7 +372,17 @@ pub struct GitPushResult {
 
 fn write_askpass_script(passphrase: &str) -> std::io::Result<std::path::PathBuf> {
     use std::os::unix::fs::PermissionsExt;
-    let path = std::env::temp_dir().join("blackslate_askpass");
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let id = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let path = std::env::temp_dir().join(format!(
+        "blackslate_askpass_{}_{}",
+        std::process::id(),
+        id
+    ));
     // Escape single quotes so the shell echo is safe.
     let safe = passphrase.replace('\'', "'\\''");
     std::fs::write(&path, format!("#!/bin/sh\necho '{}'\n", safe))?;
@@ -396,6 +406,7 @@ fn push_needs_auth(output: &str) -> bool {
 fn push_needs_upstream(output: &str) -> bool {
     output.contains("has no upstream branch")
         || output.contains("no upstream branch")
+        || output.contains("No configured push destination")
         || output.contains("--set-upstream")
         || output.contains("push.default")
 }
@@ -426,25 +437,34 @@ async fn run_push(
     cmd.stdin(std::process::Stdio::null());
     cmd.env("GIT_TERMINAL_PROMPT", "0");
 
-    if let Some(pass) = passphrase {
+    let askpass_script = if let Some(pass) = passphrase {
         // Retry with passphrase: use SSH_ASKPASS so SSH reads it non-interactively.
-        if let Ok(script) = write_askpass_script(pass) {
-            let script_str = script.to_string_lossy().into_owned();
-            eprintln!("[blackslate:push] using askpass script: {script_str}");
-            cmd.env("SSH_ASKPASS", &script_str);
-            cmd.env("SSH_ASKPASS_REQUIRE", "force");
-            cmd.env("GIT_ASKPASS", &script_str);
-            cmd.env("DISPLAY", ":0");
-            // BatchMode=no so SSH calls the askpass script instead of failing immediately.
-            cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new");
-        }
+        write_askpass_script(pass).ok()
     } else {
+        None
+    };
+
+    if let Some(ref script) = askpass_script {
+        let script_str = script.to_string_lossy().into_owned();
+        eprintln!("[blackslate:push] using askpass script: {script_str}");
+        cmd.env("SSH_ASKPASS", &script_str);
+        cmd.env("SSH_ASKPASS_REQUIRE", "force");
+        cmd.env("GIT_ASKPASS", &script_str);
+        cmd.env("DISPLAY", ":0");
+        // BatchMode=no so SSH calls the askpass script instead of failing immediately.
+        cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new");
+    } else if passphrase.is_none() {
         // No passphrase: tell SSH to fail immediately instead of prompting.
         // GIT_SSH_COMMAND is the correct way — SSH_BATCH_MODE env var is not read by SSH itself.
         cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new");
     }
 
-    let out = cmd.output().await?;
+    let out = cmd.output().await;
+    if let Some(script) = askpass_script {
+        let _ = std::fs::remove_file(script);
+    }
+    let out = out?;
+
     eprintln!("[blackslate:push] exit code: {:?}", out.status.code());
     eprintln!("[blackslate:push] stdout: {}", String::from_utf8_lossy(&out.stdout).trim());
     eprintln!("[blackslate:push] stderr: {}", String::from_utf8_lossy(&out.stderr).trim());
@@ -718,6 +738,54 @@ mod generated_commit_parse_tests {
     }
 
     #[test]
+    fn parses_json_with_whitespace_padding() {
+        let raw = "  \n{\"title\":\"trim\",\"description\":\"me\"}\n  ";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "trim");
+        assert_eq!(msg.description, "me");
+    }
+
+    #[test]
+    fn parses_json_embedded_in_prose() {
+        let raw = "Sure. {\"title\":\"feat: x\",\"description\":\"y\"} Hope this helps.";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "feat: x");
+        assert_eq!(msg.description, "y");
+    }
+
+    #[test]
+    fn parses_minimal_json_empty_description() {
+        let raw = r#"{"title":"chore: bump","description":""}"#;
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "chore: bump");
+        assert_eq!(msg.description, "");
+    }
+
+    #[test]
+    fn json_takes_precedence_over_later_fenced_blocks() {
+        let raw = r#"{"title":"from json","description":""}
+```
+ignored title
+```
+"#;
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "from json");
+        assert_eq!(msg.description, "");
+    }
+
+    #[test]
+    fn falls_back_to_fenced_json_when_leading_braces_are_invalid() {
+        let raw = r#"Not JSON: {nope}
+```json
+{"title":"from fence","description":"body"}
+```
+"#;
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "from fence");
+        assert_eq!(msg.description, "body");
+    }
+
+    #[test]
     fn parses_json_in_markdown_fence() {
         let raw = "Here\n```json\n{\"title\":\"a\",\"description\":\"b\"}\n```\n";
         let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
@@ -742,6 +810,193 @@ Replace manual walk.
         let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
         assert_eq!(msg.title, "Refactor git_info to use git subprocesses");
         assert_eq!(msg.description, "Replace manual walk.");
+    }
+
+    #[test]
+    fn parses_single_fenced_block_as_title_empty_description() {
+        let raw = "```\nonly subject line\n```";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "only subject line");
+        assert_eq!(msg.description, "");
+    }
+
+    #[test]
+    fn parses_three_fenced_blocks_uses_first_two_only() {
+        let raw = r"```
+first
+```
+```
+second
+```
+```
+third
+```
+";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "first");
+        assert_eq!(msg.description, "second");
+    }
+
+    #[test]
+    fn multiline_body_in_title_fence() {
+        let raw = "```\nline1\nline2\n```";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "line1\nline2");
+        assert_eq!(msg.description, "");
+    }
+
+    #[test]
+    fn err_on_empty_input() {
+        let err = parse_generated_commit_message_from_claude_output("").unwrap_err();
+        assert_eq!(err, "Empty claude output");
+    }
+
+    #[test]
+    fn err_on_whitespace_only_input() {
+        let err = parse_generated_commit_message_from_claude_output("   \n\t  ").unwrap_err();
+        assert_eq!(err, "Empty claude output");
+    }
+
+    #[test]
+    fn err_on_unparseable_output() {
+        let raw = "It looks like your message may have been cut off.";
+        let err = parse_generated_commit_message_from_claude_output(raw).unwrap_err();
+        assert!(
+            err.starts_with("Could not parse commit message from claude output:"),
+            "{err}"
+        );
+        assert!(err.contains("cut off"), "{err}");
+    }
+
+    #[test]
+    fn rejects_json_with_empty_title_even_if_description_present() {
+        let raw = r#"{"title":"","description":"only body"}"#;
+        let err = parse_generated_commit_message_from_claude_output(raw).unwrap_err();
+        assert!(
+            err.starts_with("Could not parse commit message from claude output:"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn rejects_json_with_whitespace_only_title() {
+        let raw = r#"{"title":"   ","description":"x"}"#;
+        let err = parse_generated_commit_message_from_claude_output(raw).unwrap_err();
+        assert!(
+            err.starts_with("Could not parse commit message from claude output:"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn extract_fenced_skips_language_line() {
+        let raw = "```rust\nfn main() {}\n```";
+        let blocks = extract_fenced_code_blocks(raw);
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0], "fn main() {}");
+    }
+
+    #[test]
+    fn extract_fenced_multiple_blocks_in_order() {
+        let raw = "```\na\n```\n```\nb\n```";
+        assert_eq!(extract_fenced_code_blocks(raw), vec!["a", "b"]);
+    }
+
+    #[test]
+    fn extract_fenced_unclosed_returns_nothing() {
+        let raw = "```\nno closing";
+        assert!(extract_fenced_code_blocks(raw).is_empty());
+    }
+
+    #[test]
+    fn extract_fenced_opening_without_newline_returns_nothing() {
+        let raw = "```inline";
+        assert!(extract_fenced_code_blocks(raw).is_empty());
+    }
+
+    #[test]
+    fn extract_json_object_grabs_first_to_last_brace() {
+        let s = r#"prefix {"title":"x","description":""} suffix"#;
+        assert_eq!(
+            extract_json_object(s).as_deref(),
+            Some(r#"{"title":"x","description":""}"#)
+        );
+    }
+}
+
+#[cfg(test)]
+mod push_output_detection_tests {
+    use super::extract_passphrase_hint;
+    use super::push_needs_auth;
+    use super::push_needs_upstream;
+
+    #[test]
+    fn needs_upstream_git_messages() {
+        assert!(push_needs_upstream(
+            "fatal: The current branch feat/x has no upstream branch."
+        ));
+        assert!(push_needs_upstream(
+            "push the current branch and set the remote as upstream, use\n\n    git push --set-upstream origin feat/x"
+        ));
+        assert!(push_needs_upstream(
+            "fatal: No configured push destination."
+        ));
+    }
+
+    #[test]
+    fn does_not_need_upstream_on_success_like_stderr() {
+        assert!(!push_needs_upstream("Everything up-to-date"));
+    }
+
+    #[test]
+    fn needs_auth_common_messages() {
+        assert!(push_needs_auth(
+            "git@github.com: Permission denied (publickey)."
+        ));
+        assert!(push_needs_auth(
+            "remote: Invalid username or password."
+        ));
+        assert!(push_needs_auth(
+            "Enter passphrase for key '/Users/x/.ssh/id_rsa':"
+        ));
+        assert!(push_needs_auth(
+            "Authentication failed for 'https://github.com/org/repo.git/'"
+        ));
+    }
+
+    #[test]
+    fn needs_auth_case_insensitive() {
+        assert!(push_needs_auth("Permission DENIED (publickey)."));
+    }
+
+    #[test]
+    fn passphrase_hint_prefers_matching_line() {
+        assert_eq!(
+            extract_passphrase_hint(
+                "foo\nEnter passphrase for key '/home/u/.ssh/id_ed25519':\nbar"
+            ),
+            "Enter passphrase for key '/home/u/.ssh/id_ed25519':"
+        );
+    }
+
+    #[test]
+    fn passphrase_hint_fallback_when_no_keyword_line() {
+        assert_eq!(extract_passphrase_hint("something weird"), "Authentication required");
+    }
+}
+
+#[cfg(test)]
+mod askpass_script_tests {
+    use super::write_askpass_script;
+
+    #[test]
+    fn each_askpass_script_gets_a_distinct_path() {
+        let a = write_askpass_script("secret-a").unwrap();
+        let b = write_askpass_script("secret-b").unwrap();
+        assert_ne!(a, b);
+        assert!(a.file_name().unwrap().to_string_lossy().contains("blackslate_askpass_"));
+        let _ = std::fs::remove_file(&a);
+        let _ = std::fs::remove_file(&b);
     }
 }
 
