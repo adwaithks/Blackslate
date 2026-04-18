@@ -13,7 +13,7 @@ export default function App() {
 			<ErrorBoundary>
 				<AppLayout />
 			</ErrorBoundary>
-			<Toaster position="top-right" />
+			<Toaster position="top-center" />
 		</>
 	);
 }

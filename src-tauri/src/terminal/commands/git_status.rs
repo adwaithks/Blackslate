@@ -422,11 +422,9 @@ async fn run_push(
     // Never let git or SSH block waiting for terminal input.
     cmd.stdin(std::process::Stdio::null());
     cmd.env("GIT_TERMINAL_PROMPT", "0");
-    // SSH_BATCH_MODE=yes makes SSH fail immediately instead of hanging on passphrase prompts.
-    cmd.env("SSH_BATCH_MODE", "yes");
 
     if let Some(pass) = passphrase {
-        // Provide passphrase non-interactively via askpass script.
+        // Retry with passphrase: use SSH_ASKPASS so SSH reads it non-interactively.
         if let Ok(script) = write_askpass_script(pass) {
             let script_str = script.to_string_lossy().into_owned();
             eprintln!("[blackslate:push] using askpass script: {script_str}");
@@ -434,9 +432,13 @@ async fn run_push(
             cmd.env("SSH_ASKPASS_REQUIRE", "force");
             cmd.env("GIT_ASKPASS", &script_str);
             cmd.env("DISPLAY", ":0");
-            // Disable batch mode so SSH actually calls the askpass script.
-            cmd.env("SSH_BATCH_MODE", "no");
+            // BatchMode=no so SSH calls the askpass script instead of failing immediately.
+            cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new");
         }
+    } else {
+        // No passphrase: tell SSH to fail immediately instead of prompting.
+        // GIT_SSH_COMMAND is the correct way — SSH_BATCH_MODE env var is not read by SSH itself.
+        cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new");
     }
 
     let out = cmd.output().await?;
