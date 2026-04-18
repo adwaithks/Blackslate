@@ -1,8 +1,42 @@
+import { useMemo } from "react";
 import { TitlebarCwdBranchLine } from "@/components/layout/titlebar/TitlebarCwdBranchLine";
 import { TitlebarClaudeMenu } from "@/components/layout/titlebar/TitlebarClaudeMenu";
 import { TitlebarCommitButton } from "@/components/layout/titlebar/TitlebarCommitButton";
 import { TitlebarGitPanelToggle } from "@/components/layout/titlebar/TitlebarGitPanelToggle";
 import { WikiFilePicker } from "@/components/wiki/WikiFilePicker";
+import {
+	useTerminalStore,
+	buildMountedTerminalRows,
+	findTerminal,
+	selectTerminalStackSignature,
+} from "@/store/terminals";
+
+// One commit button per mounted terminal, kept alive so state survives tab switches.
+// Only the active terminal's button is visible; inactive ones are hidden with display:none.
+function CommitButtonStack() {
+	const stackSignature = useTerminalStore(selectTerminalStackSignature);
+	const rows = useMemo(() => {
+		const state = useTerminalStore.getState();
+		return buildMountedTerminalRows(state).map(({ terminalId, isActive }) => ({
+			terminalId,
+			isActive,
+			cwd: findTerminal(state.workspaces, terminalId)?.cwd ?? "~",
+		}));
+	}, [stackSignature]);
+
+	return (
+		<>
+			{rows.map(({ terminalId, isActive, cwd }) => (
+				<div
+					key={terminalId}
+					style={{ display: isActive ? undefined : "none" }}
+				>
+					<TitlebarCommitButton cwd={cwd} />
+				</div>
+			))}
+		</>
+	);
+}
 
 export interface TitlebarMainSectionProps {
 	headerPwd: string;
@@ -31,7 +65,7 @@ export function TitlebarMainSection({
 				className="flex shrink-0 items-center gap-1"
 				data-tauri-drag-region="false"
 			>
-				<TitlebarCommitButton key={headerPwd} cwd={headerPwd} />
+				<CommitButtonStack />
 				<WikiFilePicker cwd={headerPwd} />
 				<TitlebarClaudeMenu cwd={headerPwd} />
 				<TitlebarGitPanelToggle
