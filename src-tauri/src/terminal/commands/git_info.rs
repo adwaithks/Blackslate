@@ -7,6 +7,8 @@ pub struct GitInfo {
     /// Canonical path to the worktree root (the directory that contains `.git`).
     /// Stable across `cd` changes within the same repo; used as a dedup key.
     pub root: String,
+    /// True when this is a linked git worktree (`.git` is a file, not a directory).
+    pub is_worktree: bool,
 }
 
 /// Branch label from `.git/HEAD` file contents (trimmed). `None` when not a branch ref and
@@ -36,21 +38,26 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
         let dot_git = search.join(".git");
 
         // Regular repo: .git is a directory containing HEAD directly.
-        let head_content = if dot_git.is_dir() {
-            std::fs::read_to_string(dot_git.join("HEAD")).ok()
+        let (head_content, is_worktree) = if dot_git.is_dir() {
+            (std::fs::read_to_string(dot_git.join("HEAD")).ok(), false)
         } else if dot_git.is_file() {
             // Linked worktree: .git is a file with "gitdir: /path/to/gitdir"
-            let file = std::fs::read_to_string(&dot_git).ok()?;
-            let gitdir = file.trim().strip_prefix("gitdir: ")?;
-            // gitdir may be relative to the worktree root
+            let file = match std::fs::read_to_string(&dot_git) {
+                Ok(f) => f,
+                Err(_) => { if !search.pop() { break; } continue; }
+            };
+            let gitdir = match file.trim().strip_prefix("gitdir: ") {
+                Some(d) => d,
+                None => { if !search.pop() { break; } continue; }
+            };
             let gitdir_path = if std::path::Path::new(gitdir).is_absolute() {
                 std::path::PathBuf::from(gitdir)
             } else {
                 search.join(gitdir)
             };
-            std::fs::read_to_string(gitdir_path.join("HEAD")).ok()
+            (std::fs::read_to_string(gitdir_path.join("HEAD")).ok(), true)
         } else {
-            None
+            (None, false)
         };
 
         if let Some(content) = head_content {
@@ -67,7 +74,7 @@ pub async fn git_info(cwd: String) -> Option<GitInfo> {
                 .map(|o| o.status.success() && !o.stdout.is_empty())
                 .unwrap_or(false);
 
-            return Some(GitInfo { branch, dirty, root });
+            return Some(GitInfo { branch, dirty, root, is_worktree });
         }
 
         if !search.pop() {

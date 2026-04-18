@@ -9,6 +9,8 @@ export interface GitInfo {
 	dirty: boolean;
 	/** Canonical path to the worktree root; stable key for per-repo state. */
 	root: string;
+	/** True when this is a linked git worktree (.git is a file, not a directory). */
+	isWorktree: boolean;
 }
 
 // Rough Claude status coming from the terminal text (for example busy or finished). Null means none.

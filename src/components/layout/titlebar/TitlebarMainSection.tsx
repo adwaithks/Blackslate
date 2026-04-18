@@ -33,39 +33,44 @@ function CommitButtonStack() {
 
 		// Key = "gitRoot::branch". Fall back to terminalId until git info loads
 		// so terminals stay isolated rather than accidentally collapsing.
-		const byKey = new Map<string, { cwd: string; branch: string; repoName: string; isActive: boolean }>();
+		const byKey = new Map<string, { cwd: string; branch: string; repoName: string; isWorktree: boolean; isActive: boolean }>();
 		for (const { terminalId, isActive } of mounted) {
 			const term = findTerminal(state.workspaces, terminalId);
 			if (!term) continue;
 			const key = term.git ? `${term.git.root}::${term.git.branch}` : terminalId;
 			const branch = term.git?.branch ?? "";
-			const repoName = term.git?.root.split("/").filter(Boolean).at(-1) ?? "";
+			const rootParts = term.git?.root.split("/").filter(Boolean) ?? [];
+			const repoName = rootParts[rootParts.length - 1] ?? "";
+			const isWorktree = term.git?.isWorktree ?? false;
 			const prev = byKey.get(key);
 			byKey.set(key, {
 				cwd: isActive ? term.cwd : (prev?.cwd ?? term.cwd),
 				branch: branch || prev?.branch || "",
 				repoName: repoName || prev?.repoName || "",
+				isWorktree: isWorktree || prev?.isWorktree || false,
 				isActive: (prev?.isActive ?? false) || isActive,
 			});
 		}
 
-		return Array.from(byKey.entries()).map(([key, { cwd, branch, repoName, isActive }]) => ({
+		return Array.from(byKey.entries()).map(([key, { cwd, branch, repoName, isWorktree, isActive }]) => ({
 			key,
 			cwd,
 			branch,
 			repoName,
+			isWorktree,
 			isActive,
 		}));
 	}, [stackSignature]);
 
 	return (
 		<>
-			{rows.map(({ key, cwd, branch, repoName, isActive }) => (
+			{rows.map(({ key, cwd, branch, repoName, isWorktree, isActive }) => (
 				<TitlebarCommitButton
 					key={key}
 					cwd={cwd}
 					branch={branch}
 					repoName={repoName}
+					isWorktree={isWorktree}
 					hidden={!isActive}
 				/>
 			))}

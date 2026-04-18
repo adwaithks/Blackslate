@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { IoClose } from "react-icons/io5";
-import { TbGitCommit } from "react-icons/tb";
+import { TbGitBranch, TbGitCommit, TbGitFork } from "react-icons/tb";
+import { LuEye, LuEyeOff, LuFolder } from "react-icons/lu";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toastError";
 import { Input } from "@/components/ui/input";
@@ -29,11 +30,13 @@ export function TitlebarCommitButton({
 	hidden,
 	branch,
 	repoName,
+	isWorktree,
 }: {
 	cwd: string;
 	hidden?: boolean;
 	branch?: string;
 	repoName?: string;
+	isWorktree?: boolean;
 }) {
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [statusText, setStatusText] = useState("Commit & Push");
@@ -42,6 +45,7 @@ export function TitlebarCommitButton({
 	const [passphrase, setPassphrase] = useState("");
 	const [passphraseHint, setPassphraseHint] = useState("");
 	const [passphraseError, setPassphraseError] = useState(false);
+	const [showPassphrase, setShowPassphrase] = useState(false);
 	const [needsUpstream, setNeedsUpstream] = useState(false);
 	const passphraseInputRef = useRef<HTMLInputElement>(null);
 	const spinnerChar = useSpinner(phase === "working");
@@ -60,6 +64,7 @@ export function TitlebarCommitButton({
 		setStatusText("Commit & Push");
 		setPassphrase("");
 		setPassphraseError(false);
+		setShowPassphrase(false);
 		setNeedsUpstream(false);
 	}
 
@@ -235,24 +240,52 @@ export function TitlebarCommitButton({
 						</div>
 						<div className="flex flex-col gap-5 p-4">
 							{(repoName || branch) && (
-								<p className="text-xs text-muted-foreground">
-									{[repoName, branch].filter(Boolean).join(" · ")}
-								</p>
+								<div className="flex items-center gap-3 text-xs text-muted-foreground">
+									{repoName && (
+										<span className="flex items-center gap-1">
+											{isWorktree
+												? <TbGitFork className="size-3.5 shrink-0" aria-hidden />
+												: <LuFolder className="size-3.5 shrink-0" aria-hidden />
+											}
+											{repoName}
+										</span>
+									)}
+									{branch && (
+										<span className="flex items-center gap-1">
+											<TbGitBranch className="size-3.5 shrink-0" aria-hidden />
+											{branch}
+										</span>
+									)}
+								</div>
 							)}
 							{passphraseHint && (
 								<p className="text-xs text-muted-foreground">{passphraseHint}</p>
 							)}
-							<Input
-								ref={passphraseInputRef}
-								type="password"
-								value={passphrase}
-								onChange={(e) => setPassphrase(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") handlePassphraseSubmit();
-								}}
-								placeholder="Enter passphrase…"
-								className="h-9 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
-							/>
+							<div className="relative">
+								<Input
+									ref={passphraseInputRef}
+									type={showPassphrase ? "text" : "password"}
+									value={passphrase}
+									onChange={(e) => setPassphrase(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") handlePassphraseSubmit();
+									}}
+									placeholder="Enter passphrase…"
+									className="h-9 border-border bg-input/30 pr-9 text-xs placeholder:text-muted-foreground/50"
+								/>
+								<button
+									type="button"
+									tabIndex={-1}
+									onClick={() => setShowPassphrase((v) => !v)}
+									className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+									aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+								>
+									{showPassphrase
+										? <LuEyeOff className="size-3.5" aria-hidden />
+										: <LuEye className="size-3.5" aria-hidden />
+									}
+								</button>
+							</div>
 							<div className="flex justify-end gap-2">
 								<button
 									type="button"
@@ -285,9 +318,23 @@ export function TitlebarCommitButton({
 								{errorTitle}
 							</span>
 							{(repoName || branch) && (
-								<span className="text-xs text-muted-foreground/60 ml-2 mr-auto">
-									{[repoName, branch].filter(Boolean).join(" · ")}
-								</span>
+								<div className="flex items-center gap-3 ml-2 mr-auto text-xs text-muted-foreground/60">
+									{repoName && (
+										<span className="flex items-center gap-1">
+											{isWorktree
+												? <TbGitFork className="size-3.5 shrink-0" aria-hidden />
+												: <LuFolder className="size-3.5 shrink-0" aria-hidden />
+											}
+											{repoName}
+										</span>
+									)}
+									{branch && (
+										<span className="flex items-center gap-1">
+											<TbGitBranch className="size-3.5 shrink-0" aria-hidden />
+											{branch}
+										</span>
+									)}
+								</div>
 							)}
 							<button
 								type="button"
