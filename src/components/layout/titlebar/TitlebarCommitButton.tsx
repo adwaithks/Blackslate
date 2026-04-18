@@ -22,11 +22,13 @@ function useSpinner(active: boolean): string {
 	return SPINNER_FRAMES[frame]!;
 }
 
-type Phase = "idle" | "working" | "passphrase";
+type Phase = "idle" | "working" | "passphrase" | "error";
 
 export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [statusText, setStatusText] = useState("Commit & Push");
+	const [errorTitle, setErrorTitle] = useState("");
+	const [errorMessage, setErrorMessage] = useState("");
 	const [passphrase, setPassphrase] = useState("");
 	const [passphraseHint, setPassphraseHint] = useState("");
 	const [passphraseError, setPassphraseError] = useState(false);
@@ -49,6 +51,13 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		setPassphrase("");
 		setPassphraseError(false);
 		setNeedsUpstream(false);
+	}
+
+	function showError(title: string, message: string) {
+		setErrorTitle(title);
+		setErrorMessage(message);
+		setPhase("error");
+		setStatusText("Commit & Push");
 	}
 
 	async function doPush(pass?: string): Promise<boolean> {
@@ -89,9 +98,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			return false;
 		} catch (err) {
 			if (abortRef.current) return false;
-			toast.error("Push failed", { description: String(err) });
-			setPhase("idle");
-			setStatusText("Commit & Push");
+			showError("Push failed", String(err));
 			return false;
 		}
 	}
@@ -147,9 +154,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				: result.title;
 		} catch (err) {
 			if (abortRef.current) return;
-			toast.error("Could not generate commit message", { description: String(err) });
-			setPhase("idle");
-			setStatusText("Commit & Push");
+			showError("Could not generate commit message", String(err));
 			return;
 		}
 
@@ -160,9 +165,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			if (abortRef.current) return;
 		} catch (err) {
 			if (abortRef.current) return;
-			toast.error("Commit failed", { description: String(err) });
-			setPhase("idle");
-			setStatusText("Commit & Push");
+			showError("Commit failed", String(err));
 			return;
 		}
 
@@ -250,6 +253,40 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 									Push
 								</Button>
 							</div>
+						</div>
+					</div>
+				</>
+			)}
+		{/* Error dialog — full output for pre-commit hooks, test failures, push errors */}
+			{phase === "error" && (
+				<>
+					<div className="fixed inset-0 z-50 bg-black/40" onClick={abort} />
+					<div className="fixed left-1/2 top-1/2 z-50 w-[520px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
+						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
+							<span className="text-xs font-medium tracking-wide text-destructive">
+								{errorTitle}
+							</span>
+							<button
+								type="button"
+								className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground"
+								onClick={abort}
+							>
+								<IoClose className="size-4" />
+							</button>
+						</div>
+						<div className="p-4">
+							<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-[11px] leading-relaxed text-foreground/80">
+								{errorMessage}
+							</pre>
+						</div>
+						<div className="flex justify-end border-t border-border px-4 py-3">
+							<button
+								type="button"
+								className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+								onClick={abort}
+							>
+								Dismiss
+							</button>
 						</div>
 					</div>
 				</>
