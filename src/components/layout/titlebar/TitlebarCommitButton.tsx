@@ -33,12 +33,23 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	const [needsUpstream, setNeedsUpstream] = useState(false);
 	const passphraseInputRef = useRef<HTMLInputElement>(null);
 	const spinnerChar = useSpinner(phase === "working");
+	// Set to true to abandon in-flight work without showing errors.
+	const abortRef = useRef(false);
 
 	useEffect(() => {
 		if (phase === "passphrase") {
 			setTimeout(() => passphraseInputRef.current?.focus(), 30);
 		}
 	}, [phase]);
+
+	function abort() {
+		abortRef.current = true;
+		setPhase("idle");
+		setStatusText("Commit & Push");
+		setPassphrase("");
+		setPassphraseError(false);
+		setNeedsUpstream(false);
+	}
 
 	async function doPush(pass?: string): Promise<boolean> {
 		setStatusText("Pushing…");
@@ -54,6 +65,8 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				setUpstream: needsUpstream || undefined,
 			});
 
+			if (abortRef.current) return false;
+
 			if (result.success) {
 				setPhase("idle");
 				setStatusText("Pushed!");
@@ -64,7 +77,6 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			if (result.needsPassphrase) {
 				setNeedsUpstream(result.needsUpstream);
 				setPassphraseHint(result.passphraseHint);
-				// Wrong passphrase: clear the field so the user knows to re-enter.
 				if (pass !== undefined) {
 					setPassphraseError(true);
 					setPassphrase("");
@@ -76,6 +88,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			}
 			return false;
 		} catch (err) {
+			if (abortRef.current) return false;
 			toast.error("Push failed", { description: String(err) });
 			setPhase("idle");
 			setStatusText("Commit & Push");
@@ -84,6 +97,11 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	}
 
 	async function handleClick() {
+		// While working: clicking the button cancels the operation.
+		if (phase === "working") {
+			abort();
+			return;
+		}
 		if (phase !== "idle") return;
 
 		// Check for staged changes before doing anything.
@@ -112,6 +130,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			return;
 		}
 
+		abortRef.current = false;
 		setPhase("working");
 		setStatusText("Generating…");
 
@@ -122,13 +141,13 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				"git_generate_commit_message",
 				{ cwd },
 			);
+			if (abortRef.current) return;
 			message = result.description.trim()
 				? `${result.title}\n\n${result.description}`
 				: result.title;
 		} catch (err) {
-			toast.error("Could not generate commit message", {
-				description: String(err),
-			});
+			if (abortRef.current) return;
+			toast.error("Could not generate commit message", { description: String(err) });
 			setPhase("idle");
 			setStatusText("Commit & Push");
 			return;
@@ -138,7 +157,9 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		setStatusText("Committing…");
 		try {
 			await invoke("git_commit", { cwd, message });
+			if (abortRef.current) return;
 		} catch (err) {
+			if (abortRef.current) return;
 			toast.error("Commit failed", { description: String(err) });
 			setPhase("idle");
 			setStatusText("Commit & Push");
@@ -146,18 +167,14 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		}
 
 		// Push
-		const pushed = await doPush();
-		if (pushed) setPhase("idle");
+		await doPush();
 	}
 
 	async function handlePassphraseSubmit() {
 		if (!passphrase.trim()) return;
+		abortRef.current = false;
 		setPhase("working");
-		const pushed = await doPush(passphrase);
-		if (pushed) {
-			setPassphrase("");
-			setPhase("idle");
-		}
+		await doPush(passphrase);
 	}
 
 	return (
@@ -165,10 +182,9 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			<button
 				type="button"
 				onClick={handleClick}
-				disabled={phase === "working"}
-				title="Commit & Push staged changes"
-				aria-label="Commit & Push staged changes"
-				className="inline-flex h-6 shrink-0 items-center gap-1 rounded-sm px-1.5 text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
+				title={phase === "working" ? "Cancel" : "Commit & Push staged changes"}
+				aria-label={phase === "working" ? "Cancel" : "Commit & Push staged changes"}
+				className="inline-flex h-6 shrink-0 items-center gap-1 rounded-sm px-1.5 text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
 			>
 				{phase === "working" ? (
 					<span
@@ -186,7 +202,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			{/* Passphrase dialog — centered overlay, same style as other dialogs */}
 			{phase === "passphrase" && (
 				<>
-					<div className="fixed inset-0 z-50 bg-black/40" />
+					<div className="fixed inset-0 z-50 bg-black/40" onClick={abort} />
 					<div className="fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
 						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
 							<span className="text-xs font-medium tracking-wide text-muted-foreground">
@@ -195,7 +211,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 							<button
 								type="button"
 								className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground"
-								onClick={() => { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }}
+								onClick={abort}
 							>
 								<IoClose className="size-4" />
 							</button>
@@ -211,7 +227,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 								onChange={(e) => setPassphrase(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") handlePassphraseSubmit();
-									if (e.key === "Escape") { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }
+									if (e.key === "Escape") abort();
 								}}
 								placeholder="Enter passphrase…"
 								className="h-9 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
@@ -220,7 +236,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 								<button
 									type="button"
 									className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-									onClick={() => { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }}
+									onClick={abort}
 								>
 									Cancel
 								</button>

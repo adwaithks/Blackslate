@@ -23,6 +23,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 				style: {
 					width: "fit-content",
 					maxWidth: "420px",
+					marginInline: "auto",
 				},
 			}}
 			{...props}
