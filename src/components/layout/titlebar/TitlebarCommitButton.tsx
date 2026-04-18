@@ -24,7 +24,17 @@ function useSpinner(active: boolean): string {
 
 type Phase = "idle" | "working" | "passphrase" | "error";
 
-export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: boolean }) {
+export function TitlebarCommitButton({
+	cwd,
+	hidden,
+	branch,
+	repoName,
+}: {
+	cwd: string;
+	hidden?: boolean;
+	branch?: string;
+	repoName?: string;
+}) {
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [statusText, setStatusText] = useState("Commit & Push");
 	const [errorTitle, setErrorTitle] = useState("");
@@ -206,10 +216,10 @@ export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: bo
 				<span className="text-xs">{statusText}</span>
 			</button>
 
-			{/* Passphrase dialog — centered overlay, same style as other dialogs */}
+			{/* Passphrase dialog */}
 			{phase === "passphrase" && (
 				<>
-					<div className="fixed inset-0 z-50 bg-black/40" onClick={abort} />
+					<div className="fixed inset-0 z-50 bg-black/40" />
 					<div className="fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
 						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
 							<span className="text-xs font-medium tracking-wide text-muted-foreground">
@@ -224,6 +234,11 @@ export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: bo
 							</button>
 						</div>
 						<div className="flex flex-col gap-5 p-4">
+							{(repoName || branch) && (
+								<p className="text-xs text-muted-foreground">
+									{[repoName, branch].filter(Boolean).join(" · ")}
+								</p>
+							)}
 							{passphraseHint && (
 								<p className="text-xs text-muted-foreground">{passphraseHint}</p>
 							)}
@@ -234,7 +249,6 @@ export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: bo
 								onChange={(e) => setPassphrase(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") handlePassphraseSubmit();
-									if (e.key === "Escape") abort();
 								}}
 								placeholder="Enter passphrase…"
 								className="h-9 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
@@ -261,15 +275,20 @@ export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: bo
 					</div>
 				</>
 			)}
-		{/* Error dialog — full output for pre-commit hooks, test failures, push errors */}
+			{/* Error dialog — full output for pre-commit hooks, test failures, push errors */}
 			{phase === "error" && (
 				<>
-					<div className="fixed inset-0 z-50 bg-black/40" onClick={abort} />
+					<div className="fixed inset-0 z-50 bg-black/40" />
 					<div className="fixed left-1/2 top-1/2 z-50 w-[520px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
 						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
 							<span className="text-xs font-medium tracking-wide text-destructive">
 								{errorTitle}
 							</span>
+							{(repoName || branch) && (
+								<span className="text-xs text-muted-foreground/60 ml-2 mr-auto">
+									{[repoName, branch].filter(Boolean).join(" · ")}
+								</span>
+							)}
 							<button
 								type="button"
 								className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground"

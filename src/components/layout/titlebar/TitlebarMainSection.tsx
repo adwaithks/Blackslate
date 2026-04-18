@@ -33,31 +33,39 @@ function CommitButtonStack() {
 
 		// Key = "gitRoot::branch". Fall back to terminalId until git info loads
 		// so terminals stay isolated rather than accidentally collapsing.
-		const byKey = new Map<string, { cwd: string; isActive: boolean }>();
+		const byKey = new Map<string, { cwd: string; branch: string; repoName: string; isActive: boolean }>();
 		for (const { terminalId, isActive } of mounted) {
 			const term = findTerminal(state.workspaces, terminalId);
 			if (!term) continue;
 			const key = term.git ? `${term.git.root}::${term.git.branch}` : terminalId;
+			const branch = term.git?.branch ?? "";
+			const repoName = term.git?.root.split("/").filter(Boolean).at(-1) ?? "";
 			const prev = byKey.get(key);
 			byKey.set(key, {
 				cwd: isActive ? term.cwd : (prev?.cwd ?? term.cwd),
+				branch: branch || prev?.branch || "",
+				repoName: repoName || prev?.repoName || "",
 				isActive: (prev?.isActive ?? false) || isActive,
 			});
 		}
 
-		return Array.from(byKey.entries()).map(([key, { cwd, isActive }]) => ({
+		return Array.from(byKey.entries()).map(([key, { cwd, branch, repoName, isActive }]) => ({
 			key,
 			cwd,
+			branch,
+			repoName,
 			isActive,
 		}));
 	}, [stackSignature]);
 
 	return (
 		<>
-			{rows.map(({ key, cwd, isActive }) => (
+			{rows.map(({ key, cwd, branch, repoName, isActive }) => (
 				<TitlebarCommitButton
 					key={key}
 					cwd={cwd}
+					branch={branch}
+					repoName={repoName}
 					hidden={!isActive}
 				/>
 			))}
