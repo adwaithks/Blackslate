@@ -216,7 +216,7 @@ describe("selectAppHeaderSlice", () => {
 			id: "t1",
 			cwd: "~/proj",
 			shellState: "idle",
-			git: { branch: "main", dirty: false },
+			git: { branch: "main", dirty: false, root: "/repo", isWorktree: false },
 		});
 		const ws = makeWorkspace({
 			id: "w1",

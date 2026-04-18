@@ -388,7 +388,7 @@ describe("setCwd", () => {
 describe("setGit", () => {
 	it("sets git info on the matching terminal", () => {
 		const tab = initialTab();
-		const git = { branch: "feature/x", dirty: true };
+		const git = { branch: "feature/x", dirty: true, root: "/repo", isWorktree: false };
 		useTerminalStore.getState().setGit(tab.id, git);
 		const ws = useTerminalStore.getState().workspaces[0];
 		expect(pane(ws).terminals.find((s) => s.id === tab.id)!.git).toEqual(git);
@@ -396,7 +396,7 @@ describe("setGit", () => {
 
 	it("clears git when set to null", () => {
 		const tab = initialTab();
-		useTerminalStore.getState().setGit(tab.id, { branch: "main", dirty: false });
+		useTerminalStore.getState().setGit(tab.id, { branch: "main", dirty: false, root: "/repo", isWorktree: false });
 		useTerminalStore.getState().setGit(tab.id, null);
 		const ws = useTerminalStore.getState().workspaces[0];
 		expect(pane(ws).terminals.find((s) => s.id === tab.id)!.git).toBeNull();
@@ -404,7 +404,7 @@ describe("setGit", () => {
 
 	it("does not change workspaces when terminalId is unknown", () => {
 		const before = useTerminalStore.getState();
-		useTerminalStore.getState().setGit(UNKNOWN_TERMINAL_ID, { branch: "x", dirty: false });
+		useTerminalStore.getState().setGit(UNKNOWN_TERMINAL_ID, { branch: "x", dirty: false, root: "/repo", isWorktree: false });
 		expect(useTerminalStore.getState().workspaces).toBe(before.workspaces);
 	});
 });
