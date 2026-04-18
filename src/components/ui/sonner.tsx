@@ -14,11 +14,17 @@ const Toaster = ({ ...props }: ToasterProps) => {
 					"--normal-text": "var(--popover-foreground)",
 					"--normal-border": "var(--border)",
 					"--border-radius": "var(--radius)",
-					"--width": "420px",
+					"--width": "420px", // acts as max-width; individual toasts override to fit-content below
 					fontFamily: "'Geist Mono Variable', 'GeistMono', monospace",
 					fontSize: "11px",
 				} as React.CSSProperties
 			}
+			toastOptions={{
+				style: {
+					width: "fit-content",
+					maxWidth: "420px",
+				},
+			}}
 			{...props}
 		/>
 	);
