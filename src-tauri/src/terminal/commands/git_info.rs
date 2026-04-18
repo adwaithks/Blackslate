@@ -11,8 +11,20 @@ pub struct GitInfo {
     pub is_worktree: bool,
 }
 
+async fn git_cmd(cwd: &str, args: &[&str]) -> std::io::Result<std::process::Output> {
+    tokio::process::Command::new("git")
+        .args(
+            std::iter::once("-C")
+                .chain(std::iter::once(cwd))
+                .chain(args.iter().copied()),
+        )
+        .output()
+        .await
+}
+
 /// Branch label from `.git/HEAD` file contents (trimmed). `None` when not a branch ref and
 /// the hash is too short to display (mirrors `git_info` behaviour).
+#[cfg(test)]
 fn branch_label_from_git_head(content: &str) -> Option<String> {
     let content = content.trim();
     if let Some(b) = content.strip_prefix("ref: refs/heads/") {
@@ -24,64 +36,65 @@ fn branch_label_from_git_head(content: &str) -> Option<String> {
     None
 }
 
-/// Walk up from `cwd` to find `.git`, parse the branch, and check dirty status.
-/// Handles both regular repos (`.git/` directory) and linked worktrees (`.git` file).
-/// Returns `None` when not inside a git repository.
-///
-/// Branch is read directly from the HEAD file (no subprocess, zero overhead).
-/// Dirty status spawns `git status --porcelain` asynchronously.
+/// Resolve repo root, branch label, dirty flag, and worktree-ness using `git` (same approach as
+/// `git_discover_repo_root` / `get_git_status`). Returns `None` when `cwd` is not inside a repo.
 #[tauri::command]
 pub async fn git_info(cwd: String) -> Option<GitInfo> {
-    let mut search = resolve_path(&cwd);
+    let cwd_str = resolve_path(&cwd).to_string_lossy().into_owned();
 
-    loop {
-        let dot_git = search.join(".git");
+    let (top_out, sym_out, dirty_out) = tokio::join!(
+        git_cmd(&cwd_str, &["rev-parse", "--show-toplevel"]),
+        git_cmd(&cwd_str, &["symbolic-ref", "-q", "--short", "HEAD"]),
+        git_cmd(&cwd_str, &["status", "--porcelain"]),
+    );
 
-        // Regular repo: .git is a directory containing HEAD directly.
-        let (head_content, is_worktree) = if dot_git.is_dir() {
-            (std::fs::read_to_string(dot_git.join("HEAD")).ok(), false)
-        } else if dot_git.is_file() {
-            // Linked worktree: .git is a file with "gitdir: /path/to/gitdir"
-            let file = match std::fs::read_to_string(&dot_git) {
-                Ok(f) => f,
-                Err(_) => { if !search.pop() { break; } continue; }
-            };
-            let gitdir = match file.trim().strip_prefix("gitdir: ") {
-                Some(d) => d,
-                None => { if !search.pop() { break; } continue; }
-            };
-            let gitdir_path = if std::path::Path::new(gitdir).is_absolute() {
-                std::path::PathBuf::from(gitdir)
-            } else {
-                search.join(gitdir)
-            };
-            (std::fs::read_to_string(gitdir_path.join("HEAD")).ok(), true)
-        } else {
-            (None, false)
-        };
-
-        if let Some(content) = head_content {
-            let branch = branch_label_from_git_head(&content)?;
-            let root = std::fs::canonicalize(&search)
-                .unwrap_or_else(|_| search.clone())
-                .to_string_lossy()
-                .into_owned();
-
-            let dirty = tokio::process::Command::new("git")
-                .args(["-C", &root, "status", "--porcelain"])
-                .output()
-                .await
-                .map(|o| o.status.success() && !o.stdout.is_empty())
-                .unwrap_or(false);
-
-            return Some(GitInfo { branch, dirty, root, is_worktree });
-        }
-
-        if !search.pop() {
-            break;
-        }
+    let top = top_out.ok()?;
+    if !top.status.success() {
+        return None;
     }
-    None
+    let root_raw = String::from_utf8_lossy(&top.stdout).trim().to_string();
+    if root_raw.is_empty() {
+        return None;
+    }
+    let root = std::fs::canonicalize(&root_raw)
+        .unwrap_or_else(|_| root_raw.into())
+        .to_string_lossy()
+        .into_owned();
+
+    let branch = match sym_out.ok().filter(|o| o.status.success()) {
+        Some(o) => {
+            let name = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if name.is_empty() {
+                return None;
+            }
+            name
+        }
+        None => {
+            let rev = git_cmd(&cwd_str, &["rev-parse", "HEAD"]).await.ok()?;
+            if !rev.status.success() {
+                return None;
+            }
+            let h = String::from_utf8_lossy(&rev.stdout).trim().to_string();
+            if h.len() < 7 {
+                return None;
+            }
+            format!("({}…)", &h[..7])
+        }
+    };
+
+    let dirty = dirty_out
+        .ok()
+        .map(|o| o.status.success() && !o.stdout.is_empty())
+        .unwrap_or(false);
+
+    let is_worktree = std::path::Path::new(&root).join(".git").is_file();
+
+    Some(GitInfo {
+        branch,
+        dirty,
+        root,
+        is_worktree,
+    })
 }
 
 #[cfg(test)]
