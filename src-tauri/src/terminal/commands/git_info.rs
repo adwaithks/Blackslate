@@ -4,6 +4,9 @@ use crate::terminal::resolve_path;
 pub struct GitInfo {
     pub branch: String,
     pub dirty: bool,
+    /// Canonical path to the worktree root (the directory that contains `.git`).
+    /// Stable across `cd` changes within the same repo; used as a dedup key.
+    pub root: String,
 }
 
 /// Branch label from `.git/HEAD` file contents (trimmed). `None` when not a branch ref and
@@ -19,32 +22,54 @@ fn branch_label_from_git_head(content: &str) -> Option<String> {
     None
 }
 
-/// Walk up from `cwd` to find `.git/HEAD`, parse the branch, and check dirty
-/// status. Returns `None` when not inside a git repository.
+/// Walk up from `cwd` to find `.git`, parse the branch, and check dirty status.
+/// Handles both regular repos (`.git/` directory) and linked worktrees (`.git` file).
+/// Returns `None` when not inside a git repository.
 ///
-/// Branch is read directly from the file (no subprocess, zero overhead).
-/// Dirty status spawns `git status --porcelain` asynchronously so the tokio
-/// worker thread is not blocked.
+/// Branch is read directly from the HEAD file (no subprocess, zero overhead).
+/// Dirty status spawns `git status --porcelain` asynchronously.
 #[tauri::command]
 pub async fn git_info(cwd: String) -> Option<GitInfo> {
     let mut search = resolve_path(&cwd);
 
     loop {
-        let head = search.join(".git").join("HEAD");
-        if head.is_file() {
-            let content = std::fs::read_to_string(&head).ok()?;
-            let branch = branch_label_from_git_head(&content)?;
+        let dot_git = search.join(".git");
 
-            let cwd_str = search.to_string_lossy().into_owned();
+        // Regular repo: .git is a directory containing HEAD directly.
+        let head_content = if dot_git.is_dir() {
+            std::fs::read_to_string(dot_git.join("HEAD")).ok()
+        } else if dot_git.is_file() {
+            // Linked worktree: .git is a file with "gitdir: /path/to/gitdir"
+            let file = std::fs::read_to_string(&dot_git).ok()?;
+            let gitdir = file.trim().strip_prefix("gitdir: ")?;
+            // gitdir may be relative to the worktree root
+            let gitdir_path = if std::path::Path::new(gitdir).is_absolute() {
+                std::path::PathBuf::from(gitdir)
+            } else {
+                search.join(gitdir)
+            };
+            std::fs::read_to_string(gitdir_path.join("HEAD")).ok()
+        } else {
+            None
+        };
+
+        if let Some(content) = head_content {
+            let branch = branch_label_from_git_head(&content)?;
+            let root = std::fs::canonicalize(&search)
+                .unwrap_or_else(|_| search.clone())
+                .to_string_lossy()
+                .into_owned();
+
             let dirty = tokio::process::Command::new("git")
-                .args(["-C", &cwd_str, "status", "--porcelain"])
+                .args(["-C", &root, "status", "--porcelain"])
                 .output()
                 .await
                 .map(|o| o.status.success() && !o.stdout.is_empty())
                 .unwrap_or(false);
 
-            return Some(GitInfo { branch, dirty });
+            return Some(GitInfo { branch, dirty, root });
         }
+
         if !search.pop() {
             break;
         }

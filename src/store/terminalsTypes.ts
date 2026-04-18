@@ -7,6 +7,8 @@
 export interface GitInfo {
 	branch: string;
 	dirty: boolean;
+	/** Canonical path to the worktree root; stable key for per-repo state. */
+	root: string;
 }
 
 // Rough Claude status coming from the terminal text (for example busy or finished). Null means none.

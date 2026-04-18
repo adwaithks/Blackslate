@@ -11,44 +11,42 @@ import {
 } from "@/store/terminals";
 import type { TerminalsState } from "@/store/terminals";
 
-// Signature that changes when terminal layout, active state, OR any branch changes.
-// selectTerminalStackSignature omits git info, so we build our own here.
+// Signature that changes when terminal layout, active state, or git info (branch/root) changes.
 function selectCommitStackSignature(state: TerminalsState): string {
 	return buildMountedTerminalRows(state)
 		.map(({ terminalId, isActive }) => {
 			const term = findTerminal(state.workspaces, terminalId);
-			return `${terminalId}:${isActive ? "1" : "0"}:${term?.git?.branch ?? ""}:${term?.cwd ?? ""}`;
+			const g = term?.git;
+			return `${terminalId}:${isActive ? "1" : "0"}:${g?.root ?? ""}:${g?.branch ?? ""}`;
 		})
 		.join("|");
 }
 
-// One commit button per unique branch, kept alive so state survives tab switches.
-// Only the active branch's button is visible; inactive ones are hidden with display:none.
-// Terminals on the same branch share one button instance (and therefore one commit flow).
+// One commit button per unique (gitRoot + branch), kept alive so state survives tab switches.
+// Only the active terminal's button is visible; inactive ones return null from render.
+// Terminals on the same branch in the same repo share one button instance and one commit flow.
 function CommitButtonStack() {
 	const stackSignature = useTerminalStore(selectCommitStackSignature);
 	const rows = useMemo(() => {
 		const state = useTerminalStore.getState();
 		const mounted = buildMountedTerminalRows(state);
 
-		// Collapse by branch: each unique branch gets one entry.
-		// The active terminal's cwd wins so git operations target the right repo.
-		// Fall back to terminalId when branch isn't known yet so each terminal
-		// stays isolated until git info loads (avoids false sharing on same cwd).
-		const byBranch = new Map<string, { cwd: string; isActive: boolean }>();
+		// Key = "gitRoot::branch". Fall back to terminalId until git info loads
+		// so terminals stay isolated rather than accidentally collapsing.
+		const byKey = new Map<string, { cwd: string; isActive: boolean }>();
 		for (const { terminalId, isActive } of mounted) {
 			const term = findTerminal(state.workspaces, terminalId);
 			if (!term) continue;
-			const key = term.git?.branch ?? terminalId;
-			const prev = byBranch.get(key);
-			byBranch.set(key, {
+			const key = term.git ? `${term.git.root}::${term.git.branch}` : terminalId;
+			const prev = byKey.get(key);
+			byKey.set(key, {
 				cwd: isActive ? term.cwd : (prev?.cwd ?? term.cwd),
 				isActive: (prev?.isActive ?? false) || isActive,
 			});
 		}
 
-		return Array.from(byBranch.entries()).map(([branch, { cwd, isActive }]) => ({
-			branch,
+		return Array.from(byKey.entries()).map(([key, { cwd, isActive }]) => ({
+			key,
 			cwd,
 			isActive,
 		}));
@@ -56,9 +54,9 @@ function CommitButtonStack() {
 
 	return (
 		<>
-			{rows.map(({ branch, cwd, isActive }) => (
+			{rows.map(({ key, cwd, isActive }) => (
 				<TitlebarCommitButton
-					key={branch}
+					key={key}
 					cwd={cwd}
 					hidden={!isActive}
 				/>
