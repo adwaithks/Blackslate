@@ -31,7 +31,7 @@ export function TitlebarMainSection({
 				className="flex shrink-0 items-center gap-1"
 				data-tauri-drag-region="false"
 			>
-				<TitlebarCommitButton cwd={headerPwd} />
+				<TitlebarCommitButton key={headerPwd} cwd={headerPwd} />
 				<WikiFilePicker cwd={headerPwd} />
 				<TitlebarClaudeMenu cwd={headerPwd} />
 				<TitlebarGitPanelToggle
