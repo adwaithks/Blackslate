@@ -1,5 +1,6 @@
 import { TitlebarCwdBranchLine } from "@/components/layout/titlebar/TitlebarCwdBranchLine";
 import { TitlebarClaudeMenu } from "@/components/layout/titlebar/TitlebarClaudeMenu";
+import { TitlebarCommitButton } from "@/components/layout/titlebar/TitlebarCommitButton";
 import { TitlebarGitPanelToggle } from "@/components/layout/titlebar/TitlebarGitPanelToggle";
 import { WikiFilePicker } from "@/components/wiki/WikiFilePicker";
 
@@ -30,6 +31,7 @@ export function TitlebarMainSection({
 				className="flex shrink-0 items-center gap-1"
 				data-tauri-drag-region="false"
 			>
+				<TitlebarCommitButton cwd={headerPwd} />
 				<WikiFilePicker cwd={headerPwd} />
 				<TitlebarClaudeMenu cwd={headerPwd} />
 				<TitlebarGitPanelToggle

@@ -245,6 +245,30 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
     std::fs::set_permissions(&hook_waiting, std::fs::Permissions::from_mode(0o755)).ok()?;
     std::fs::set_permissions(&hook_complete, std::fs::Permissions::from_mode(0o755)).ok()?;
 
+    // blackslate-generate-commit: invoked by the Rust backend to generate a commit message.
+    // Bakes in the current PATH so the Tauri process can call it directly without PATH lookup.
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let hook_generate_commit = zdotdir.join("blackslate-generate-commit");
+    std::fs::write(
+        &hook_generate_commit,
+        format!(
+            "#!/bin/sh\n\
+             export PATH='{path_env}'\n\
+             exec claude -p \
+             'Look at the staged git changes in this repository and generate a commit message. \
+             Respond with ONLY a JSON object, no markdown, no code blocks: \
+             {{\"title\": \"short imperative title max 72 chars\", \
+             \"description\": \"optional 1-2 sentence description or empty string\"}}' \
+             --output-format text\n"
+        ),
+    )
+    .ok()?;
+    std::fs::set_permissions(
+        &hook_generate_commit,
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .ok()?;
+
     let zdotdir_str = zdotdir.to_string_lossy();
 
     let zprofile = format!(

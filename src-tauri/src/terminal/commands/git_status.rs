@@ -350,6 +350,231 @@ pub async fn discard_all(cwd: String) -> CommandResult<()> {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GeneratedCommitMessage {
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitPushResult {
+    /// Push succeeded.
+    pub success: bool,
+    /// Push needs a passphrase / password — caller should retry with one.
+    pub needs_passphrase: bool,
+    /// Human-readable hint shown to the user (e.g. "Enter passphrase for key '~/.ssh/id_rsa'").
+    pub passphrase_hint: String,
+}
+
+fn write_askpass_script(passphrase: &str) -> std::io::Result<std::path::PathBuf> {
+    use std::os::unix::fs::PermissionsExt;
+    let path = std::env::temp_dir().join("blackslate_askpass");
+    // Escape single quotes so the shell echo is safe.
+    let safe = passphrase.replace('\'', "'\\''");
+    std::fs::write(&path, format!("#!/bin/sh\necho '{}'\n", safe))?;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))?;
+    Ok(path)
+}
+
+fn push_needs_auth(output: &str) -> bool {
+    let o = output.to_lowercase();
+    o.contains("permission denied")
+        || o.contains("authentication failed")
+        || o.contains("could not read username")
+        || o.contains("could not read password")
+        || o.contains("passphrase")
+        || o.contains("invalid username or password")
+        || o.contains("fatal: could not read")
+        || o.contains("remote: invalid username")
+        || o.contains("bad credentials")
+}
+
+fn push_needs_upstream(output: &str) -> bool {
+    output.contains("has no upstream branch")
+        || output.contains("no upstream branch")
+        || output.contains("--set-upstream")
+        || output.contains("push.default")
+}
+
+fn extract_passphrase_hint(output: &str) -> String {
+    for line in output.lines() {
+        let l = line.to_lowercase();
+        if l.contains("passphrase") || l.contains("password") || l.contains("permission denied") {
+            return line.trim().to_string();
+        }
+    }
+    "Authentication required".to_string()
+}
+
+async fn run_push(
+    cwd: &str,
+    args: &[&str],
+    passphrase: Option<&str>,
+) -> std::io::Result<std::process::Output> {
+    let mut cmd = tokio::process::Command::new("git");
+    cmd.arg("-C").arg(cwd).arg("push").args(args);
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
+
+    if let Some(pass) = passphrase {
+        if let Ok(script) = write_askpass_script(pass) {
+            let script_str = script.to_string_lossy().into_owned();
+            cmd.env("SSH_ASKPASS", &script_str);
+            cmd.env("SSH_ASKPASS_REQUIRE", "force");
+            cmd.env("GIT_ASKPASS", &script_str);
+            cmd.env("DISPLAY", ":0");
+        }
+    }
+
+    cmd.output().await
+}
+
+/// Push the current branch. Automatically retries with `--set-upstream origin <branch>` when
+/// needed. Returns `needs_passphrase: true` (instead of an error) when auth is required so the
+/// caller can re-invoke with a passphrase.
+#[tauri::command]
+pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<GitPushResult> {
+    let resolved = resolve_path(&cwd);
+    let cwd_str = resolved.to_string_lossy().into_owned();
+    let pass = passphrase.as_deref();
+
+    let out = run_push(&cwd_str, &[], pass)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if out.status.success() {
+        return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
+    }
+
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let combined = format!("{}{}", stdout, stderr);
+
+    // Auto-handle missing upstream.
+    if push_needs_upstream(&combined) {
+        let branch_out = git_cmd(&cwd_str, &["rev-parse", "--abbrev-ref", "HEAD"])
+            .await
+            .map_err(|e| e.to_string())?;
+        let branch = String::from_utf8_lossy(&branch_out.stdout).trim().to_string();
+
+        let out2 = run_push(&cwd_str, &["--set-upstream", "origin", &branch], pass)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if out2.status.success() {
+            return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
+        }
+
+        let combined2 = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out2.stdout),
+            String::from_utf8_lossy(&out2.stderr)
+        );
+
+        if push_needs_auth(&combined2) && pass.is_none() {
+            return Ok(GitPushResult {
+                success: false,
+                needs_passphrase: true,
+                passphrase_hint: extract_passphrase_hint(&combined2),
+            });
+        }
+
+        return Err(combined2.trim().to_string());
+    }
+
+    // Auth required — return as Ok so the frontend can prompt rather than treat it as a crash.
+    if push_needs_auth(&combined) && pass.is_none() {
+        return Ok(GitPushResult {
+            success: false,
+            needs_passphrase: true,
+            passphrase_hint: extract_passphrase_hint(&combined),
+        });
+    }
+
+    Err(combined.trim().to_string())
+}
+
+/// Returns true once setup_zsh_integration() has written the generate-commit script.
+#[tauri::command]
+pub fn generate_commit_available() -> bool {
+    std::env::temp_dir()
+        .join("blackslate_zsh")
+        .join("blackslate-generate-commit")
+        .exists()
+}
+
+fn extract_json_object(text: &str) -> Option<String> {
+    let start = text.find('{')?;
+    let end = text.rfind('}')?;
+    if end >= start {
+        Some(text[start..=end].to_string())
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+pub async fn git_generate_commit_message(cwd: String) -> CommandResult<GeneratedCommitMessage> {
+    let resolved = resolve_path(&cwd);
+    let cwd_str = resolved.to_string_lossy().into_owned();
+
+    // Script is written by setup_zsh_integration() at app startup with PATH baked in.
+    let script = std::env::temp_dir()
+        .join("blackslate_zsh")
+        .join("blackslate-generate-commit");
+
+    if !script.exists() {
+        return Err(
+            "blackslate-generate-commit script not found — please restart the app.".into(),
+        );
+    }
+
+    let output = tokio::process::Command::new(&script)
+        .current_dir(&cwd_str)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run generate-commit script: {}", e))?;
+
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        let msg = format!("{}{}", stdout, stderr).trim().to_string();
+        return Err(if msg.is_empty() {
+            "claude exited with an error".into()
+        } else {
+            msg
+        });
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let json_str = extract_json_object(&text)
+        .ok_or_else(|| format!("Could not parse JSON from claude output: {}", text))?;
+
+    serde_json::from_str::<GeneratedCommitMessage>(&json_str)
+        .map_err(|e| format!("Failed to parse commit message JSON: {}", e))
+}
+
+#[tauri::command]
+pub async fn git_commit(cwd: String, message: String) -> CommandResult<()> {
+    let resolved = resolve_path(&cwd);
+    let cwd_str = resolved.to_string_lossy().into_owned();
+    let out = git_cmd(&cwd_str, &["commit", "-m", &message])
+        .await
+        .map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+        let combined = format!("{}{}", stdout, stderr).trim().to_string();
+        Err(if combined.is_empty() {
+            "Commit failed".into()
+        } else {
+            combined
+        })
+    }
+}
+
 #[cfg(test)]
 #[path = "tests/git_status.test.rs"]
 mod git_status_tests;

@@ -83,7 +83,6 @@ export function WikiFilePicker({ cwd }: WikiFilePickerProps) {
 				className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground"
 			>
 				<LuBookOpen className="size-4 shrink-0" aria-hidden />
-				<span className="text-[11px] font-medium">wikis</span>
 			</Button>
 
 			{open && (
