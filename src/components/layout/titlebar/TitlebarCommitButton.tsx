@@ -55,7 +55,9 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 			});
 
 			if (result.success) {
-				setStatusText("Commit & Push");
+				setPhase("idle");
+				setStatusText("Pushed!");
+				setTimeout(() => setStatusText("Commit & Push"), 2000);
 				return true;
 			}
 
