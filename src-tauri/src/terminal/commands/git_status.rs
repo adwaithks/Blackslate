@@ -414,15 +414,23 @@ async fn run_push(
 ) -> std::io::Result<std::process::Output> {
     let mut cmd = tokio::process::Command::new("git");
     cmd.arg("-C").arg(cwd).arg("push").args(args);
+
+    // Never let git or SSH block waiting for terminal input.
+    cmd.stdin(std::process::Stdio::null());
     cmd.env("GIT_TERMINAL_PROMPT", "0");
+    // SSH_BATCH_MODE=yes makes SSH fail immediately instead of hanging on passphrase prompts.
+    cmd.env("SSH_BATCH_MODE", "yes");
 
     if let Some(pass) = passphrase {
+        // Provide passphrase non-interactively via askpass script.
         if let Ok(script) = write_askpass_script(pass) {
             let script_str = script.to_string_lossy().into_owned();
             cmd.env("SSH_ASKPASS", &script_str);
             cmd.env("SSH_ASKPASS_REQUIRE", "force");
             cmd.env("GIT_ASKPASS", &script_str);
             cmd.env("DISPLAY", ":0");
+            // Disable batch mode so SSH actually calls the askpass script.
+            cmd.env("SSH_BATCH_MODE", "no");
         }
     }
 
