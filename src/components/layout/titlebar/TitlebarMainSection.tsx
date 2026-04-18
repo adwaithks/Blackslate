@@ -8,26 +8,38 @@ import {
 	useTerminalStore,
 	buildMountedTerminalRows,
 	findTerminal,
-	selectTerminalStackSignature,
 } from "@/store/terminals";
+import type { TerminalsState } from "@/store/terminals";
+
+// Signature that changes when terminal layout, active state, OR any branch changes.
+// selectTerminalStackSignature omits git info, so we build our own here.
+function selectCommitStackSignature(state: TerminalsState): string {
+	return buildMountedTerminalRows(state)
+		.map(({ terminalId, isActive }) => {
+			const term = findTerminal(state.workspaces, terminalId);
+			return `${terminalId}:${isActive ? "1" : "0"}:${term?.git?.branch ?? ""}:${term?.cwd ?? ""}`;
+		})
+		.join("|");
+}
 
 // One commit button per unique branch, kept alive so state survives tab switches.
 // Only the active branch's button is visible; inactive ones are hidden with display:none.
 // Terminals on the same branch share one button instance (and therefore one commit flow).
 function CommitButtonStack() {
-	const stackSignature = useTerminalStore(selectTerminalStackSignature);
+	const stackSignature = useTerminalStore(selectCommitStackSignature);
 	const rows = useMemo(() => {
 		const state = useTerminalStore.getState();
 		const mounted = buildMountedTerminalRows(state);
 
 		// Collapse by branch: each unique branch gets one entry.
 		// The active terminal's cwd wins so git operations target the right repo.
+		// Fall back to terminalId when branch isn't known yet so each terminal
+		// stays isolated until git info loads (avoids false sharing on same cwd).
 		const byBranch = new Map<string, { cwd: string; isActive: boolean }>();
 		for (const { terminalId, isActive } of mounted) {
 			const term = findTerminal(state.workspaces, terminalId);
 			if (!term) continue;
-			// Fall back to cwd when there's no branch (e.g. bare repo / detached HEAD).
-			const key = term.git?.branch ?? `~${term.cwd}`;
+			const key = term.git?.branch ?? terminalId;
 			const prev = byBranch.get(key);
 			byBranch.set(key, {
 				cwd: isActive ? term.cwd : (prev?.cwd ?? term.cwd),
