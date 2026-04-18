@@ -365,6 +365,9 @@ pub struct GitPushResult {
     pub needs_passphrase: bool,
     /// Human-readable hint shown to the user (e.g. "Enter passphrase for key '~/.ssh/id_rsa'").
     pub passphrase_hint: String,
+    /// Branch has no upstream — caller should pass `set_upstream: true` on retry to skip the
+    /// redundant first attempt.
+    pub needs_upstream: bool,
 }
 
 fn write_askpass_script(passphrase: &str) -> std::io::Result<std::path::PathBuf> {
@@ -450,33 +453,58 @@ async fn run_push(
 
 /// Push the current branch. Automatically retries with `--set-upstream origin <branch>` when
 /// needed. Returns `needs_passphrase: true` (instead of an error) when auth is required so the
-/// caller can re-invoke with a passphrase.
+/// caller can re-invoke with a passphrase. Pass `set_upstream: true` on retry to skip straight
+/// to `--set-upstream` when the caller already knows the branch has no upstream.
 #[tauri::command]
-pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<GitPushResult> {
+pub async fn git_push(
+    cwd: String,
+    passphrase: Option<String>,
+    set_upstream: Option<bool>,
+) -> CommandResult<GitPushResult> {
     let resolved = resolve_path(&cwd);
     let cwd_str = resolved.to_string_lossy().into_owned();
     let pass = passphrase.as_deref();
+    let force_upstream = set_upstream.unwrap_or(false);
 
-    eprintln!("[blackslate:push] git_push called for cwd={cwd_str}");
+    eprintln!("[blackslate:push] git_push called for cwd={cwd_str} force_upstream={force_upstream}");
 
-    let out = run_push(&cwd_str, &[], pass)
-        .await
-        .map_err(|e| e.to_string())?;
+    // If we already know the branch needs --set-upstream, skip the plain push.
+    let (out, used_upstream, branch_name) = if force_upstream {
+        let branch_out = git_cmd(&cwd_str, &["rev-parse", "--abbrev-ref", "HEAD"])
+            .await
+            .map_err(|e| e.to_string())?;
+        let branch = String::from_utf8_lossy(&branch_out.stdout).trim().to_string();
+        eprintln!("[blackslate:push] skipping plain push, going straight to --set-upstream origin {branch}");
+        let o = run_push(&cwd_str, &["--set-upstream", "origin", &branch], pass)
+            .await
+            .map_err(|e| e.to_string())?;
+        (o, true, branch)
+    } else {
+        let o = run_push(&cwd_str, &[], pass)
+            .await
+            .map_err(|e| e.to_string())?;
+        (o, false, String::new())
+    };
 
     if out.status.success() {
-        eprintln!("[blackslate:push] push succeeded on first attempt");
-        return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
+        eprintln!("[blackslate:push] push succeeded");
+        return Ok(GitPushResult {
+            success: true,
+            needs_passphrase: false,
+            passphrase_hint: String::new(),
+            needs_upstream: false,
+        });
     }
 
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
     let combined = format!("{}{}", stdout, stderr);
 
-    eprintln!("[blackslate:push] first attempt failed — needs_upstream={} needs_auth={}",
+    eprintln!("[blackslate:push] attempt failed — used_upstream={used_upstream} needs_upstream={} needs_auth={}",
         push_needs_upstream(&combined), push_needs_auth(&combined));
 
-    // Auto-handle missing upstream.
-    if push_needs_upstream(&combined) {
+    // Auto-handle missing upstream (only on plain push attempt).
+    if !used_upstream && push_needs_upstream(&combined) {
         let branch_out = git_cmd(&cwd_str, &["rev-parse", "--abbrev-ref", "HEAD"])
             .await
             .map_err(|e| e.to_string())?;
@@ -489,7 +517,12 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
 
         if out2.status.success() {
             eprintln!("[blackslate:push] push with --set-upstream succeeded");
-            return Ok(GitPushResult { success: true, needs_passphrase: false, passphrase_hint: String::new() });
+            return Ok(GitPushResult {
+                success: true,
+                needs_passphrase: false,
+                passphrase_hint: String::new(),
+                needs_upstream: false,
+            });
         }
 
         let combined2 = format!(
@@ -500,25 +533,27 @@ pub async fn git_push(cwd: String, passphrase: Option<String>) -> CommandResult<
 
         eprintln!("[blackslate:push] --set-upstream also failed — needs_auth={}", push_needs_auth(&combined2));
 
-        if push_needs_auth(&combined2) && pass.is_none() {
-            eprintln!("[blackslate:push] returning needs_passphrase=true");
+        if push_needs_auth(&combined2) {
+            eprintln!("[blackslate:push] returning needs_passphrase=true needs_upstream=true");
             return Ok(GitPushResult {
                 success: false,
                 needs_passphrase: true,
                 passphrase_hint: extract_passphrase_hint(&combined2),
+                needs_upstream: true,
             });
         }
 
         return Err(combined2.trim().to_string());
     }
 
-    // Auth required — return as Ok so the frontend can prompt rather than treat it as a crash.
-    if push_needs_auth(&combined) && pass.is_none() {
-        eprintln!("[blackslate:push] returning needs_passphrase=true");
+    // Auth required on a push that already used --set-upstream → wrong passphrase.
+    if push_needs_auth(&combined) {
+        eprintln!("[blackslate:push] returning needs_passphrase=true needs_upstream={used_upstream}");
         return Ok(GitPushResult {
             success: false,
             needs_passphrase: true,
             passphrase_hint: extract_passphrase_hint(&combined),
+            needs_upstream: used_upstream || !branch_name.is_empty(),
         });
     }
 

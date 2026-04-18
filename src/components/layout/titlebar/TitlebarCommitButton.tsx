@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IoClose } from "react-icons/io5";
 import { TbGitCommit } from "react-icons/tb";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toastError";
@@ -27,6 +28,8 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [passphrase, setPassphrase] = useState("");
 	const [passphraseHint, setPassphraseHint] = useState("");
+	const [passphraseError, setPassphraseError] = useState(false);
+	const [needsUpstream, setNeedsUpstream] = useState(false);
 	const passphraseInputRef = useRef<HTMLInputElement>(null);
 	const spinnerChar = useSpinner(phase === "working");
 
@@ -42,12 +45,25 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				success: boolean;
 				needsPassphrase: boolean;
 				passphraseHint: string;
-			}>("git_push", { cwd, passphrase: pass ?? null });
+				needsUpstream: boolean;
+			}>("git_push", {
+				cwd,
+				passphrase: pass ?? null,
+				setUpstream: needsUpstream || undefined,
+			});
 
 			if (result.success) return true;
 
 			if (result.needsPassphrase) {
+				setNeedsUpstream(result.needsUpstream);
 				setPassphraseHint(result.passphraseHint);
+				// Wrong passphrase: clear the field so the user knows to re-enter.
+				if (pass !== undefined) {
+					setPassphraseError(true);
+					setPassphrase("");
+				} else {
+					setPassphraseError(false);
+				}
 				setPhase("passphrase");
 				return false;
 			}
@@ -155,50 +171,60 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				<span className="text-xs">Commit & Push</span>
 			</button>
 
-			{/* Passphrase popover — only for SSH/HTTPS auth edge case */}
+			{/* Passphrase dialog — centered overlay, same style as other dialogs */}
 			{phase === "passphrase" && (
-				<div className="absolute right-0 top-full z-50 mt-2 flex w-72 flex-col gap-3 rounded-xl border border-border bg-background p-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-					<div className="flex flex-col gap-1">
-						<p className="text-xs font-medium text-foreground">
-							Passphrase required
-						</p>
-						{passphraseHint && (
-							<p className="text-[11px] text-muted-foreground">
-								{passphraseHint}
-							</p>
-						)}
+				<>
+					<div className="fixed inset-0 z-50 bg-black/40" />
+					<div className="fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_64px_rgba(0,0,0,0.8)]">
+						<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
+							<span className="text-xs font-medium tracking-wide text-muted-foreground">
+								{passphraseError ? "Incorrect passphrase — try again" : "Passphrase required"}
+							</span>
+							<button
+								type="button"
+								className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-muted-foreground"
+								onClick={() => { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }}
+							>
+								<IoClose className="size-4" />
+							</button>
+						</div>
+						<div className="flex flex-col gap-5 p-4">
+							{passphraseHint && (
+								<p className="text-xs text-muted-foreground">{passphraseHint}</p>
+							)}
+							<Input
+								ref={passphraseInputRef}
+								type="password"
+								value={passphrase}
+								onChange={(e) => setPassphrase(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") handlePassphraseSubmit();
+									if (e.key === "Escape") { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }
+								}}
+								placeholder="Enter passphrase…"
+								className="h-9 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
+							/>
+							<div className="flex justify-end gap-2">
+								<button
+									type="button"
+									className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+									onClick={() => { setPassphrase(""); setPassphraseError(false); setNeedsUpstream(false); setPhase("idle"); }}
+								>
+									Cancel
+								</button>
+								<Button
+									type="button"
+									size="sm"
+									className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+									onClick={handlePassphraseSubmit}
+									disabled={!passphrase.trim()}
+								>
+									Push
+								</Button>
+							</div>
+						</div>
 					</div>
-					<Input
-						ref={passphraseInputRef}
-						type="password"
-						value={passphrase}
-						onChange={(e) => setPassphrase(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") handlePassphraseSubmit();
-							if (e.key === "Escape") { setPassphrase(""); setPhase("idle"); }
-						}}
-						placeholder="Enter passphrase…"
-						className="h-8 border-border bg-input/30 text-xs placeholder:text-muted-foreground/50"
-					/>
-					<div className="flex justify-end gap-2">
-						<button
-							type="button"
-							className="rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-							onClick={() => { setPassphrase(""); setPhase("idle"); }}
-						>
-							Cancel
-						</button>
-						<Button
-							type="button"
-							size="sm"
-							className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
-							onClick={handlePassphraseSubmit}
-							disabled={!passphrase.trim()}
-						>
-							Push
-						</Button>
-					</div>
-				</div>
+				</>
 			)}
 		</div>
 	);

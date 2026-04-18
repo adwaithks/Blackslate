@@ -14,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 					"--normal-text": "var(--popover-foreground)",
 					"--normal-border": "var(--border)",
 					"--border-radius": "var(--radius)",
-					"--width": "300px",
+					"--width": "420px",
 					fontFamily: "'Geist Mono Variable', 'GeistMono', monospace",
 					fontSize: "11px",
 				} as React.CSSProperties
