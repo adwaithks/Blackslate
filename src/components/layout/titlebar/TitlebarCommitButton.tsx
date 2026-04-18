@@ -24,7 +24,7 @@ function useSpinner(active: boolean): string {
 
 type Phase = "idle" | "working" | "passphrase" | "error";
 
-export function TitlebarCommitButton({ cwd }: { cwd: string }) {
+export function TitlebarCommitButton({ cwd, hidden }: { cwd: string; hidden?: boolean }) {
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [statusText, setStatusText] = useState("Commit & Push");
 	const [errorTitle, setErrorTitle] = useState("");
@@ -179,6 +179,10 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		setPhase("working");
 		await doPush(passphrase);
 	}
+
+	// Hidden instances stay mounted so their state (phase, spinner, etc.) survives
+	// terminal switches, but render nothing into the DOM.
+	if (hidden) return null;
 
 	return (
 		<div className="relative flex items-center">

@@ -57,12 +57,11 @@ function CommitButtonStack() {
 	return (
 		<>
 			{rows.map(({ branch, cwd, isActive }) => (
-				<div
+				<TitlebarCommitButton
 					key={branch}
-					style={{ display: isActive ? undefined : "none" }}
-				>
-					<TitlebarCommitButton cwd={cwd} />
-				</div>
+					cwd={cwd}
+					hidden={!isActive}
+				/>
 			))}
 		</>
 	);
