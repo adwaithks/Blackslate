@@ -255,17 +255,7 @@ with open('/dev/tty', 'wb', buffering=0) as tty:
             "#!/bin/sh\n\
              export PATH='{path_env}'\n\
              exec claude -p \
-             'Generate a commit message for the staged changes in this git repository.\n\
-             \n\
-             First, understand this repo'\''s commit convention by:\n\
-             1. Running `git log --oneline -10` to see recent commit message style (conventional commits, imperative mood, ticket prefixes, emoji, etc.)\n\
-             2. Checking if CONTRIBUTING.md or .github/CONTRIBUTING.md exists and mentions commit format\n\
-             \n\
-             Then generate a commit message that matches the convention used in this repo.\n\
-             \n\
-             Respond with ONLY a JSON object, no markdown, no code blocks:\n\
-             {{\"title\": \"commit title following this repo'\''s convention\", \
-             \"description\": \"optional body or empty string\"}}' \
+             'Generate a commit message for the staged changes. Run git log --oneline -10 and match how those commits are written. Output only one JSON object: {{\"title\":\"subject\",\"description\":\"\"}}. Use a non-empty description only when a short body helps; otherwise use an empty string for description. No other text, no markdown, no code fences.' \
              --output-format text\n"
         ),
     )

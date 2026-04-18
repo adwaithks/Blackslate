@@ -580,6 +580,73 @@ fn extract_json_object(text: &str) -> Option<String> {
     }
 }
 
+/// Bodies of ``` fenced blocks in order (skips the optional language token on the opening line).
+fn extract_fenced_code_blocks(text: &str) -> Vec<String> {
+    let mut blocks = Vec::new();
+    let mut rest = text;
+    while let Some(open) = rest.find("```") {
+        let after_open = &rest[open + 3..];
+        let after_first_line = match after_open.find('\n') {
+            Some(nl) => &after_open[nl + 1..],
+            None => break,
+        };
+        match after_first_line.find("```") {
+            Some(close_idx) => {
+                blocks.push(after_first_line[..close_idx].trim().to_string());
+                rest = &after_first_line[close_idx + 3..];
+            }
+            None => break,
+        }
+    }
+    blocks
+}
+
+fn parse_generated_commit_message_from_claude_output(
+    text: &str,
+) -> Result<GeneratedCommitMessage, String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err("Empty claude output".into());
+    }
+
+    if let Some(json_str) = extract_json_object(text) {
+        if let Ok(msg) = serde_json::from_str::<GeneratedCommitMessage>(&json_str) {
+            if !msg.title.trim().is_empty() {
+                return Ok(msg);
+            }
+        }
+    }
+
+    for block in extract_fenced_code_blocks(text) {
+        let t = block.trim();
+        if !t.starts_with('{') {
+            continue;
+        }
+        if let Ok(msg) = serde_json::from_str::<GeneratedCommitMessage>(t) {
+            if !msg.title.trim().is_empty() {
+                return Ok(msg);
+            }
+        }
+    }
+
+    let blocks = extract_fenced_code_blocks(text);
+    if !blocks.is_empty() {
+        let title = blocks[0].trim().to_string();
+        let description = blocks
+            .get(1)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+        if !title.is_empty() {
+            return Ok(GeneratedCommitMessage { title, description });
+        }
+    }
+
+    Err(format!(
+        "Could not parse commit message from claude output: {}",
+        text
+    ))
+}
+
 #[tauri::command]
 pub async fn git_generate_commit_message(cwd: String) -> CommandResult<GeneratedCommitMessage> {
     let resolved = resolve_path(&cwd);
@@ -614,11 +681,7 @@ pub async fn git_generate_commit_message(cwd: String) -> CommandResult<Generated
     }
 
     let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let json_str = extract_json_object(&text)
-        .ok_or_else(|| format!("Could not parse JSON from claude output: {}", text))?;
-
-    serde_json::from_str::<GeneratedCommitMessage>(&json_str)
-        .map_err(|e| format!("Failed to parse commit message JSON: {}", e))
+    parse_generated_commit_message_from_claude_output(&text)
 }
 
 #[tauri::command]
@@ -639,6 +702,46 @@ pub async fn git_commit(cwd: String, message: String) -> CommandResult<()> {
         } else {
             combined
         })
+    }
+}
+
+#[cfg(test)]
+mod generated_commit_parse_tests {
+    use super::*;
+
+    #[test]
+    fn parses_bare_json_object() {
+        let raw = r#"{"title":"fix: typos","description":"In README."}"#;
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "fix: typos");
+        assert_eq!(msg.description, "In README.");
+    }
+
+    #[test]
+    fn parses_json_in_markdown_fence() {
+        let raw = "Here\n```json\n{\"title\":\"a\",\"description\":\"b\"}\n```\n";
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "a");
+        assert_eq!(msg.description, "b");
+    }
+
+    #[test]
+    fn parses_title_description_fenced_blocks() {
+        let raw = r#"Based on the diff:
+
+**Title:**
+```
+Refactor git_info to use git subprocesses
+```
+
+**Description:**
+```
+Replace manual walk.
+```
+"#;
+        let msg = parse_generated_commit_message_from_claude_output(raw).unwrap();
+        assert_eq!(msg.title, "Refactor git_info to use git subprocesses");
+        assert_eq!(msg.description, "Replace manual walk.");
     }
 }
 
