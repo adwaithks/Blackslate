@@ -26,6 +26,7 @@ type Phase = "idle" | "working" | "passphrase";
 
 export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	const [phase, setPhase] = useState<Phase>("idle");
+	const [statusText, setStatusText] = useState("Commit & Push");
 	const [passphrase, setPassphrase] = useState("");
 	const [passphraseHint, setPassphraseHint] = useState("");
 	const [passphraseError, setPassphraseError] = useState(false);
@@ -40,6 +41,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 	}, [phase]);
 
 	async function doPush(pass?: string): Promise<boolean> {
+		setStatusText("Pushing…");
 		try {
 			const result = await invoke<{
 				success: boolean;
@@ -52,7 +54,10 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				setUpstream: needsUpstream || undefined,
 			});
 
-			if (result.success) return true;
+			if (result.success) {
+				setStatusText("Commit & Push");
+				return true;
+			}
 
 			if (result.needsPassphrase) {
 				setNeedsUpstream(result.needsUpstream);
@@ -71,6 +76,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		} catch (err) {
 			toast.error("Push failed", { description: String(err) });
 			setPhase("idle");
+			setStatusText("Commit & Push");
 			return false;
 		}
 	}
@@ -105,6 +111,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 		}
 
 		setPhase("working");
+		setStatusText("Generating…");
 
 		// Generate commit message
 		let message = "";
@@ -121,15 +128,18 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				description: String(err),
 			});
 			setPhase("idle");
+			setStatusText("Commit & Push");
 			return;
 		}
 
 		// Commit
+		setStatusText("Committing…");
 		try {
 			await invoke("git_commit", { cwd, message });
 		} catch (err) {
 			toast.error("Commit failed", { description: String(err) });
 			setPhase("idle");
+			setStatusText("Commit & Push");
 			return;
 		}
 
@@ -168,7 +178,7 @@ export function TitlebarCommitButton({ cwd }: { cwd: string }) {
 				) : (
 					<TbGitCommit className="size-4 shrink-0" aria-hidden />
 				)}
-				<span className="text-xs">Commit & Push</span>
+				<span className="text-xs">{statusText}</span>
 			</button>
 
 			{/* Passphrase dialog — centered overlay, same style as other dialogs */}
